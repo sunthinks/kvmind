@@ -38,8 +38,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Parse arguments
 DEVICE_IP=""
 DEVICE_PASS="root"
+RESET=0
 for arg in "$@"; do
     case "$arg" in
+        --reset|reset)
+            RESET=1
+            ;;
         -*) ;;
         *)
             if [[ -z "$DEVICE_IP" ]]; then
@@ -83,7 +87,9 @@ if [[ -n "$DEVICE_IP" ]]; then
     ok "Source uploaded"
 
     info "Running installer on device..."
-    $SSH_CMD "bash /run/kvmind_src/install.sh"
+    REMOTE_FLAGS=""
+    [[ "$RESET" == "1" ]] && REMOTE_FLAGS=" --reset"
+    $SSH_CMD "bash /run/kvmind_src/install.sh${REMOTE_FLAGS}"
     EXIT_CODE=$?
 
     # Clean up staging
@@ -131,6 +137,60 @@ mount -o remount,rw / 2>/dev/null || true
 
 # Ensure filesystem is restored to read-only on exit (normal or error)
 trap 'mount -o remount,ro / 2>/dev/null || true' EXIT
+
+# ========================================================================
+# RESET: wipe all device state so the next install is a true first-boot.
+# Invoked by `install.sh --reset` or `install.sh reset`. Destroys:
+# UID, registration secret, device/tunnel token, auth.json, AI memory DB,
+# config.yaml, ai.env, and Python venv. Existing cloud bindings become
+# invalid — the user must re-bind on kvmind.com after reset.
+# ========================================================================
+if [[ "$RESET" == "1" ]]; then
+    echo ""
+    echo -e "${RED}══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${RED}  RESET MODE — DESTRUCTIVE${NC}"
+    echo -e "${RED}══════════════════════════════════════════════════════════════${NC}"
+    echo    "  This will wipe all device state:"
+    echo    "    - Device UID, registration secret, device/tunnel token"
+    echo    "    - Admin password (auth.json)"
+    echo    "    - AI memory database"
+    echo    "    - Local config (config.yaml, ai.env)"
+    echo    "    - Python virtualenv"
+    echo    "  Existing cloud bindings will need to be re-done on kvmind.com."
+    echo ""
+    echo    "  Starting in 5 seconds — press Ctrl+C to abort."
+    sleep 5
+
+    # Stop services before wiping (they hold auth.json and memory.db open)
+    systemctl stop kvmind 2>/dev/null || true
+    systemctl stop kvmind-tunnel 2>/dev/null || true
+    systemctl stop kvmind-heartbeat.timer 2>/dev/null || true
+    systemctl stop kvmind-updater.timer 2>/dev/null || true
+    systemctl stop kvmind-register.timer 2>/dev/null || true
+
+    # Wipe /etc/kdkvm state files
+    rm -f /etc/kdkvm/device.uid
+    rm -f /etc/kdkvm/device.token
+    rm -f /etc/kdkvm/registration.secret
+    rm -f /etc/kdkvm/.registered
+    rm -f /etc/kdkvm/config.yaml
+    rm -f /etc/kdkvm/ai.env
+    rm -f /etc/kdkvm/tunnel.token
+
+    # Wipe MSD-side state (auth.json, memory DB + its WAL/SHM sidecars)
+    mount -o remount,rw /var/lib/kvmd/msd 2>/dev/null || true
+    rm -f /var/lib/kvmd/msd/.kdkvm/auth.json
+    rm -f /var/lib/kvmd/msd/.kdkvm/memory.db
+    rm -f /var/lib/kvmd/msd/.kdkvm/memory.db-wal
+    rm -f /var/lib/kvmd/msd/.kdkvm/memory.db-shm
+    mount -o remount,ro /var/lib/kvmd/msd 2>/dev/null || true
+
+    # Wipe Python venv — forces fresh pip install during deployment
+    rm -rf /opt/kvmind/kdkvm/venv
+
+    ok "Reset complete — continuing as first-boot install"
+    echo ""
+fi
 
 # ========================================================================
 step 1 "Stopping services & cleaning old deployment"
