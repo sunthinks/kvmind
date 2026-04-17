@@ -18,6 +18,22 @@ from typing import Any, AsyncIterator, Dict, Optional
 log = logging.getLogger(__name__)
 
 
+class NoVideoSignalError(RuntimeError):
+    """Raised when the KVM device reports no video input (HDMI unplugged, source off, etc.).
+
+    str(exc) is user-facing (bilingual). Adapters should translate transport-level
+    symptoms (ustreamer 502/503, blank frames, etc.) into this exception so the
+    Runner's top-level ``except Exception`` emits a friendly message instead of
+    leaking ``503, message='Service Unavailable', url='http://localhost/streamer/snapshot'``.
+    """
+
+    def __init__(self, detail: str = "") -> None:
+        msg = "无视频信号 — 请检查 HDMI 连接 / No video signal — please check the HDMI connection"
+        if detail:
+            msg = f"{msg} ({detail})"
+        super().__init__(msg)
+
+
 class KVMBackend(ABC):
     """Abstract interface for KVM hardware control."""
 

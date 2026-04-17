@@ -5,6 +5,7 @@ import logging
 
 from aiohttp import web
 
+from ..kvm.base import NoVideoSignalError
 from .helpers import json_response
 
 log = logging.getLogger("kvmind.handlers.device")
@@ -56,6 +57,12 @@ def register(app: dict) -> None:
                 "text": text,
                 "screenshot": screenshot,
             })
+        except NoVideoSignalError as exc:
+            log.warning("Analyse: no video signal (%s)", exc)
+            msg = {"zh": "无视频信号，请检查 HDMI 连接。",
+                   "ja": "ビデオ信号がありません。HDMI 接続をご確認ください。",
+                   "en": "No video signal — please check the HDMI connection."}
+            return json_response({"error": msg.get(lang, msg["en"])}, status=503)
         except Exception as exc:
             log.exception("Analyse failed: %s", exc)
             providers = app["providers"]

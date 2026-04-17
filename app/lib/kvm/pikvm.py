@@ -25,7 +25,7 @@ from typing import Any, AsyncIterator, Dict, Optional
 import aiohttp
 
 from . import register
-from .base import KVMBackend
+from .base import KVMBackend, NoVideoSignalError
 
 log = logging.getLogger(__name__)
 
@@ -169,20 +169,44 @@ class PiKVMAdapter(KVMBackend):
     # ── Video ──────────────────────────────────────────────────────────────
 
     async def snapshot(self, retries: int = 3, delay: float = 1.0) -> bytes:
-        """Return current screen as JPEG bytes. Retries on 502/503."""
+        """Return current screen as JPEG bytes. Retries on 502/503.
+
+        ustreamer returns 502/503 when the capture pipeline cannot produce a
+        frame — almost always because no video signal is present (HDMI
+        unplugged, source powered off, resolution not negotiated yet). After
+        exhausting retries we translate that transport-level symptom into
+        ``NoVideoSignalError`` so the UI sees a friendly bilingual message
+        instead of the raw aiohttp exception string.
+        """
         last_err: Optional[Exception] = None
+        last_status: Optional[int] = None
         for attempt in range(retries):
             try:
                 async with self._sess().get(self._p("/api/streamer/snapshot")) as resp:
-                    if resp.status in (502, 503) and attempt < retries - 1:
-                        log.warning("Snapshot returned %d, retry %d/%d",
-                                    resp.status, attempt + 1, retries)
-                        await asyncio.sleep(delay)
-                        continue
+                    if resp.status in (502, 503):
+                        last_status = resp.status
+                        if attempt < retries - 1:
+                            log.warning("Snapshot returned %d, retry %d/%d",
+                                        resp.status, attempt + 1, retries)
+                            await asyncio.sleep(delay)
+                            continue
+                        raise NoVideoSignalError(f"ustreamer HTTP {resp.status}")
                     resp.raise_for_status()
                     data = await resp.read()
                     self._validate_snapshot(data, resp.headers.get("Content-Type", ""))
                     return data
+            except NoVideoSignalError:
+                raise
+            except aiohttp.ClientResponseError as e:
+                if e.status in (502, 503):
+                    last_status = e.status
+                    if attempt < retries - 1:
+                        log.warning("Snapshot error: %s, retry %d/%d",
+                                    e, attempt + 1, retries)
+                        await asyncio.sleep(delay)
+                        continue
+                    raise NoVideoSignalError(f"ustreamer HTTP {e.status}") from e
+                raise
             except Exception as e:
                 last_err = e
                 if attempt < retries - 1:
@@ -191,6 +215,8 @@ class PiKVMAdapter(KVMBackend):
                     await asyncio.sleep(delay)
                 else:
                     raise
+        if last_status in (502, 503):
+            raise NoVideoSignalError(f"ustreamer HTTP {last_status}")
         raise last_err  # type: ignore[misc]
 
     def stream_urls(self) -> Dict[str, str]:
