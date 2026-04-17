@@ -1,0 +1,935 @@
+/* ==========================================================================
+ * KVMind Console Styles
+ * Generated from inject.js CSS + glass-upgrade.js CSS
+ * 
+ * Structure:
+ *   1. Global transitions
+ *   2. Theme CSS variables (Light / Dark / KVMind Light / KVMind Dark)
+ *   3. KVM element overrides (hide navbar etc)
+ *   4. Layout (toolbar, chat panel, log bar, stream window)
+ *   5. Components (buttons, messages, inputs, menus)
+ *   6. Theme visual overrides (per-theme toolbar/panel colors, typography)
+ *   7. Animations
+ *   8. Scrollbars
+ * ========================================================================== */
+
+/* === Base Layout & Components (from inject.js) === */
+
+*,*::before,*::after{transition:background-color .3s,color .3s,border-color .3s}
+:root,[data-theme="light"]{
+--kvbg:#f5f6f8;--kvsurface:#fff;--kvsurface2:#f0f1f3;--kvsurface3:#e8eaed;
+--kvborder:#d1d5db;--kvborder-lt:#e5e7eb;
+--kvaccent:#0077b6;--kvaccent-dim:rgba(0,119,182,.08);--kvaccent-hover:#005f8a;
+--kvgreen:#16a34a;--kvgreen-dim:rgba(22,163,74,.08);
+--kvred:#dc2626;--kvred-dim:rgba(220,38,38,.08);
+--kvyellow:#ca8a04;--kvyellow-dim:rgba(202,138,4,.08);
+--kvpurple:#7c3aed;--kvpurple-dim:rgba(124,58,237,.06);
+--kvtext:#1f2937;--kvtext-muted:#6b7280;--kvtext-sub:#9ca3af;
+--kvai-bar-bg:rgba(255,255,255,.92);--kvai-bar-border:rgba(0,119,182,.3);
+--kvkb-bg:rgba(255,255,255,.92);--kvlog-bg:#f8f9fa;--kvlog-info:#2563eb;
+--kvuser-msg:#0077b6;--kvscroll:#d1d5db;
+--toolbar-bg:rgba(247,245,240,0.92);--sidebar-bg:#F7F5F0;--qc-bg:#fff;--qc-hover-bg:#eff6eb;
+--send-btn-bg:#0077b6;
+}
+[data-theme="dark"]{
+--kvbg:#0d1117;--kvsurface:#161b22;--kvsurface2:#1c2128;--kvsurface3:#21262d;
+--kvborder:#30363d;--kvborder-lt:#3d444d;
+--kvaccent:#00b4d8;--kvaccent-dim:rgba(0,180,216,.15);--kvaccent-hover:#0096c7;
+--kvgreen:#3fb950;--kvgreen-dim:rgba(63,185,80,.15);
+--kvred:#f85149;--kvred-dim:rgba(248,81,73,.15);
+--kvyellow:#d29922;--kvyellow-dim:rgba(210,153,34,.15);
+--kvpurple:#a371f7;--kvpurple-dim:rgba(163,113,247,.12);
+--kvtext:#e6edf3;--kvtext-muted:#8b949e;--kvtext-sub:#6e7681;
+--kvai-bar-bg:rgba(13,17,23,.88);--kvai-bar-border:rgba(0,180,216,.35);
+--kvkb-bg:rgba(13,17,23,.92);--kvlog-bg:#0a0a0a;--kvlog-info:#58a6ff;
+--kvuser-msg:#0096c7;--kvscroll:#3d444d;
+--toolbar-bg:rgba(30,33,40,0.95);--sidebar-bg:#1e2128;--qc-bg:#2a2d35;--qc-hover-bg:#33363e;
+--send-btn-bg:#00b4d8;
+}
+[data-theme="kvmind-light"]{
+--kvbg:#f0f8f4;--kvsurface:#fff;--kvsurface2:#f8fcfa;--kvsurface3:#e0f0e8;
+--kvborder:#c8e0d0;--kvborder-lt:#d8ece0;
+--kvaccent:#2bb77a;--kvaccent-dim:rgba(62,207,142,.08);--kvaccent-hover:#22a06b;
+--kvgreen:#16a34a;--kvgreen-dim:rgba(22,163,74,.08);
+--kvred:#dc2626;--kvred-dim:rgba(220,38,38,.08);
+--kvyellow:#ca8a04;--kvyellow-dim:rgba(202,138,4,.08);
+--kvpurple:#7c3aed;--kvpurple-dim:rgba(124,58,237,.06);
+--kvtext:#2a3a30;--kvtext-muted:#5a7a6a;--kvtext-sub:#7a9a8a;
+--kvai-bar-bg:rgba(240,248,244,.92);--kvai-bar-border:rgba(62,207,142,.35);
+--kvkb-bg:rgba(240,248,244,.92);--kvlog-bg:#f0f8f4;--kvlog-info:#2bb77a;
+--kvuser-msg:#2bb77a;--kvscroll:#c8e0d0;
+--toolbar-bg:rgba(232,245,238,0.95);--sidebar-bg:#f0f8f4;--qc-bg:#f8fcfa;--qc-hover-bg:#e0f0e8;
+--send-btn-bg:#3ecf8e;
+}
+[data-theme="kvmind-dark"]{
+--kvbg:#0a1628;--kvsurface:#0f1923;--kvsurface2:#1a2332;--kvsurface3:#1a2a3a;
+--kvborder:#1e3040;--kvborder-lt:#2a3a4a;
+--kvaccent:#3ecf8e;--kvaccent-dim:rgba(62,207,142,.12);--kvaccent-hover:#2bb77a;
+--kvgreen:#3ecf8e;--kvgreen-dim:rgba(62,207,142,.15);
+--kvred:#f85149;--kvred-dim:rgba(248,81,73,.15);
+--kvyellow:#d29922;--kvyellow-dim:rgba(210,153,34,.15);
+--kvpurple:#a371f7;--kvpurple-dim:rgba(163,113,247,.12);
+--kvtext:#c0c8d0;--kvtext-muted:#6e7681;--kvtext-sub:#8b949e;
+--kvai-bar-bg:rgba(15,25,35,.92);--kvai-bar-border:rgba(62,207,142,.35);
+--kvkb-bg:rgba(15,25,35,.92);--kvlog-bg:#0a1020;--kvlog-info:#3ecf8e;
+--kvuser-msg:#2bb77a;--kvscroll:#1e3040;
+--toolbar-bg:rgba(15,25,35,0.95);--sidebar-bg:#0f1923;--qc-bg:#0f1923;--qc-hover-bg:#1a2a3a;
+--send-btn-bg:#3ecf8e;
+}
+
+/* === Standalone Stream Area (replaces PiKVM element overrides) === */
+html,body{margin:0;padding:0;overflow:hidden;background:var(--kvbg);color:var(--kvtext)}
+#webterm-window.kvmind-hidden{display:none}
+#webterm-window:not(.kvmind-hidden){visibility:visible!important;z-index:100!important;position:fixed!important;top:48px!important;left:0!important;bottom:22px!important;width:auto!important;height:auto!important;display:flex!important}
+body:not(.kvmind-panel-collapsed) #webterm-window:not(.kvmind-hidden){right:400px!important}
+body.kvmind-panel-collapsed #webterm-window:not(.kvmind-hidden){right:0!important}
+#kvmind-stream-area{position:fixed;top:48px;left:0;bottom:22px;background:#000;z-index:1;overflow:hidden}
+body:not(.kvmind-panel-collapsed) #kvmind-stream-area{right:400px}
+body.kvmind-panel-collapsed #kvmind-stream-area{right:0}
+#kvmind-stream-box{width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center}
+#kvmind-stream-canvas{max-width:100%;max-height:100%;object-fit:contain;display:block}
+#kvmind-stream-img{max-width:100%;max-height:100%;object-fit:contain;display:none}
+#kvmind-stream-overlay{position:absolute;top:0;left:0;width:100%;height:100%;cursor:crosshair;z-index:10;outline:none}
+#kvmind-stream-overlay:focus{outline:none}
+#kvmind-stream-info{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.6);color:#aaa;font-size:11px;padding:2px 8px;border-radius:4px;z-index:5;font-family:'JetBrains Mono',monospace;pointer-events:none}
+#kvmind-no-signal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#666;font-size:18px;z-index:5;display:flex;align-items:center;gap:8px;pointer-events:none}
+#kvmind-toolbar{position:fixed;top:0;left:0;right:0;height:48px;display:flex;align-items:center;gap:6px;padding:0 14px;z-index:1100;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:13px}
+.kvmind-tb-logo{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:700;color:var(--kvaccent);margin-right:8px;user-select:none}
+.kvmind-tb-sep{width:1px;height:20px;background:var(--kvborder);margin:0 4px;flex-shrink:0}
+.kvmind-tb-btn{display:flex;align-items:center;gap:5px;padding:5px 11px;border:1px solid var(--kvborder);border-radius:8px;background:transparent;color:var(--kvtext-muted);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .12s}
+.kvmind-tb-btn:hover{border-color:var(--kvborder-lt);color:var(--kvtext);background:var(--kvsurface2)}
+.kvmind-tb-btn.active{background:var(--kvaccent-dim);border-color:var(--kvaccent);color:var(--kvaccent)}
+.kvmind-tb-btn.danger:hover{border-color:var(--kvred);color:var(--kvred);background:var(--kvred-dim)}
+#kvmind-mode-toggle{display:flex;align-items:center;background:var(--kvsurface3);border:1px solid var(--kvborder);border-radius:20px;padding:2px;gap:2px}
+.kvmind-mode-pill{padding:3px 12px;border-radius:16px;border:none;background:transparent;color:var(--kvtext-muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.kvmind-mode-pill.active{background:var(--kvaccent);color:#fff;box-shadow:0 1px 4px rgba(0,119,182,.3)}
+.kvmind-upgrade-btn{display:inline-flex;align-items:center;gap:2px;padding:4px 12px;background:#f59e0b;color:#fff !important;font-size:11px;font-weight:700;border-radius:20px;text-decoration:none;white-space:nowrap;animation:kvmind-pulse 2s ease-in-out infinite;transition:background 0.2s,transform 0.2s}
+.kvmind-upgrade-btn:hover{background:#d97706;transform:scale(1.05)}
+@keyframes kvmind-pulse{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.4)}50%{box-shadow:0 0 0 6px rgba(245,158,11,0)}}
+#kvmind-toolbar-right{display:flex;align-items:center;gap:6px;margin-left:auto}
+#kvmind-conn-status{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;border:1px solid var(--kvborder);font-size:12px;color:var(--kvtext-muted);background:var(--kvsurface2)}
+#kvmind-conn-status.online{border-color:var(--kvgreen);color:var(--kvgreen);background:var(--kvgreen-dim)}
+#kvmind-conn-status.offline{border-color:var(--kvred);color:var(--kvred);background:var(--kvred-dim)}
+.kvmind-conn-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+#kvmind-conn-status.online .kvmind-conn-dot{animation:kvmind-blink 2s ease-in-out infinite}
+@keyframes kvmind-blink{0%,100%{opacity:1}50%{opacity:.4}}
+#kvmind-power-wrap{position:relative}
+#kvmind-power-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;width:180px;background:var(--kvsurface);border:1px solid var(--kvborder-lt);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:1500;padding:4px}
+#kvmind-power-menu.show{display:block}
+.kvmind-power-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:none;background:none;color:var(--kvtext);font-size:13px;border-radius:5px;cursor:pointer;text-align:left}
+.kvmind-power-item:hover{background:var(--kvsurface2)}
+.kvmind-power-item.danger{color:var(--kvred)}
+.kvmind-power-item.danger:hover{background:var(--kvred-dim)}
+.kvmind-power-divider{height:1px;background:var(--kvborder);margin:4px 0}
+/* User avatar dropdown */
+#kvmind-user-avatar{width:30px;height:30px;border-radius:50%;background:var(--kvaccent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s;flex-shrink:0}
+#kvmind-user-avatar:hover{opacity:.8}
+#kvmind-user-menu{position:absolute;top:calc(100% + 6px);right:0;width:240px;background:var(--kvsurface);border:1px solid var(--kvborder-lt);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.18);z-index:1500;padding:6px}
+.kvmind-user-header{display:flex;align-items:center;gap:10px;padding:10px 12px 8px}
+.kvmind-user-header-avatar{width:36px;height:36px;border-radius:50%;background:var(--kvaccent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0}
+.kvmind-user-header-info{display:flex;flex-direction:column;gap:2px;min-width:0}
+.kvmind-user-header-name{font-size:14px;font-weight:600;color:var(--kvtext)}
+.kvmind-user-header-uid{font-size:11px;color:var(--kvtext-muted);font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kvmind-user-item{display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:none;background:none;color:var(--kvtext);font-size:13px;border-radius:6px;cursor:pointer;text-align:left;text-decoration:none;box-sizing:border-box}
+.kvmind-user-item:hover{background:var(--kvsurface2)}
+.kvmind-user-item.danger{color:var(--kvred)}
+.kvmind-user-item.danger:hover{background:var(--kvred-dim)}
+.kvmind-plan-badge{margin-left:auto;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--kvaccent-dim);color:var(--kvaccent);letter-spacing:.5px}
+.kvmind-user-setting{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;font-size:13px;color:var(--kvtext-muted)}
+.kvmind-user-setting select{padding:3px 6px;border:1px solid var(--kvborder);border-radius:5px;background:var(--kvsurface2);color:var(--kvtext);font-size:12px;cursor:pointer;outline:none}
+.kvmind-user-setting select:focus{border-color:var(--kvaccent)}
+.kvmind-user-divider{height:1px;background:var(--kvborder);margin:4px 0}
+#kvmind-chat-panel{position:fixed;top:48px;right:0;bottom:0;width:400px;display:flex;flex-direction:column;z-index:1000;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:13px;transition:width .2s;overflow:hidden}
+#kvmind-chat-panel.collapsed{width:0;border-left:none}
+#kvmind-chat-header{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--kvborder);flex-shrink:0}
+.kvmind-myclaw-badge{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700}
+.kvmind-myclaw-dot{width:8px;height:8px;border-radius:50%;background:var(--kvpurple);animation:kvmind-blink 2.5s ease-in-out infinite}
+.kvmind-myclaw-label{color:var(--kvpurple)}
+.kvmind-myclaw-sub{font-size:10px;color:var(--kvtext-sub);font-weight:400;margin-left:1px}
+#kvmind-panel-mode-wrap{margin-left:auto;display:inline-flex;align-items:center;background:var(--kvsurface3);border:1px solid var(--kvborder);border-radius:16px;padding:2px;gap:2px}
+.kvmind-panel-mode-btn{padding:3px 12px;border-radius:14px;border:none;background:transparent;color:var(--kvtext-muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.kvmind-panel-mode-btn.active{background:var(--kvaccent);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.kvmind-panel-mode-btn:hover:not(.active){color:var(--kvtext)}
+#kvmind-collapse-btn{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:1px solid var(--kvborder);border-radius:4px;background:none;color:var(--kvtext-muted);font-size:12px;cursor:pointer}
+#kvmind-chat-messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
+.kvmind-msg-row{display:flex;flex-direction:column;gap:2px;animation:kvmind-fadeUp .18s ease}
+.kvmind-msg-row.user{align-items:flex-end}
+.kvmind-msg-row.ai,.kvmind-msg-row.action{align-items:flex-start}
+.kvmind-msg-row.system{align-items:center}
+@keyframes kvmind-fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.kvmind-msg-sender{font-size:9px;color:var(--kvtext-sub);padding:0 4px}
+.kvmind-chat-msg{max-width:92%;padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word;user-select:text}
+.kvmind-chat-msg.user{background:var(--kvuser-msg);color:#fff;border-bottom-right-radius:3px}
+.kvmind-chat-msg.ai{background:var(--kvsurface2);border:1px solid var(--kvborder);color:var(--kvtext);border-bottom-left-radius:3px}
+.kvmind-chat-msg.system{background:transparent;border:1px dashed var(--kvborder);color:var(--kvtext-sub);font-size:12px;text-align:center;max-width:100%;padding:5px 14px;border-radius:20px}
+.kvmind-chat-msg.action{background:var(--kvpurple-dim);border:1px solid rgba(124,58,237,.2);color:var(--kvpurple);font-family:monospace;font-size:12px}
+.kvmind-chat-msg.action.ok{border-color:rgba(22,163,74,.3);background:var(--kvgreen-dim);color:var(--kvgreen)}
+.kvmind-chat-msg.action.err{border-color:rgba(220,38,38,.3);background:var(--kvred-dim);color:var(--kvred)}
+.kvmind-tool-details{background:var(--kvpurple-dim);border:1px solid rgba(124,58,237,.2);border-radius:12px;font-family:monospace;font-size:12px;color:var(--kvpurple);max-width:92%;overflow:hidden}
+.kvmind-tool-summary{padding:7px 12px;cursor:pointer;user-select:none;list-style:none;line-height:1.5}
+.kvmind-tool-summary::-webkit-details-marker{display:none}
+.kvmind-tool-summary::marker{display:none;content:""}
+.kvmind-tool-content{margin:0;padding:6px 12px;font-size:11px;line-height:1.45;white-space:pre-wrap;word-break:break-all;border-top:1px solid rgba(124,58,237,.15);color:var(--kvtext-sub);max-height:300px;overflow-y:auto}
+.kvmind-tool-result{color:var(--kvgreen);border-top-color:rgba(22,163,74,.2)}
+.kvmind-chat-msg.warn-confirm{background:var(--kvyellow-dim);border:1px solid rgba(202,138,4,.3);color:var(--kvyellow)}
+.kvmind-chat-msg.snap{padding:0;overflow:hidden;border:1px solid var(--kvborder);background:var(--kvsurface2);max-width:100%;cursor:default}
+.kvmind-snap-cap{font-size:9px;color:var(--kvtext-sub);padding:4px 8px;background:var(--kvsurface3);display:flex;justify-content:space-between}
+.kvmind-confirm-btns{display:flex;gap:8px;margin-top:10px}
+.kvmind-confirm-btn{flex:1;padding:6px;border-radius:5px;border:none;font-size:12px;font-weight:600;cursor:pointer}
+.kvmind-confirm-btn.yes{background:var(--kvred);color:#fff}
+.kvmind-confirm-btn.no{background:var(--kvsurface3);color:var(--kvtext-muted)}
+/* ── Screen Copy Modal ── */
+#kvmind-copy-modal{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2000;display:flex;align-items:center;justify-content:center}
+.kvmind-copy-backdrop{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55)}
+.kvmind-copy-dialog{position:relative;width:90%;max-width:640px;max-height:80vh;background:var(--kvsurface);border:1px solid var(--kvborder-lt);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden}
+.kvmind-copy-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--kvborder);font-weight:600;font-size:14px;color:var(--kvtext)}
+.kvmind-copy-close{background:none;border:none;color:var(--kvtext-muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:1}
+.kvmind-copy-close:hover{color:var(--kvtext)}
+.kvmind-copy-text{flex:1;margin:0;padding:16px 18px;font-size:13px;line-height:1.6;font-family:'JetBrains Mono',monospace;color:var(--kvtext);white-space:pre-wrap;word-break:break-word;overflow-y:auto;max-height:50vh;background:var(--kvsurface2);border:none}
+.kvmind-copy-actions{display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--kvborder);justify-content:flex-end}
+.kvmind-copy-btn{padding:8px 18px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;background:var(--kvaccent);color:#fff;transition:opacity .15s}
+.kvmind-copy-btn:hover{opacity:.85}
+.kvmind-copy-btn.copied{background:var(--kvgreen)}
+#kvmind-quick-cmds{padding:8px 12px 4px;border-top:1px solid var(--kvborder);display:flex;flex-wrap:wrap;gap:5px;flex-shrink:0}
+.kvmind-quick-cmd{padding:3px 10px;border:1px solid var(--kvborder);border-radius:12px;background:none;color:var(--kvtext-muted);font-size:12px;cursor:pointer;white-space:nowrap}
+.kvmind-quick-cmd:hover{border-color:var(--kvaccent);color:var(--kvaccent);background:var(--kvaccent-dim)}
+#kvmind-chat-input-area{padding:10px 12px;border-top:1px solid var(--kvborder);display:flex;flex-direction:column;gap:7px;flex-shrink:0}
+#kvmind-chat-input{width:100%;padding:9px 12px;background:var(--kvsurface2);border:1px solid var(--kvborder);border-radius:5px;color:var(--kvtext);font-size:13px;resize:none;outline:none;min-height:70px;max-height:120px;font-family:inherit;box-sizing:border-box}
+#kvmind-chat-input:focus{border-color:var(--kvaccent)}
+#kvmind-chat-input::placeholder{color:var(--kvtext-sub)}
+#kvmind-input-actions{display:flex;gap:6px;align-items:center}
+.kvmind-analyse-btn{padding:7px 10px;background:var(--kvsurface2);border:1px solid var(--kvborder);border-radius:5px;color:var(--kvtext-muted);font-size:13px;cursor:pointer}
+#kvmind-char-hint{font-size:10px;color:var(--kvtext-sub);flex-shrink:0}
+.kvmind-send-btn{flex:1;padding:7px 12px;background:var(--kvaccent);border:none;border-radius:5px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+.kvmind-send-btn:hover{background:var(--kvaccent-hover)}
+#kvmind-ai-bar{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:var(--kvai-bar-bg);backdrop-filter:blur(8px);border:1px solid var(--kvai-bar-border);border-radius:24px;padding:7px 18px;display:none;align-items:center;gap:10px;font-size:13px;color:var(--kvaccent);box-shadow:0 4px 20px rgba(0,0,0,.1);max-width:420px;white-space:nowrap;z-index:50;font-family:-apple-system,sans-serif}
+#kvmind-ai-bar.show{display:flex}
+.kvmind-ai-spinner{width:14px;height:14px;border:2px solid rgba(0,119,182,.2);border-top-color:var(--kvaccent);border-radius:50%;animation:kvmind-spin .7s linear infinite;flex-shrink:0}
+@keyframes kvmind-spin{to{transform:rotate(360deg)}}
+#kvmind-ai-step-badge{background:rgba(0,119,182,.1);border-radius:10px;padding:2px 8px;font-size:10px}
+.kvmind-abort-mini{margin-left:4px;padding:2px 8px;border:1px solid rgba(220,38,38,.3);border-radius:10px;background:var(--kvred-dim);color:var(--kvred);font-size:10px;cursor:pointer}
+#kvmind-kb-overlay{position:absolute;bottom:0;left:0;right:0;background:var(--kvkb-bg);backdrop-filter:blur(8px);border-top:1px solid var(--kvborder);padding:8px 10px;display:none;flex-direction:column;gap:6px;z-index:50;font-family:-apple-system,sans-serif}
+#kvmind-kb-overlay.show{display:flex}
+#kvmind-kb-shortcuts{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.kvmind-kb-key{padding:5px 10px;border:1px solid var(--kvborder);border-radius:4px;background:var(--kvsurface2);color:var(--kvtext-muted);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .1s;font-family:inherit}
+.kvmind-kb-key:hover{background:var(--kvaccent-dim);border-color:var(--kvaccent);color:var(--kvaccent)}
+.kvmind-kb-key:active{transform:scale(.95)}
+.kvmind-kb-key.combo{background:var(--kvsurface3);font-weight:600}
+.kvmind-kb-key.pressed{background:var(--kvaccent);color:#fff;border-color:var(--kvaccent)}
+.kvmind-kb-sep{width:1px;height:20px;background:var(--kvborder);margin:0 2px}
+#kvmind-kb-text-row{display:flex;gap:6px;align-items:center}
+#kvmind-kb-input{flex:1;background:var(--kvsurface2);border:1px solid var(--kvaccent);border-radius:5px;color:var(--kvtext);padding:6px 10px;font-size:13px;outline:none}
+#kvmind-kb-send{padding:6px 14px;background:var(--kvaccent);border:none;border-radius:5px;color:#fff;font-size:13px;cursor:pointer}
+#kvmind-log-bar{position:fixed!important;bottom:0!important;left:0!important;height:22px!important;display:flex!important;flex-direction:column!important;z-index:1000!important;font-family:-apple-system,sans-serif;font-size:10px;overflow:hidden!important}
+body:not(.kvmind-panel-collapsed) #kvmind-log-bar{right:400px!important}
+body.kvmind-panel-collapsed #kvmind-log-bar{right:0!important}
+#kvmind-log-tab{height:22px;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--kvsurface);border-top:1px solid var(--kvborder);cursor:pointer;flex-shrink:0}
+#kvmind-log-tab span{font-size:10px;color:var(--kvtext-muted)}
+.kvmind-log-tab-count{color:var(--kvaccent)!important}
+.kvmind-log-tab-arrow{margin-left:auto!important;font-size:9px;color:var(--kvtext-sub)!important;transition:transform .2s}
+#kvmind-log-tab.open .kvmind-log-tab-arrow{transform:rotate(180deg)}
+#kvmind-log-bar.open{height:auto!important}
+#kvmind-log-wrap{border-top:1px solid var(--kvborder);background:var(--kvlog-bg);overflow:hidden;transition:height .2s ease;height:0}
+#kvmind-log-wrap.open{height:110px}
+#kvmind-log-entries{height:110px;overflow-y:auto;padding:4px 12px;font-family:monospace;font-size:10.5px;color:var(--kvtext-sub)}
+.kvmind-log-line{padding:1.5px 0;display:flex;gap:8px}
+.kvmind-log-ts{flex-shrink:0;opacity:.45}
+.kvmind-log-line.info .kvmind-log-msg{color:var(--kvlog-info)}
+.kvmind-log-line.ok .kvmind-log-msg{color:var(--kvgreen)}
+.kvmind-log-line.warn .kvmind-log-msg{color:var(--kvyellow)}
+.kvmind-log-line.error .kvmind-log-msg{color:var(--kvred)}
+.kvmind-log-line.ai .kvmind-log-msg{color:var(--kvpurple)}
+#kvmind-settings-menu{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--kvtext)}
+#kvmind-settings-menu .kvmind-settings-section{padding:14px 16px;border-bottom:1px solid var(--kvborder)}
+#kvmind-settings-menu .kvmind-settings-section:last-child{border-bottom:none}
+#kvmind-settings-menu .kvmind-settings-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--kvtext-muted);margin-bottom:10px}
+#kvmind-settings-menu select{padding:5px 10px;border-radius:6px;border:1px solid var(--kvborder);background:var(--kvsurface2);color:var(--kvtext);font-size:13px;cursor:pointer;outline:none;transition:border-color .15s}
+#kvmind-settings-menu select:focus{border-color:var(--kvaccent)}
+#kvmind-settings-menu hr{border:none;border-top:1px solid var(--kvborder);margin:0}
+#kvmind-settings-menu,#kvmind-settings-menu *{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!important}
+#kvmind-settings-menu td,#kvmind-settings-menu label,#kvmind-settings-menu summary,#kvmind-settings-menu button,#kvmind-settings-menu .text,#kvmind-settings-menu sub,#kvmind-settings-menu sup,#kvmind-settings-menu b,#kvmind-settings-menu details{font-size:13px!important}
+#kvmind-settings-menu .small{font-size:12px!important}
+#kvmind-settings-menu select,#kvmind-settings-menu input[type="range"]{font-size:13px!important}
+
+/* Settings Tab Bar */
+.kvmind-settings-tabs{display:flex;border-bottom:1px solid var(--kvborder);padding:0 4px;gap:0;background:var(--kvsurface)}
+.kvmind-settings-tab{flex:1;padding:10px 0;font-size:13px;font-weight:600;border:none;background:transparent;color:var(--kvtext-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;text-align:center;white-space:nowrap}
+.kvmind-settings-tab:hover{color:var(--kvtext);background:var(--kvsurface2)}
+.kvmind-settings-tab.active{color:var(--kvaccent);border-bottom-color:var(--kvaccent)}
+.kvmind-settings-tab-panel{display:none}
+.kvmind-settings-tab-panel.active{display:block}
+
+#kvmind-expand-tab{position:fixed;right:0;top:50%;transform:translateY(-50%);background:var(--kvsurface);border:1px solid var(--kvborder);border-right:none;border-radius:8px 0 0 8px;padding:12px 6px;writing-mode:vertical-lr;font-size:11px;color:var(--kvpurple);cursor:pointer;display:none;gap:5px;align-items:center;font-weight:600;z-index:999;font-family:-apple-system,sans-serif}
+#kvmind-expand-tab.show{display:flex}
+#kvmind-lang-toolbar,#kvmind-theme-select{padding:3px 6px;border-radius:5px;border:1px solid var(--kvborder);background:var(--kvsurface2);color:var(--kvtext-muted);font-size:12px;cursor:pointer;outline:none;-webkit-appearance:none;-moz-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%278%27 height=%275%27%3E%3Cpath d=%27M0 0l4 5 4-5z%27 fill=%27%236b7280%27/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;padding-right:18px}
+#kvmind-lang-toolbar option,#kvmind-theme-select option{background:var(--kvsurface);color:var(--kvtext)}
+#kvmind-chat-messages::-webkit-scrollbar,#kvmind-log-entries::-webkit-scrollbar{width:4px}
+#kvmind-chat-messages::-webkit-scrollbar-track,#kvmind-log-entries::-webkit-scrollbar-track{background:transparent}
+#kvmind-chat-messages::-webkit-scrollbar-thumb,#kvmind-log-entries::-webkit-scrollbar-thumb{background:var(--kvscroll);border-radius:4px}
+
+/* === Theme Visual Overrides (from glass-upgrade.js) === */
+
+
+
+
+/* ===== 宋韻·和風 Light Theme Variables ===== */
+[data-theme="light"], :root {
+  --glass-bg: rgba(247,245,240,0.92);
+  --glass-border: #E0D8CC;
+  --text-primary: #2C3640;
+  --text-secondary: #6A8372;
+  --accent: #68B0AB;
+  --accent-hover: #48929B;
+  --accent-light: #E4F0EE;
+  --surface: rgba(255,255,255,0.85);
+  --surface-hover: rgba(255,255,255,0.95);
+  --chat-bg: #F7F5F0;
+  --msg-user-bg: #3E5055;
+  --msg-user-color: #EAECEF;
+  --msg-ai-bg: #FFFFFF;
+  --msg-ai-color: #424C50;
+  --msg-ai-border: #E0D8CC;
+  --toolbar-bg: rgba(247,245,240,0.92);
+  --sidebar-bg: #F7F5F0;
+  --log-bg: #1C2127;
+  --log-ts: #6C848D;
+  --log-ok: #88B892;
+  --log-warn: #E0A458;
+  --log-error: #C45A65;
+  --log-info: #8DA7A0;
+  --qc-bg: #FFFFFF;
+  --qc-border: #C8DBBE;
+  --qc-text: #6A8372;
+  --qc-hover-bg: #EFF6EB;
+  --qc-hover-border: #68BE8D;
+  --send-btn-bg: #68B0AB;
+  --send-btn-color: #FFFFFF;
+  --success: #68BE8D;
+  --warning: #E0A458;
+  --error: #C45A65;
+  --fuji: #8F77B5;
+}
+
+/* ===== Classic Dark Theme Variables ===== */
+[data-theme="dark"] {
+  --glass-bg: rgba(30,33,40,0.95);
+  --glass-border: #3a3d45;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --accent: #00b4d8;
+  --accent-hover: #0096c7;
+  --accent-light: rgba(0,180,216,0.15);
+  --surface: rgba(42,45,53,0.85);
+  --surface-hover: rgba(42,45,53,0.95);
+  --chat-bg: #1e2128;
+  --msg-user-bg: #0096c7;
+  --msg-user-color: #fff;
+  --msg-ai-bg: #2a2d35;
+  --msg-ai-color: #c0c8d0;
+  --msg-ai-border: #3a3d45;
+  --toolbar-bg: rgba(30,33,40,0.95);
+  --sidebar-bg: #1e2128;
+  --log-bg: #0a0a0a;
+  --log-ts: #6e7681;
+  --log-ok: #3fb950;
+  --log-warn: #d29922;
+  --log-error: #f85149;
+  --log-info: #58a6ff;
+  --qc-bg: #2a2d35;
+  --qc-border: #3a3d45;
+  --qc-text: #b0b8c0;
+  --qc-hover-bg: #33363e;
+  --qc-hover-border: #00b4d8;
+  --send-btn-bg: #00b4d8;
+  --send-btn-color: #FFFFFF;
+  --success: #3fb950;
+  --warning: #d29922;
+  --error: #f85149;
+  --fuji: #a371f7;
+}
+
+/* ===== KVMind Light Theme Variables ===== */
+[data-theme="kvmind-light"] {
+  --glass-bg: rgba(232,245,238,0.95);
+  --glass-border: #c8e0d0;
+  --text-primary: #2a3a30;
+  --text-secondary: #5a7a6a;
+  --accent: #2bb77a;
+  --accent-hover: #22a06b;
+  --accent-light: rgba(62,207,142,0.08);
+  --surface: rgba(255,255,255,0.9);
+  --surface-hover: rgba(255,255,255,0.95);
+  --chat-bg: #f0f8f4;
+  --msg-user-bg: #2bb77a;
+  --msg-user-color: #fff;
+  --msg-ai-bg: #fff;
+  --msg-ai-color: #3a5a4a;
+  --msg-ai-border: #c8e0d0;
+  --toolbar-bg: rgba(232,245,238,0.95);
+  --sidebar-bg: #f0f8f4;
+  --log-bg: #e8f4ee;
+  --log-ts: #7a9a8a;
+  --log-ok: #16a34a;
+  --log-warn: #ca8a04;
+  --log-error: #dc2626;
+  --log-info: #2bb77a;
+  --qc-bg: rgba(62,207,142,0.08);
+  --qc-border: #c8e0d0;
+  --qc-text: #3a5a4a;
+  --qc-hover-bg: #e0f0e8;
+  --qc-hover-border: #3ecf8e;
+  --send-btn-bg: #3ecf8e;
+  --send-btn-color: #FFFFFF;
+  --success: #16a34a;
+  --warning: #ca8a04;
+  --error: #dc2626;
+  --fuji: #7c3aed;
+}
+
+/* ===== KVMind Dark Theme Variables (matches login page) ===== */
+[data-theme="kvmind-dark"] {
+  --glass-bg: rgba(15,25,35,0.95);
+  --glass-border: #1e3040;
+  --text-primary: #c0c8d0;
+  --text-secondary: #8b949e;
+  --accent: #3ecf8e;
+  --accent-hover: #2bb77a;
+  --accent-light: rgba(62,207,142,0.12);
+  --surface: rgba(15,25,35,0.85);
+  --surface-hover: rgba(15,25,35,0.95);
+  --chat-bg: #0f1923;
+  --msg-user-bg: #3ecf8e;
+  --msg-user-color: #0a1628;
+  --msg-ai-bg: #1a2332;
+  --msg-ai-color: #c0c8d0;
+  --msg-ai-border: #2a3a4a;
+  --toolbar-bg: rgba(15,25,35,0.95);
+  --sidebar-bg: #0f1923;
+  --log-bg: #0a1020;
+  --log-ts: #6e7681;
+  --log-ok: #3ecf8e;
+  --log-warn: #d29922;
+  --log-error: #f85149;
+  --log-info: #3ecf8e;
+  --qc-bg: rgba(62,207,142,0.06);
+  --qc-border: #2a3a4a;
+  --qc-text: #8b949e;
+  --qc-hover-bg: #1a2a3a;
+  --qc-hover-border: #3ecf8e;
+  --send-btn-bg: #3ecf8e;
+  --send-btn-color: #0a1628;
+  --success: #3ecf8e;
+  --warning: #d29922;
+  --error: #f85149;
+  --fuji: #a371f7;
+}
+
+/* ===== Typography ===== */
+html, body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.kvmind-chat-msg.action, #kvmind-log-entries {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ===== Message Animation ===== */
+.kvmind-msg-row {
+  animation: kvGlassFadeUp 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes kvGlassFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ===== Log Panel: 墨底 ===== */
+#stream-log, .log-panel, [class*="log-wrap"], #kvmind-log-wrap {
+  background: var(--log-bg);
+  border-top: 2px solid #3E5055;
+}
+.kvmind-log-line, .log-entry {
+  color: var(--log-ok);
+}
+.kvmind-log-ts, .log-entry .timestamp {
+  color: var(--log-ts);
+  opacity: 0.85;
+}
+.kvmind-log-msg {
+  color: var(--log-ok);
+}
+.kvmind-log-line.ok .kvmind-log-msg { color: var(--log-ok); }
+.kvmind-log-line.info .kvmind-log-msg { color: var(--log-info); }
+.kvmind-log-line.warn .kvmind-log-msg { color: var(--log-warn); }
+.kvmind-log-line.error .kvmind-log-msg,
+.kvmind-log-line.err .kvmind-log-msg { color: var(--log-error); }
+.kvmind-log-header, [class*="log-header"] {
+  color: var(--log-ts);
+  background: transparent;
+}
+#kvmind-log-tab {
+  background: var(--log-bg);
+  border-top: 1px solid #3E5055;
+  color: var(--log-ts);
+}
+#kvmind-log-tab span { color: var(--log-ts); }
+
+/* ===== MyClaw Chat Panel (per-theme) ===== */
+
+/* Classic Light */
+[data-theme="light"] #kvmind-chat-panel,
+:root #kvmind-chat-panel {
+  background: #F7F5F0;
+  border-left: 1px solid #E0D8CC;
+  color: #2C3640;
+  box-shadow: -1px 0 4px rgba(0,0,0,0.04);
+}
+
+/* Classic Dark */
+[data-theme="dark"] #kvmind-chat-panel {
+  background: #1e2128;
+  border-left: 1px solid #3a3d45;
+  color: #e6edf3;
+  box-shadow: -1px 0 4px rgba(0,0,0,0.1);
+}
+
+/* KVMind Light — 玻璃效果 */
+[data-theme="kvmind-light"] #kvmind-chat-panel {
+  background: linear-gradient(90deg, #f8fdf9 0%, #f2f9f5 20%, #f0f8f4 100%);
+  border-left: 1px solid #b8d4c0;
+  color: #3a5a4a;
+  box-shadow: -2px 0 8px rgba(62,207,142,0.06);
+}
+
+/* KVMind Dark — 玻璃效果 */
+[data-theme="kvmind-dark"] #kvmind-chat-panel {
+  background: linear-gradient(90deg, #1a2a3a 0%, #132230 20%, #0f1923 100%);
+  border-left: 1px solid #2a4050;
+  color: #c0c8d0;
+  box-shadow: -2px 0 12px rgba(0,0,0,0.25);
+}
+#kvmind-chat-view {
+  background: var(--chat-bg);
+}
+#kvmind-chat-header {
+  background: var(--chat-bg);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* AI message bubble */
+.kvmind-chat-msg.ai,
+.kvmind-msg-ai,
+.kvmind-msg-assistant,
+.kvmind-msg-row.assistant .kvmind-msg-bubble {
+  background: var(--msg-ai-bg);
+  color: var(--msg-ai-color);
+  border: 1px solid var(--msg-ai-border);
+  border-radius: 2px 12px 12px 12px;
+}
+
+/* User message bubble */
+.kvmind-chat-msg.user,
+.kvmind-msg-user,
+.kvmind-msg-row.user .kvmind-msg-bubble {
+  background: var(--msg-user-bg);
+  color: var(--msg-user-color);
+  border: none;
+  border-radius: 12px 2px 12px 12px;
+}
+
+/* Action/tool messages */
+.kvmind-chat-msg.action {
+  background: var(--accent-light);
+  border: 1px solid var(--accent);
+  color: var(--text-secondary);
+  border-radius: 12px;
+}
+
+/* System messages */
+.kvmind-chat-msg.system,
+.kvmind-msg-row.system {
+  color: var(--log-info);
+  opacity: 0.8;
+}
+
+/* Quick command pills */
+.kvmind-quick-cmd {
+  background: var(--qc-bg);
+  border: 1px solid var(--qc-border);
+  color: var(--qc-text);
+  border-radius: 20px;
+  transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+.kvmind-quick-cmd:hover {
+  background: var(--qc-hover-bg);
+  border-color: var(--qc-hover-border);
+}
+
+/* Chat input */
+#kvmind-chat-input, .kvmind-chat-input {
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  border-radius: 8px;
+  transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+#kvmind-chat-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-light);
+}
+#kvmind-chat-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+/* Send button */
+#kvmind-send-btn, .kvmind-send-btn, [class*="send"] button {
+  background: var(--send-btn-bg);
+  color: var(--send-btn-color);
+  border: none;
+  border-radius: 8px;
+  transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+#kvmind-send-btn:hover, .kvmind-send-btn:hover {
+  background: var(--accent-hover);
+}
+
+/* Status dot */
+.kvmind-myclaw-dot,
+.kvmind-status-dot,
+[class*="status"][class*="online"] {
+  background: var(--success);
+}
+.kvmind-myclaw-label { color: var(--accent); }
+
+/* ===== Toolbar (per-theme) ===== */
+
+/* Classic Light */
+[data-theme="light"] #kvmind-toolbar,
+:root #kvmind-toolbar {
+  background: rgba(247,245,240,0.92);
+  border-bottom: 1px solid #E0D8CC;
+  color: #2C3640;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+/* Classic Dark */
+[data-theme="dark"] #kvmind-toolbar {
+  background: rgba(30,33,40,0.95);
+  border-bottom: 1px solid #3a3d45;
+  color: #e6edf3;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+}
+
+/* KVMind Light — 玻璃效果 */
+[data-theme="kvmind-light"] #kvmind-toolbar {
+  background: linear-gradient(180deg, #f8fdf9 0%, #eef7f2 40%, #e8f5ee 100%);
+  border-top: 1px solid #ffffff;
+  border-bottom: 1px solid #b8d4c0;
+  color: #3a5a4a;
+  box-shadow: 0 1px 8px rgba(62,207,142,0.08);
+}
+
+/* KVMind Dark — 玻璃效果 */
+[data-theme="kvmind-dark"] #kvmind-toolbar {
+  background: linear-gradient(180deg, #1a2a3a 0%, #132230 40%, #0f1923 100%);
+  border-top: 1px solid #2a4050;
+  border-bottom: 1px solid #1e3040;
+  color: #8b949e;
+  box-shadow: 0 1px 12px rgba(0,0,0,0.3);
+}
+.kvmind-tb-btn {
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+.kvmind-tb-btn:hover {
+  background: var(--accent-light);
+  border-color: var(--glass-border);
+}
+.kvmind-tb-btn.active {
+  background: var(--accent);
+  color: var(--send-btn-color);
+  border-color: var(--accent);
+}
+.kvmind-tb-sep {
+  background: var(--glass-border);
+}
+.kvmind-tb-logo { color: var(--accent); }
+
+/* Mode toggle */
+#kvmind-mode-toggle {
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+}
+.kvmind-mode-pill.active {
+  background: var(--accent);
+  color: #FFFFFF;
+}
+
+/* Panel mode buttons — unified with .kvmind-pill (no override needed) */
+
+/* Connection status */
+#kvmind-conn-status {
+  border-color: var(--glass-border);
+  background: var(--surface);
+}
+#kvmind-conn-status.online {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+/* ===== Sidebar ===== */
+#kvmind-sidebar {
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--glass-border);
+}
+.kvmind-sb-btn {
+  color: var(--text-secondary);
+}
+.kvmind-sb-btn:hover {
+  background: var(--accent-light);
+}
+.kvmind-sb-btn.active {
+  color: var(--accent);
+  background: var(--accent-light);
+}
+.kvmind-sb-btn.active::before {
+  background: var(--accent);
+}
+
+/* ===== Task Panel ===== */
+#kvmind-task-header {
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--glass-border);
+}
+.kvmind-task-item {
+  background: var(--surface);
+  border-color: var(--glass-border);
+}
+.kvmind-task-item .name { color: var(--text-primary); }
+.kvmind-task-item .status.enabled { color: var(--success); }
+
+/* ===== Power Menu ===== */
+#kvmind-power-menu {
+  background: var(--surface-hover);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+}
+
+/* ===== AI Processing Bar ===== */
+#kvmind-ai-bar {
+  background: var(--surface-hover);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+
+/* ===== Scrollbars ===== */
+#kvmind-chat-messages::-webkit-scrollbar-thumb,
+#kvmind-task-list::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+}
+#kvmind-log-wrap::-webkit-scrollbar-thumb {
+  background: var(--text-secondary);
+}
+#kvmind-log-wrap::-webkit-scrollbar-track {
+  background: var(--log-bg);
+}
+
+/* ===== Collapse Tab ===== */
+#kvmind-expand-tab {
+  background: var(--surface);
+  border-color: var(--glass-border);
+  color: var(--accent);
+}
+
+
+/* ===== Panel Collapse Fix ===== */
+#kvmind-chat-panel.collapsed {
+  width: 0;
+  min-width: 0;
+  border-left: none;
+  overflow: hidden;
+}
+
+
+/* MyClaw collapsed: expand video area */
+.myclaw-collapsed #stream-window { right: 0; }
+.myclaw-collapsed #kvmind-chat-panel { display: none; }
+
+/* ===== Settings Toggle Switch ===== */
+.kvmind-toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  vertical-align: middle;
+}
+.kvmind-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.kvmind-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--glass-border, #555);
+  border-radius: 20px;
+  transition: background 0.2s;
+}
+.kvmind-toggle-slider::before {
+  content: "";
+  position: absolute;
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.kvmind-toggle input:checked + .kvmind-toggle-slider {
+  background: var(--accent, #3ecf8e);
+}
+.kvmind-toggle input:checked + .kvmind-toggle-slider::before {
+  transform: translateX(16px);
+}
+/* ===== Settings Panel Components ===== */
+.kvmind-settings-table {
+  width: 100%;
+  font-size: 13px;
+  color: var(--kvtext);
+  border-collapse: collapse;
+}
+.kvmind-settings-table td {
+  padding: 6px 0;
+  vertical-align: middle;
+}
+.kvs-label {
+  color: var(--kvtext-muted);
+  white-space: nowrap;
+  padding-right: 12px !important;
+}
+.kvs-ctrl {
+  text-align: right;
+}
+.kvmind-settings-select {
+  padding: 4px 24px 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--kvborder);
+  background: var(--kvsurface2);
+  color: var(--kvtext);
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%236b7280'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  min-width: 80px;
+}
+.kvmind-settings-select:focus {
+  border-color: var(--kvaccent);
+}
+.kvmind-mode-pills {
+  display: inline-flex;
+  background: var(--kvsurface3);
+  border: 1px solid var(--kvborder);
+  border-radius: 16px;
+  padding: 2px;
+  gap: 2px;
+}
+.kvmind-pill {
+  padding: 3px 12px;
+  border-radius: 14px;
+  border: none;
+  background: transparent;
+  color: var(--kvtext-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+.kvmind-pill.active {
+  background: var(--kvaccent);
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.15);
+}
+.kvmind-pill:hover:not(.active) {
+  color: var(--kvtext);
+}
+.kvmind-slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.kvmind-settings-range {
+  width: 100px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--kvborder);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+.kvmind-settings-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--kvaccent);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  cursor: pointer;
+}
+.kvmind-settings-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--kvaccent);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  cursor: pointer;
+}
+.kvmind-slider-val {
+  font-size: 11px;
+  color: var(--kvtext-muted);
+  min-width: 32px;
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+}
+/* ===== Empty Guide Card ===== */
+#kvmind-empty-guide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--kvtext);
+  user-select: none;
+}
+#kvmind-empty-guide.hidden { display: none; }
+
+/* ===== Panel Resize Handle ===== */
+#kvmind-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  z-index: 1200;
+  background: transparent;
+  transition: background .15s;
+}
+#kvmind-resize-handle:hover,
+#kvmind-resize-handle.dragging {
+  background: var(--kvaccent);
+}
+
+/* build:1774215457 */

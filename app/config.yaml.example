@@ -1,0 +1,20 @@
+kvm:
+  backend: pikvm                   # "pikvm", "nanokvm", or "blikvm"
+  transport: unix                  # "unix" for local kvmd socket, "tcp" for explicit remote/dev use
+  unix_socket: /run/kvmd/kvmd.sock
+  host: localhost
+  username: admin
+  password: admin
+
+ai:
+  gemini_key: "AIzaSy..."       # Gemini API Key
+  # claude_key: "sk-ant-..."    # Claude API Key (optional)
+  # openai_key: "sk-..."        # OpenAI API Key (optional)
+
+bridge:
+  port: 8765
+  mode: suggest                  # "suggest" or "auto"
+
+telegram:
+  bot_token: ""                  # Telegram Bot Token (from @BotFather)
+  allowed_chats: []              # Allowed chat_id list, empty = no restriction

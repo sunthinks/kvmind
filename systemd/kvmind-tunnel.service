@@ -1,0 +1,14 @@
+[Unit]
+Description=KVMind Cloudflare Tunnel
+After=network-online.target kvmd-nginx.service
+Wants=network-online.target
+
+[Service]
+Type=notify
+TimeoutStartSec=15
+ExecStart=/bin/bash -c 'exec /usr/local/bin/cloudflared --no-autoupdate tunnel run --token "$(cat /etc/kdkvm/tunnel.token)"'
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

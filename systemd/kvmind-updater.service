@@ -1,0 +1,10 @@
+[Unit]
+Description=KVMind OTA Update Check
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/kvmind/kdkvm/bin/kvmind-updater.sh
+TimeoutStartSec=600
+Environment=KVMIND_AUTO_UPDATE=0

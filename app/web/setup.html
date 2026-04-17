@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KVMind — 设备初始化向导</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%230f1923%27/%3E%3Cpath d=%27M18 4L8 18h6l-2 10 10-14h-6z%27 fill=%27%233ecf8e%27/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #111d2e; --surface: #1a2838; --surface2: #1e3040;
+    --border: #30363d; --accent: #00b4d8; --accent2: #0077b6;
+    --green: #3fb950; --red: #f85149; --yellow: #d29922;
+    --text: #e6edf3; --text-muted: #8b949e; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .wizard-card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  }
+  .wizard-header {
+    padding: 28px 32px 24px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, #111d2e 0%, #1e3040 100%);
+    position: relative;
+  }
+  .wizard-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+  }
+  .wizard-header p {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  /* Lang switcher */
+      
+  /* Steps indicator */
+  .steps {
+    display: flex;
+    gap: 0;
+    padding: 0 32px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  .step {
+    flex: 1;
+    padding: 14px 8px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    position: relative;
+    cursor: default;
+    transition: all 0.2s;
+  }
+  .step.active { color: var(--accent); font-weight: 600; }
+  .step.done   { color: var(--green); }
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    font-size: 11px;
+    margin-bottom: 4px;
+    background: var(--surface);
+  }
+  .step.active .step-num { border-color: var(--accent); color: var(--accent); background: rgba(0,180,216,0.1); }
+  .step.done   .step-num { border-color: var(--green); background: rgba(63,185,80,0.15); color: var(--green); }
+  .step-label { display: block; }
+
+  /* Page content */
+  .wizard-body { padding: 28px 32px; }
+  .wizard-footer {
+    padding: 16px 32px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* Shared form styles */
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--text-muted);
+  }
+  input[type=text], input[type=password], select {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  .form-group { margin-bottom: 18px; }
+  .hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Buttons */
+  .btn {
+    padding: 10px 24px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .btn.primary {
+    background: var(--accent2);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* WiFi list */
+  .wifi-list {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    max-height: 220px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+  }
+  .wifi-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.12s;
+  }
+  .wifi-item:last-child { border-bottom: none; }
+  .wifi-item:hover { background: var(--surface2); }
+  .wifi-item.selected { background: rgba(0,180,216,0.1); border-color: var(--accent); }
+  .wifi-signal {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 16px;
+  }
+  .wifi-signal span {
+    width: 3px;
+    background: var(--border);
+    border-radius: 1px;
+  }
+  .wifi-signal span:nth-child(1) { height: 4px; }
+  .wifi-signal span:nth-child(2) { height: 8px; }
+  .wifi-signal span:nth-child(3) { height: 12px; }
+  .wifi-signal span:nth-child(4) { height: 16px; }
+  .wifi-signal.s75 span:nth-child(1),
+  .wifi-signal.s75 span:nth-child(2),
+  .wifi-signal.s75 span:nth-child(3) { background: var(--green); }
+  .wifi-signal.s50 span:nth-child(1),
+  .wifi-signal.s50 span:nth-child(2) { background: var(--yellow); }
+  .wifi-signal.s25 span:nth-child(1) { background: var(--red); }
+  .wifi-signal.s100 span { background: var(--green); }
+  .wifi-name { flex: 1; font-size: 14px; }
+  .wifi-lock { font-size: 12px; color: var(--text-muted); }
+  .wifi-connected { font-size: 11px; color: var(--green); font-weight: 600; }
+
+  /* Status message */
+  .status-msg {
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    margin-top: 12px;
+    display: none;
+  }
+  .status-msg.show { display: block; }
+  .status-msg.success { background: rgba(63,185,80,0.1); border: 1px solid var(--green); color: var(--green); }
+  .status-msg.error   { background: rgba(248,81,73,0.1); border: 1px solid var(--red); color: var(--red); }
+  .status-msg.info    { background: rgba(0,180,216,0.1); border: 1px solid var(--accent); color: var(--accent); }
+  .status-msg.warn    { background: rgba(227,179,65,0.1); border: 1px solid #e3b341; color: #e3b341; }
+
+  /* IP display */
+  .ip-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-family: monospace;
+    font-size: 20px;
+    text-align: center;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Page visibility */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.lang-select {
+  padding: 4px 8px; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
+  background: rgba(255,255,255,0.05); color: #8b949e; cursor: pointer;
+  font-size: 12px; outline: none; transition: all 0.15s;
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b949e'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 6px center; padding-right: 20px;
+}
+.lang-select:hover { border-color: #00b4d8; color: #e6edf3; }
+.lang-select:focus { border-color: #00b4d8; box-shadow: 0 0 0 2px rgba(0,180,216,0.15); }
+.lang-select option { background: #161b22; color: #e6edf3; }
+
+  /* Plan cards */
+  .plan-cards { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .plan-card {
+    border: 2px solid var(--border); border-radius: 10px; padding: 12px 14px;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 10px;
+  }
+  .plan-card:hover { border-color: var(--primary); }
+  .plan-card.selected { border-color: var(--primary); background: rgba(0,180,216,0.06); }
+  .plan-card input[type=radio] { accent-color: var(--primary); flex-shrink: 0; }
+  .plan-card-body { flex: 1; }
+  .plan-card-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .plan-card-desc { font-size: 12px; color: var(--text-muted); }
+  .plan-detail { display: none; margin-bottom: 16px; padding: 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; }
+  .plan-detail.active { display: block; }
+</style>
+</head>
+<body>
+<div class="wizard-card">
+
+  <div class="wizard-header">
+    <h1 data-i18n="wizard_title">⚡ KVMind 初始化向导</h1>
+    <p data-i18n="wizard_subtitle">首次使用请完成以下配置，大约需要 2 分钟</p>
+    <select class="lang-select" onchange="var v=this.value;setTimeout(function(){setLang(v)},50)"><option value="zh">🌐 中文</option><option value="ja">🌐 日本語</option><option value="en">🌐 English</option></select>
+  </div>
+
+  <!-- Step indicators -->
+  <div class="steps">
+    <div class="step active" id="step-indicator-1">
+      <div class="step-num" id="stepnum-1">1</div>
+      <span class="step-label" data-i18n="step_network">网络配置</span>
+    </div>
+    <div class="step" id="step-indicator-2">
+      <div class="step-num" id="stepnum-2">2</div>
+      <span class="step-label" data-i18n="step_test">连接测试</span>
+    </div>
+    <div class="step" id="step-indicator-3">
+      <div class="step-num" id="stepnum-3">3</div>
+      <span class="step-label" data-i18n="step_ai">AI配置</span>
+    </div>
+    <div class="step" id="step-indicator-4">
+      <div class="step-num" id="stepnum-4">4</div>
+      <span class="step-label" data-i18n="step_done">完成</span>
+    </div>
+  </div>
+
+  <!-- ── Page 1: WiFi ── -->
+  <div class="page active" id="page-1">
+    <div class="wizard-body">
+      <div style="margin-bottom:18px">
+        <label style="font-size:12px;color:var(--text-muted)" data-i18n="setup_uid_label">设备 UID</label>
+        <div class="ip-box" id="device-uid" style="margin:4px 0 0;font-size:16px;padding:10px 14px;letter-spacing:3px">—</div>
+      </div>
+      <h2 style="font-size:16px;margin-bottom:6px" data-i18n="wifi_title">选择 WiFi 网络</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px" data-i18n="wifi_desc">设备将通过 WiFi 连接到您的局域网</p>
+
+      <button class="btn" onclick="scanWifi()" id="scan-btn" style="margin-bottom:12px">
+        <span data-i18n="wifi_scan">🔍 扫描网络</span>
+      </button>
+
+      <div class="wifi-list" id="wifi-list">
+        <div class="wifi-item" style="cursor:default;color:var(--text-muted);justify-content:center">
+          <span data-i18n="wifi_scan_hint">点击"扫描网络"查看可用 WiFi</span>
+        </div>
+      </div>
+
+      <div class="form-group" id="pwd-group" style="display:none">
+        <label data-i18n="wifi_password_label">WiFi 密码</label>
+        <input type="password" id="wifi-password" data-i18n="wifi_password_placeholder" placeholder="输入密码" />
+        <div class="hint" data-i18n="wifi_password_hint">WPA/WPA2 密码，如为开放网络可留空</div>
+      </div>
+
+      <div class="status-msg" id="wifi-status"></div>
+    </div>
+    <div class="wizard-footer">
+      <span style="font-size:12px;color:var(--text-muted)" data-i18n="wifi_skip_hint">也可跳过，使用有线以太网</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="skipWifi()" data-i18n="btn_skip">跳过</button>
+        <button class="btn primary" onclick="connectWifi()" id="connect-btn" disabled data-i18n="btn_connect_wifi">连接 WiFi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Page 2: Test ── -->
+  <div class="page" id="page-2">
+    <div class="wizard-body">
+      <h2 style="font-size:16px;margin-bottom:6px" data-i18n="test_title">连接测试</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px" data-i18n="test_desc">正在验证网络连接和 KVM 服务状态</p>
+
+      <div id="test-results" style="display:flex;flex-direction:column;gap:10px">
+        <div class="test-row" id="test-network" data-i18n="test_network">⏳ 检测网络连接…</div>
+        <div class="test-row" id="test-pikvm" data-i18n="test_pikvm">⏳ 检测 KVM 服务…</div>
+        <div class="test-row" id="test-kvmind" data-i18n="test_kvmind">⏳ 检测 KVMind 服务…</div>
+      </div>
+
+      <div class="ip-box" id="device-ip" style="display:none">—</div>
+      <div class="status-msg" id="test-status"></div>
+    </div>
+    <div class="wizard-footer">
+      <button class="btn" onclick="goPage(1)" data-i18n="btn_prev">← 上一步</button>
+      <button class="btn primary" onclick="goPage(3)" id="test-next-btn" disabled data-i18n="btn_next">下一步 →</button>
+    </div>
+  </div>
+
+  <!-- ── Page 3: AI Config ── -->
+  <div class="page" id="page-3">
+    <div class="wizard-body">
+      <h2 style="font-size:16px;margin-bottom:6px" data-i18n="ai_title">MyClaw AI 配置</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px" data-i18n="ai_desc">选择 AI 服务方式</p>
+
+      <!-- Plan selection cards -->
+      <div class="plan-cards">
+        <label class="plan-card selected" onclick="selectPlan('free_trial')">
+          <input type="radio" name="plan_type" value="free_trial" checked />
+          <div class="plan-card-body">
+            <div class="plan-card-title" data-i18n="plan_free_title">免费试用</div>
+            <div class="plan-card-desc" data-i18n="plan_free_desc">开箱即用，包含基础 AI 功能</div>
+          </div>
+        </label>
+        <label class="plan-card" onclick="selectPlan('subscribed')">
+          <input type="radio" name="plan_type" value="subscribed" />
+          <div class="plan-card-body">
+            <div class="plan-card-title" data-i18n="plan_sub_title">已订阅</div>
+            <div class="plan-card-desc" data-i18n="plan_sub_desc">输入订阅密钥激活完整功能</div>
+          </div>
+        </label>
+        <label class="plan-card" onclick="selectPlan('custom')">
+          <input type="radio" name="plan_type" value="custom" />
+          <div class="plan-card-body">
+            <div class="plan-card-title" data-i18n="plan_custom_title">自定义 AI 代理</div>
+            <div class="plan-card-desc" data-i18n="plan_custom_desc">使用自己的 API Key</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- Detail: Subscribed -->
+      <div class="plan-detail" id="plan-detail-subscribed">
+        <div class="form-group" style="margin-bottom:0">
+          <label data-i18n="plan_sub_key_label">订阅密钥</label>
+          <div style="position:relative">
+            <input type="password" id="subscription-key" placeholder="SUB-XXXX-XXXX" style="padding-right:44px" />
+            <button type="button" onclick="toggleKeyVis('subscription-key',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:4px">👁</button>
+          </div>
+          <div class="hint" data-i18n="plan_sub_key_hint">从 KVMind 订阅页面获取</div>
+        </div>
+      </div>
+
+      <!-- Detail: Custom AI Provider -->
+      <div class="plan-detail" id="plan-detail-custom">
+        <div class="form-group" style="margin-bottom:10px">
+          <label data-i18n="plan_custom_provider_label">AI 服务商</label>
+          <select id="custom-provider-select" onchange="onProviderChange()">
+            <option value="ollama">Ollama (Local)</option>
+            <option value="gemini">Gemini</option>
+            <option value="anthropic">Claude</option>
+            <option value="openai">ChatGPT</option>
+            <option value="other" data-i18n="plan_custom_other">其他（OpenAI 兼容）</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:10px">
+          <label>Base URL</label>
+          <input type="text" id="custom-base-url" readonly style="font-size:13px;background:var(--bg-input);opacity:0.7" />
+        </div>
+        <div class="form-group" style="margin-bottom:10px">
+          <label>API Key</label>
+          <div style="position:relative">
+            <input type="password" id="custom-api-key" placeholder="AIza..." style="padding-right:44px" />
+            <button type="button" onclick="toggleKeyVis('custom-api-key',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:4px">👁</button>
+          </div>
+          <div class="hint" id="custom-key-hint"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:10px">
+          <label data-i18n="ai_model_label">模型</label>
+          <select id="custom-model-select"></select>
+          <input type="text" id="custom-model-text" placeholder="gpt-4o / llama3 / deepseek-chat ..." style="display:none;font-size:13px" />
+        </div>
+        <button class="btn" onclick="testAiConnection()" id="ai-test-btn" style="margin-bottom:8px">
+          <span data-i18n="ai_test_btn">🔗 测试连接</span>
+        </button>
+        <div class="status-msg" id="ai-config-status"></div>
+      </div>
+
+      <div class="form-group">
+        <label data-i18n="ai_mode_label">默认操作模式</label>
+        <select id="ai-mode">
+          <option value="suggest" data-i18n="ai_mode_suggest">💡 建议模式（AI提建议，人工执行）</option>
+          <option value="auto" data-i18n="ai_mode_auto">⚡ 自动执行模式（AI自动操作，危险操作需确认）</option>
+        </select>
+      </div>
+
+      <hr style="margin:24px 0;border:none;border-top:1px solid var(--border)">
+      <h3 style="font-size:14px;margin-bottom:4px">📱 消息渠道</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">配置后可通过 Telegram / 微信 / LINE 远程控制桌面</p>
+
+      <div class="form-group">
+        <label>Telegram Bot Token</label>
+        <div style="position:relative">
+          <input type="password" id="ch-telegram-token" placeholder="123456:ABC-DEF..." style="padding-right:44px" />
+          <button type="button" onclick="toggleKeyVis('ch-telegram-token',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:4px">👁</button>
+        </div>
+        <div class="hint">从 <a href="https://t.me/BotFather" target="_blank" style="color:var(--primary)">@BotFather</a> 创建 Bot 获取</div>
+      </div>
+
+      <div class="form-group" style="opacity: 0.4; text-align: center; padding: 8px">
+        <span style="font-size: 12px; color: var(--text-muted)" data-i18n="more_channels">更多渠道即将支持（WeChat、LINE 等）</span>
+      </div>
+    </div>
+    <div class="wizard-footer">
+      <button class="btn" onclick="goPage(2)" data-i18n="btn_prev">← 上一步</button>
+      <button class="btn primary" onclick="saveAiConfig()" data-i18n="btn_save">保存并继续 →</button>
+    </div>
+  </div>
+
+  <!-- ── Page 4: Done ── -->
+  <div class="page" id="page-4">
+    <div class="wizard-body">
+      <div style="text-align:center;margin-bottom:24px">
+        <div style="font-size:48px;margin-bottom:12px">⚡</div>
+        <h2 style="font-size:18px;margin-bottom:6px" data-i18n="done_title">最后一步：设置访问密码</h2>
+        <p style="color:var(--text-muted);font-size:13px" data-i18n="done_desc2">设置密码后即可完成初始化，通过远程访问控制设备</p>
+      </div>
+
+      <div style="margin-bottom:18px">
+        <label style="font-size:12px;color:var(--text-muted)" data-i18n="setup_uid_label">设备 UID</label>
+        <div class="ip-box" id="final-uid" style="margin:4px 0 0;font-size:16px;padding:10px 14px;letter-spacing:3px">—</div>
+      </div>
+
+      <div style="margin-bottom:18px">
+        <label style="font-size:12px;color:var(--text-muted)">IP</label>
+        <div class="ip-box" id="final-ip" style="margin:4px 0 0;font-size:16px;padding:10px 14px">—</div>
+      </div>
+
+      <div class="form-group">
+        <label data-i18n="setup_password_label">设置访问密码</label>
+        <input type="password" id="setup-password" placeholder="至少 8 位" />
+      </div>
+      <div class="form-group">
+        <label data-i18n="setup_password_confirm">确认密码</label>
+        <input type="password" id="setup-password-confirm" placeholder="再次输入密码" />
+      </div>
+      <div class="hint" style="margin-bottom:16px" data-i18n="setup_password_hint">此密码用于通过 UID 远程访问设备时登录</div>
+      <div class="status-msg" id="setup-status"></div>
+    </div>
+    <div class="wizard-footer">
+      <button class="btn" onclick="goPage(3)" data-i18n="btn_prev">← 上一步</button>
+      <button class="btn primary" onclick="completeSetup()" id="setup-complete-btn" data-i18n="btn_complete_setup">完成初始化 ✓</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const I18N = {
+  zh: {
+    ai_title:'MyClaw AI 配置',
+    ai_desc:'选择 AI 服务方式',
+    plan_free_title:'免费试用',
+    plan_free_desc:'开箱即用，包含基础 AI 功能',
+    plan_sub_title:'已订阅',
+    plan_sub_desc:'输入订阅密钥激活完整功能',
+    plan_sub_key_label:'订阅密钥',
+    plan_sub_key_hint:'从 KVMind 订阅页面获取',
+    plan_sub_key_required:'请输入订阅密钥',
+    plan_custom_title:'自定义 AI 代理',
+    plan_custom_desc:'使用自己的 API Key',
+    plan_custom_provider_label:'AI 服务商',
+    plan_custom_other:'其他（OpenAI 兼容）',
+    ai_provider_label:'AI 服务商',
+    ai_key_label:'API Key',
+    ai_key_hint:'从服务商控制台获取的 API Key',
+    ai_model_label:'模型名称',
+    ai_model_hint:'可手动修改为其他模型',
+    ai_test_btn:'🔗 测试连接',
+    ai_testing:'测试中…',
+    ai_test_ok:'✓ AI 连接成功！',
+    ai_test_ok_tools:'✓ 连接成功 — 支持自动执行',
+    ai_test_ok_suggest:'⚠ 连接成功 — 仅建议模式（模型不支持工具调用）',
+    ai_test_fail:'✗ 连接失败: {msg}',
+    ai_no_key:'请至少配置一个 AI 服务',
+    ai_custom_toggle:'🔧 自定义 AI 代理（OpenAI 兼容）',
+    ai_custom_desc:'支持任何 OpenAI 兼容的 API（Ollama / LM Studio / Azure / 其他）',
+    ai_mode_label:'默认操作模式',
+    ai_mode_suggest:'💡 建议模式（AI提建议，人工执行）',
+    ai_mode_auto:'⚡ 自动执行模式（AI自动操作，危险操作需确认）',
+    wizard_title: '⚡ KVMind 初始化向导',
+    wizard_subtitle: '首次使用请完成以下配置，大约需要 2 分钟',
+    step_network: '网络配置',
+    step_test: '连接测试',
+    step_ai: 'AI配置',
+    step_done: '完成',
+    wifi_title: '选择 WiFi 网络',
+    wifi_desc: '设备将通过 WiFi 连接到您的局域网',
+    wifi_scan: '🔍 扫描网络',
+    wifi_scan_hint: '点击"扫描网络"查看可用 WiFi',
+    wifi_scanning: '扫描中…',
+    wifi_rescan: '🔍 重新扫描',
+    wifi_no_network: '未发现网络',
+    wifi_scan_fail: '扫描失败：',
+    wifi_connected: '已连接',
+    wifi_password_label: 'WiFi 密码',
+    wifi_password_placeholder: '输入密码',
+    wifi_password_hint: 'WPA/WPA2 密码，如为开放网络可留空',
+    wifi_skip_hint: '也可跳过，使用有线以太网',
+    btn_skip: '跳过',
+    btn_connect_wifi: '连接 WiFi',
+    wifi_connecting: '连接中…',
+    wifi_connect_ok: '✓ 已连接到 {ssid}，IP: {ip}',
+    wifi_connect_fail: '✗ 连接失败: {msg}',
+    wifi_connect_err: '✗ 错误: {msg}',
+    test_title: '连接测试',
+    test_desc: '正在验证网络连接和 KVM 服务状态',
+    test_network: '⏳ 检测网络连接…',
+    test_pikvm: '⏳ 检测 KVM 服务…',
+    test_kvmind: '⏳ 检测 KVMind 服务…',
+    test_network_ok: '✓ 网络正常，IP: {ip}',
+    test_network_ok2: '✓ 网络已连接（IP获取中）',
+    test_network_fail: '✗ 无法获取网络状态',
+    test_pikvm_ok: '✓ KVM 服务正常',
+    test_pikvm_fail: '✗ KVM 服务未响应',
+    test_pikvm_err: '✗ 无法连接 KVM 服务',
+    test_kvmind_ok: '✓ KVMind 服务就绪',
+    test_kvmind_warn: '⚠️ KVMind 未启动（可稍后配置）',
+    test_all_ok: '所有服务正常，可以继续',
+    test_partial_fail: '部分服务异常，请检查配置后重试',
+    btn_prev: '← 上一步',
+    btn_next: '下一步 →',
+    ai_title: 'KVMind AI 配置',
+    ai_desc: '配置 AI 代理的连接参数',
+    ai_host_label: 'KVMind 主机地址',
+    ai_host_hint: 'KVMind 服务运行的主机（默认本机）',
+    ai_port_label: '端口',
+    ai_apikey_label: 'API Key（可选）',
+    ai_apikey_placeholder: '留空表示无认证',
+    ai_mode_label: '默认操作模式',
+    ai_mode_suggest: '💡 建议模式（AI提建议，人工执行）',
+    ai_mode_auto: '⚡ 自动执行模式（AI自动操作，危险操作需确认）',
+    btn_save: '保存并继续 →',
+    config_saved: '✓ 配置已保存',
+    config_deferred: '配置将在下次重启生效',
+    done_title: '最后一步：设置访问密码',
+    done_desc2: '设置密码后即可完成初始化，通过远程访问控制设备',
+    setup_uid_label: '设备 UID',
+    setup_password_label: '设置访问密码',
+    setup_password_confirm: '确认密码',
+    setup_password_hint: '此密码用于通过 UID 远程访问设备时登录',
+    setup_password_short: '密码至少 8 位',
+    setup_password_mismatch: '两次输入的密码不一致',
+    setup_activating: '正在激活设备…',
+    setup_activate_ok: '设备激活成功！正在跳转…',
+    setup_activate_partial: '设备密码已设置，但云端激活失败。设备可正常使用，在线功能将在下次联网时自动激活。',
+    setup_activate_fail: '激活失败，请检查网络连接后重试',
+    btn_complete_setup: '完成初始化 ✓',
+    btn_enter_console: '进入控制台 →',
+  },
+  ja: {
+    ai_title:'MyClaw AI設定',
+    ai_desc:'AIサービス方式を選択',
+    plan_free_title:'無料トライアル',
+    plan_free_desc:'すぐに使える基本AI機能付き',
+    plan_sub_title:'サブスクリプション済み',
+    plan_sub_desc:'サブスクリプションキーで全機能を有効化',
+    plan_sub_key_label:'サブスクリプションキー',
+    plan_sub_key_hint:'KVMindサブスクリプションページから取得',
+    plan_sub_key_required:'サブスクリプションキーを入力してください',
+    plan_custom_title:'カスタムAIエージェント',
+    plan_custom_desc:'自分のAPI Keyを使用',
+    plan_custom_provider_label:'AIプロバイダー',
+    plan_custom_other:'その他（OpenAI互換）',
+    ai_provider_label:'AIプロバイダー',
+    ai_key_label:'API Key',
+    ai_key_hint:'プロバイダーのコンソールから取得したAPIキー',
+    ai_model_label:'モデル名',
+    ai_model_hint:'他のモデルに変更可能',
+    ai_test_btn:'🔗 接続テスト',
+    ai_testing:'テスト中…',
+    ai_test_ok:'✓ AI接続成功！',
+    ai_test_ok_tools:'✓ 接続成功 — 自動実行対応',
+    ai_test_ok_suggest:'⚠ 接続成功 — 提案モードのみ（ツール呼び出し非対応）',
+    ai_test_fail:'✗ 接続失敗: {msg}',
+    ai_no_key:'少なくとも1つのAIサービスを設定してください',
+    ai_custom_toggle:'🔧 カスタムAIエージェント（OpenAI互換）',
+    ai_custom_desc:'OpenAI互換API対応（Ollama / LM Studio / Azure / その他）',
+    ai_mode_label:'デフォルト操作モード',
+    ai_mode_suggest:'💡 提案モード（AIが提案、手動実行）',
+    ai_mode_auto:'⚡ 自動実行モード（AI自動操作、危険操作は確認）',
+    wizard_title: '⚡ KVMind セットアップウィザード',
+    wizard_subtitle: '初回設定を完了してください。約2分で完了します',
+    step_network: 'ネットワーク',
+    step_test: '接続テスト',
+    step_ai: 'AI設定',
+    step_done: '完了',
+    wifi_title: 'WiFiネットワークを選択',
+    wifi_desc: 'デバイスはWiFi経由でローカルネットワークに接続します',
+    wifi_scan: '🔍 ネットワークをスキャン',
+    wifi_scan_hint: '「スキャン」をクリックして利用可能なWiFiを表示',
+    wifi_scanning: 'スキャン中…',
+    wifi_rescan: '🔍 再スキャン',
+    wifi_no_network: 'ネットワークが見つかりません',
+    wifi_scan_fail: 'スキャン失敗：',
+    wifi_connected: '接続済み',
+    wifi_password_label: 'WiFiパスワード',
+    wifi_password_placeholder: 'パスワードを入力',
+    wifi_password_hint: 'WPA/WPA2パスワード。オープンネットワークの場合は空欄',
+    wifi_skip_hint: 'スキップして有線LANを使用することもできます',
+    btn_skip: 'スキップ',
+    btn_connect_wifi: 'WiFiに接続',
+    wifi_connecting: '接続中…',
+    wifi_connect_ok: '✓ {ssid}に接続しました、IP: {ip}',
+    wifi_connect_fail: '✗ 接続失敗: {msg}',
+    wifi_connect_err: '✗ エラー: {msg}',
+    test_title: '接続テスト',
+    test_desc: 'ネットワーク接続とKVMサービスの状態を確認中',
+    test_network: '⏳ ネットワーク接続を確認中…',
+    test_pikvm: '⏳ KVMサービスを確認中…',
+    test_kvmind: '⏳ KVMindサービスを確認中…',
+    test_network_ok: '✓ ネットワーク正常、IP: {ip}',
+    test_network_ok2: '✓ ネットワーク接続済み（IP取得中）',
+    test_network_fail: '✗ ネットワーク状態を取得できません',
+    test_pikvm_ok: '✓ KVMサービス正常',
+    test_pikvm_fail: '✗ KVMサービスが応答しません',
+    test_pikvm_err: '✗ KVMサービスに接続できません',
+    test_kvmind_ok: '✓ KVMindサービス準備完了',
+    test_kvmind_warn: '⚠️ KVMind未起動（後で設定可能）',
+    test_all_ok: 'すべてのサービスが正常です。続行できます',
+    test_partial_fail: '一部のサービスに異常があります。設定を確認してください',
+    btn_prev: '← 前へ',
+    btn_next: '次へ →',
+    ai_title: 'KVMind AI設定',
+    ai_desc: 'AIエージェントの接続パラメータを設定',
+    ai_host_label: 'KVMindホストアドレス',
+    ai_host_hint: 'KVMindサービスが稼働するホスト（デフォルト: ローカル）',
+    ai_port_label: 'ポート',
+    ai_apikey_label: 'API Key（任意）',
+    ai_apikey_placeholder: '空欄で認証なし',
+    ai_mode_label: 'デフォルト操作モード',
+    ai_mode_suggest: '💡 提案モード（AIが提案、人間が実行）',
+    ai_mode_auto: '⚡ 自動実行モード（AIが自動操作、危険操作は確認）',
+    btn_save: '保存して続行 →',
+    config_saved: '✓ 設定を保存しました',
+    config_deferred: '設定は次回再起動時に反映されます',
+    done_title: '最後のステップ：アクセスパスワードの設定',
+    done_desc2: 'パスワードを設定すると初期設定が完了し、リモートアクセスでデバイスを制御できます',
+    setup_uid_label: 'デバイス UID',
+    setup_password_label: 'アクセスパスワードを設定',
+    setup_password_confirm: 'パスワード確認',
+    setup_password_hint: 'このパスワードはUID経由でリモートアクセスする際のログインに使用します',
+    setup_password_short: 'パスワードは8文字以上必要です',
+    setup_password_mismatch: 'パスワードが一致しません',
+    setup_activating: 'デバイスをアクティベート中…',
+    setup_activate_ok: 'デバイスのアクティベーション成功！リダイレクト中…',
+    setup_activate_partial: 'パスワード設定完了。クラウド有効化に失敗しましたが、デバイスは正常に使用可能です。',
+    setup_activate_fail: 'アクティベーション失敗、ネットワーク接続を確認して再試行してください',
+    btn_complete_setup: '初期設定を完了 ✓',
+    btn_enter_console: 'コンソールへ →',
+  },
+  en: {
+    ai_title:'MyClaw AI Configuration',
+    ai_desc:'Choose AI service plan',
+    plan_free_title:'Free Trial',
+    plan_free_desc:'Ready to use with basic AI features',
+    plan_sub_title:'Subscribed',
+    plan_sub_desc:'Enter subscription key to unlock full features',
+    plan_sub_key_label:'Subscription Key',
+    plan_sub_key_hint:'Get from KVMind subscription page',
+    plan_sub_key_required:'Please enter subscription key',
+    plan_custom_title:'Custom AI Agent',
+    plan_custom_desc:'Use your own API Key',
+    plan_custom_provider_label:'AI Provider',
+    plan_custom_other:'Other (OpenAI Compatible)',
+    ai_provider_label:'AI Provider',
+    ai_key_label:'API Key',
+    ai_key_hint:'API Key from provider console',
+    ai_model_label:'Model Name',
+    ai_model_hint:'Can be changed to another model',
+    ai_test_btn:'🔗 Test Connection',
+    ai_testing:'Testing…',
+    ai_test_ok:'✓ AI connection successful!',
+    ai_test_ok_tools:'✓ Connected — auto-execution supported',
+    ai_test_ok_suggest:'⚠ Connected — suggest mode only (model does not support tool calling)',
+    ai_test_fail:'✗ Connection failed: {msg}',
+    ai_no_key:'Please configure at least one AI service',
+    ai_custom_toggle:'🔧 Custom AI Agent (OpenAI Compatible)',
+    ai_custom_desc:'Supports any OpenAI-compatible API (Ollama / LM Studio / Azure / etc.)',
+    ai_mode_label:'Default Operation Mode',
+    ai_mode_suggest:'💡 Suggest Mode (AI suggests, human executes)',
+    ai_mode_auto:'⚡ Auto Mode (AI executes, dangerous ops need confirmation)',
+    wizard_title: '⚡ KVMind Setup Wizard',
+    wizard_subtitle: 'Complete the initial setup. Takes about 2 minutes.',
+    step_network: 'Network',
+    step_test: 'Test',
+    step_ai: 'AI Config',
+    step_done: 'Done',
+    wifi_title: 'Select WiFi Network',
+    wifi_desc: 'The device will connect to your local network via WiFi',
+    wifi_scan: '🔍 Scan Networks',
+    wifi_scan_hint: 'Click "Scan Networks" to view available WiFi',
+    wifi_scanning: 'Scanning…',
+    wifi_rescan: '🔍 Rescan',
+    wifi_no_network: 'No networks found',
+    wifi_scan_fail: 'Scan failed: ',
+    wifi_connected: 'Connected',
+    wifi_password_label: 'WiFi Password',
+    wifi_password_placeholder: 'Enter password',
+    wifi_password_hint: 'WPA/WPA2 password. Leave empty for open networks.',
+    wifi_skip_hint: 'You can also skip and use wired Ethernet',
+    btn_skip: 'Skip',
+    btn_connect_wifi: 'Connect WiFi',
+    wifi_connecting: 'Connecting…',
+    wifi_connect_ok: '✓ Connected to {ssid}, IP: {ip}',
+    wifi_connect_fail: '✗ Connection failed: {msg}',
+    wifi_connect_err: '✗ Error: {msg}',
+    test_title: 'Connection Test',
+    test_desc: 'Verifying network connectivity and KVM service status',
+    test_network: '⏳ Checking network…',
+    test_pikvm: '⏳ Checking KVM service…',
+    test_kvmind: '⏳ Checking KVMind service…',
+    test_network_ok: '✓ Network OK, IP: {ip}',
+    test_network_ok2: '✓ Network connected (obtaining IP)',
+    test_network_fail: '✗ Unable to get network status',
+    test_pikvm_ok: '✓ KVM service is running',
+    test_pikvm_fail: '✗ KVM service not responding',
+    test_pikvm_err: '✗ Cannot connect to KVM service',
+    test_kvmind_ok: '✓ KVMind service ready',
+    test_kvmind_warn: '⚠️ KVMind not started (can configure later)',
+    test_all_ok: 'All services OK. You can continue.',
+    test_partial_fail: 'Some services have issues. Please check configuration.',
+    btn_prev: '← Back',
+    btn_next: 'Next →',
+    ai_title: 'KVMind AI Configuration',
+    ai_desc: 'Configure AI agent connection parameters',
+    ai_host_label: 'KVMind Host',
+    ai_host_hint: 'Host where KVMind service runs (default: localhost)',
+    ai_port_label: 'Port',
+    ai_apikey_label: 'API Key (optional)',
+    ai_apikey_placeholder: 'Leave empty for no auth',
+    ai_mode_label: 'Default Operation Mode',
+    ai_mode_suggest: '💡 Suggest Mode (AI suggests, you execute)',
+    ai_mode_auto: '⚡ Auto Mode (AI executes, confirms dangerous ops)',
+    btn_save: 'Save & Continue →',
+    config_saved: '✓ Configuration saved',
+    config_deferred: 'Configuration will take effect on next restart',
+    done_title: 'Final Step: Set Access Password',
+    done_desc2: 'Set a password to complete setup and enable remote access to your device',
+    setup_uid_label: 'Device UID',
+    setup_password_label: 'Set Access Password',
+    setup_password_confirm: 'Confirm Password',
+    setup_password_hint: 'This password is used to log in when accessing the device remotely via UID',
+    setup_password_short: 'Password must be at least 8 characters',
+    setup_password_mismatch: 'Passwords do not match',
+    setup_activating: 'Activating device…',
+    setup_activate_ok: 'Device activated! Redirecting…',
+    setup_activate_partial: 'Password set. Cloud activation failed — device works normally, online features activate on next connection.',
+    setup_activate_fail: 'Activation failed. Please check your network and try again',
+    btn_complete_setup: 'Complete Setup ✓',
+    btn_enter_console: 'Enter Console →',
+  },
+};
+
+let _currentLang = 'zh';
+
+function detectLang() {
+  const saved = localStorage.getItem('kvmind_lang');
+  if (saved && I18N[saved]) return saved;
+  const nav = (navigator.language || '').toLowerCase();
+  if (nav.startsWith('zh')) return 'zh';
+  if (nav.startsWith('ja')) return 'ja';
+  return 'en';
+}
+
+function t(key, vars) {
+  let text = I18N[_currentLang]?.[key] || key;
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) {
+      text = text.replace(`{${k}}`, v);
+    }
+  }
+  return text;
+}
+
+// Whitelist of i18n keys whose values contain safe HTML (e.g. <a> links).
+// All other keys are set via textContent to prevent XSS.
+var HTML_SAFE_KEYS = new Set([/* none currently — add keys here if i18n values need HTML */]);
+
+function setLang(lang) {
+  _currentLang = lang;
+  localStorage.setItem('kvmind_lang', lang);
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang === 'ja' ? 'ja' : 'en';
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const text = I18N[lang]?.[key];
+    if (text) {
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        el.placeholder = text;
+      } else if (HTML_SAFE_KEYS.has(key)) {
+        el.innerHTML = text;
+      } else {
+        el.textContent = text;
+      }
+    }
+  });
+  document.querySelectorAll('.lang-select').forEach(sel => { sel.value = lang; }); /* legacy */ document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === lang);
+  });
+}
+
+const API = '/kdkvm';
+let selectedSSID = '';
+let currentPage = 1;
+
+// ── Page navigation ─────────────────────────────────────────
+function goPage(n) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(`page-${n}`).classList.add('active');
+  for (let i = 1; i <= 4; i++) {
+    const ind = document.getElementById(`step-indicator-${i}`);
+    const num = document.getElementById(`stepnum-${i}`);
+    ind.className = 'step';
+    num.textContent = i;
+    if (i < n) { ind.classList.add('done'); num.textContent = '✓'; }
+    else if (i === n) ind.classList.add('active');
+  }
+  currentPage = n;
+  if (n === 2) runTests();
+    if (n === 3) loadAiConfig();
+}
+
+// ── Page 1: WiFi ────────────────────────────────────────────
+async function scanWifi() {
+  const btn = document.getElementById('scan-btn');
+  btn.innerHTML = '<span class="spinner"></span>' + t('wifi_scanning');
+  btn.disabled = true;
+  const list = document.getElementById('wifi-list');
+  list.innerHTML = '';
+  try {
+    const r = await fetch(`${API}/api/wifi/scan`);
+    const networks = await r.json();
+    if (!networks.length) {
+      list.innerHTML = `<div class="wifi-item" style="color:var(--text-muted);justify-content:center">${t('wifi_no_network')}</div>`;
+      return;
+    }
+    networks.forEach(n => {
+      const item = document.createElement('div');
+      item.className = 'wifi-item' + (n.connected ? ' selected' : '');
+      const sigClass = n.signal >= 75 ? 's100' : n.signal >= 50 ? 's75' : n.signal >= 25 ? 's50' : 's25';
+      const sigDiv = document.createElement('div');
+      sigDiv.className = 'wifi-signal ' + sigClass;
+      sigDiv.innerHTML = '<span></span><span></span><span></span><span></span>';
+      item.appendChild(sigDiv);
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'wifi-name';
+      nameSpan.textContent = n.ssid;
+      item.appendChild(nameSpan);
+      if (n.connected) {
+        const connSpan = document.createElement('span');
+        connSpan.className = 'wifi-connected';
+        connSpan.textContent = t('wifi_connected');
+        item.appendChild(connSpan);
+      }
+      const lockSpan = document.createElement('span');
+      lockSpan.className = 'wifi-lock';
+      lockSpan.textContent = n.security !== 'Open' ? '🔒' : '🔓';
+      item.appendChild(lockSpan);
+      item.onclick = () => selectWifi(n.ssid, n.security !== 'Open', item);
+      list.appendChild(item);
+    });
+  } catch (e) {
+    const errDiv = document.createElement('div');
+    errDiv.className = 'wifi-item';
+    errDiv.style.color = 'var(--red)';
+    errDiv.textContent = t('wifi_scan_fail') + (e.message || '');
+    list.innerHTML = '';
+    list.appendChild(errDiv);
+  } finally {
+    btn.innerHTML = t('wifi_rescan');
+    btn.disabled = false;
+  }
+}
+
+function selectWifi(ssid, needPwd, el) {
+  selectedSSID = ssid;
+  document.querySelectorAll('.wifi-item').forEach(i => i.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('pwd-group').style.display = needPwd ? 'block' : 'none';
+  document.getElementById('connect-btn').disabled = false;
+}
+
+async function connectWifi() {
+  if (!selectedSSID) return;
+  const btn = document.getElementById('connect-btn');
+  btn.innerHTML = '<span class="spinner"></span>' + t('wifi_connecting');
+  btn.disabled = true;
+  const password = document.getElementById('wifi-password').value;
+  try {
+    const r = await fetch(`${API}/api/wifi/connect`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ ssid: selectedSSID, password }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      showMsg('wifi-status', 'success', t('wifi_connect_ok', { ssid: selectedSSID, ip: d.ip || '…' }));
+      setTimeout(() => goPage(2), 1200);
+    } else {
+      showMsg('wifi-status', 'error', t('wifi_connect_fail', { msg: d.message }));
+    }
+  } catch (e) {
+    showMsg('wifi-status', 'error', t('wifi_connect_err', { msg: e.message }));
+  } finally {
+    btn.innerHTML = t('btn_connect_wifi');
+    btn.disabled = false;
+  }
+}
+
+function skipWifi() { goPage(2); }
+
+// ── Page 2: Tests ─────────────────────────────────────────────
+async function runTests() {
+  document.getElementById('test-next-btn').disabled = true;
+  let allOk = true;
+
+  try {
+    const r = await fetch(`${API}/api/wifi/status`);
+    const d = await r.json();
+    if (d.ip_address) {
+      setTest('test-network', true, t('test_network_ok', { ip: d.ip_address }));
+      document.getElementById('device-ip').textContent = d.ip_address;
+      document.getElementById('device-ip').style.display = 'block';
+      document.getElementById('final-ip').textContent = d.ip_address;
+    } else {
+      setTest('test-network', true, t('test_network_ok2'));
+    }
+  } catch {
+    setTest('test-network', false, t('test_network_fail'));
+    allOk = false;
+  }
+
+  try {
+    const r = await fetch(`${API}/api/status`);
+    const d = await r.json();
+    if (d.kvm === 'ok' || d.pikvm === 'ok') {
+      setTest('test-pikvm', true, t('test_pikvm_ok'));
+    } else {
+      setTest('test-pikvm', false, t('test_pikvm_fail'));
+      allOk = false;
+    }
+  } catch {
+    setTest('test-pikvm', false, t('test_pikvm_err'));
+    allOk = false;
+  }
+
+  try {
+    const r = await fetch(`${API}/api/status`);
+    const d = await r.json();
+    setTest('test-kvmind', true, t('test_kvmind_ok'));
+  } catch {
+    setTest('test-kvmind', null, t('test_kvmind_warn'));
+  }
+
+  if (allOk) {
+    showMsg('test-status', 'success', t('test_all_ok'));
+    document.getElementById('test-next-btn').disabled = false;
+  } else {
+    showMsg('test-status', 'error', t('test_partial_fail'));
+    document.getElementById('test-next-btn').disabled = false;
+  }
+}
+
+function setTest(id, ok, text) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.style.color = ok === true ? 'var(--green)' : ok === false ? 'var(--red)' : 'var(--yellow)';
+}
+
+// ── Page 3: AI Config ────────────────────────────────────────
+function toggleKeyVis(inputId, btn) {
+  var inp = document.getElementById(inputId);
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+// Provider key hints
+var _PROVIDER_KEY_HINTS = {
+  ollama: { placeholder: 'API Key (optional)', label: 'Local Ollama', noKey: true },
+  gemini: { placeholder: 'AIza...', link: 'https://aistudio.google.com/apikey', label: 'Google AI Studio' },
+  anthropic: { placeholder: 'sk-ant-...', link: 'https://console.anthropic.com/settings/keys', label: 'Anthropic Console' },
+  openai: { placeholder: 'sk-...', link: 'https://platform.openai.com/api-keys', label: 'OpenAI Platform' },
+};
+
+function selectPlan(type) {
+  document.querySelectorAll('.plan-card').forEach(function(c) { c.classList.remove('selected'); });
+  var radio = document.querySelector('input[name=plan_type][value="' + type + '"]');
+  if (radio) { radio.checked = true; radio.closest('.plan-card').classList.add('selected'); }
+  document.querySelectorAll('.plan-detail').forEach(function(d) { d.classList.remove('active'); });
+  var detail = document.getElementById('plan-detail-' + type);
+  if (detail) detail.classList.add('active');
+  // Initialize custom provider form when first selected
+  if (type === 'custom' && !document.getElementById('custom-base-url').value) {
+    onProviderChange();
+  }
+}
+
+async function onProviderChange() {
+  var sel = document.getElementById('custom-provider-select');
+  var prov = sel.value;
+  var urlInput = document.getElementById('custom-base-url');
+  var keyInput = document.getElementById('custom-api-key');
+  var hintEl = document.getElementById('custom-key-hint');
+  var modelSelect = document.getElementById('custom-model-select');
+  var modelText = document.getElementById('custom-model-text');
+
+  if (prov === 'other') {
+    // Manual mode
+    urlInput.value = ''; urlInput.readOnly = false; urlInput.style.opacity = '1';
+    keyInput.placeholder = 'API Key';
+    hintEl.innerHTML = '';
+    modelSelect.style.display = 'none'; modelText.style.display = '';
+  } else {
+    // Known provider — fetch models from device API
+    urlInput.readOnly = prov !== 'ollama'; urlInput.style.opacity = prov === 'ollama' ? '1' : '0.7';
+    var hint = _PROVIDER_KEY_HINTS[prov] || {};
+    keyInput.placeholder = hint.placeholder || 'API Key';
+    hintEl.innerHTML = hint.link ? '从 <a href="' + hint.link + '" target="_blank" style="color:var(--primary)">' + hint.label + '</a> 获取' : '';
+    modelSelect.style.display = ''; modelText.style.display = 'none';
+    try {
+      var r = await fetch(API + '/api/ai/models?provider=' + prov);
+      var d = await r.json();
+      urlInput.value = d.base_url || '';
+      modelSelect.innerHTML = '';
+      (d.models || []).forEach(function(m) {
+        var opt = document.createElement('option');
+        opt.value = m; opt.textContent = m;
+        if (m === d.default) opt.selected = true;
+        modelSelect.appendChild(opt);
+      });
+    } catch (e) {
+      // Fallback: just set URL from known hints
+      urlInput.value = '';
+      modelSelect.innerHTML = '<option>—</option>';
+    }
+  }
+}
+
+function _getSelectedPlanType() {
+  var radio = document.querySelector('input[name=plan_type]:checked');
+  return radio ? radio.value : 'free_trial';
+}
+
+async function testAiConnection() {
+  var prov = document.getElementById('custom-provider-select').value;
+  var key = document.getElementById('custom-api-key').value.trim();
+  var keyOptional = prov === 'ollama' || prov === 'other';
+  if (!key && !keyOptional) { showMsg('ai-config-status', 'error', t('ai_no_key')); return; }
+  var model = prov === 'other'
+    ? document.getElementById('custom-model-text').value.trim()
+    : document.getElementById('custom-model-select').value;
+  if (prov === 'other' && !document.getElementById('custom-base-url').value.trim()) {
+    showMsg('ai-config-status', 'error', 'Base URL is required'); return;
+  }
+  var btn = document.getElementById('ai-test-btn');
+  btn.innerHTML = '<span class="spinner"></span>' + t('ai_testing');
+  btn.disabled = true;
+  try {
+    var payload = { provider: prov === 'other' ? 'custom' : prov, api_key: key || 'none', model: model };
+    if (prov === 'other' || prov === 'ollama') payload.base_url = document.getElementById('custom-base-url').value.trim();
+    var r = await fetch(API + '/api/ai/test', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    var d = await r.json();
+    if (d.success) {
+      window._lastSupportsTools = d.supports_tools !== false;
+      if (d.supports_tools === false) showMsg('ai-config-status', 'warn', t('ai_test_ok_suggest'));
+      else showMsg('ai-config-status', 'success', t('ai_test_ok_tools'));
+    } else showMsg('ai-config-status', 'error', t('ai_test_fail', {msg: d.error || 'Unknown'}));
+  } catch (e) {
+    showMsg('ai-config-status', 'error', t('ai_test_fail', {msg: e.message}));
+  } finally {
+    btn.innerHTML = t('ai_test_btn'); btn.disabled = false;
+  }
+}
+
+async function saveAiConfig() {
+  var planType = _getSelectedPlanType();
+  var body = { plan_type: planType, mode: document.getElementById('ai-mode').value };
+
+  if (planType === 'subscribed') {
+    var sk = document.getElementById('subscription-key').value.trim();
+    if (!sk) { showMsg('ai-config-status', 'error', t('plan_sub_key_required')); return; }
+    body.subscription_key = sk;
+  } else if (planType === 'custom') {
+    var prov = document.getElementById('custom-provider-select').value;
+    var key = document.getElementById('custom-api-key').value.trim();
+    var model = prov === 'other'
+      ? document.getElementById('custom-model-text').value.trim()
+      : document.getElementById('custom-model-select').value;
+    if (prov === 'other') {
+      var url = document.getElementById('custom-base-url').value.trim();
+      if (!url || !model) { showMsg('ai-config-status', 'error', t('ai_no_key')); return; }
+      body.custom_provider = { base_url: url, api_key: key, model: model };
+    } else {
+      // Known provider — use config_key naming
+      var keyMap = { ollama: 'ollama_key', gemini: 'gemini_key', anthropic: 'claude_key', openai: 'openai_key' };
+      if (!key && prov !== 'ollama') { showMsg('ai-config-status', 'error', t('ai_no_key')); return; }
+      if (key) body[keyMap[prov]] = key;
+      if (prov === 'ollama') {
+        body.ollama_enabled = true;
+        body.ollama_url = document.getElementById('custom-base-url').value.trim();
+      }
+      body[prov + '_model'] = model;
+    }
+  }
+
+  // Tool support flag from last test
+  if (window._lastSupportsTools !== undefined) body.supports_tools = window._lastSupportsTools;
+
+  // Messaging channel tokens
+  var tg = document.getElementById('ch-telegram-token').value.trim();
+  if (tg) body.telegram_token = tg;
+
+  try {
+    var r = await fetch(API + '/api/ai/config', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    var d = await r.json();
+    if (d.status === 'ok') {
+      var info = planType === 'free_trial' ? t('plan_free_title') : (d.active_providers || []).join(', ');
+      showMsg('ai-config-status', 'success', t('config_saved') + (info ? ' (' + info + ')' : ''));
+      setTimeout(function() { goPage(4); }, 800);
+    } else {
+      showMsg('ai-config-status', 'error', d.error || 'Save failed');
+    }
+  } catch (e) {
+    showMsg('ai-config-status', 'info', t('config_deferred'));
+    setTimeout(function() { goPage(4); }, 1000);
+  }
+}
+
+async function loadAiConfig() {
+  try {
+    var r = await fetch(API + '/api/ai/config');
+    var d = await r.json();
+    window._lastSupportsTools = d.supports_tools !== false;
+    // Restore plan type
+    var pt = d.plan_type || 'free_trial';
+    if (!d.plan_type && d.providers && d.providers.length > 0) pt = 'custom';
+    selectPlan(pt);
+    if (d.mode) document.getElementById('ai-mode').value = d.mode;
+    // Restore custom provider details
+    if (pt === 'custom' && d.providers && d.providers.length > 0) {
+      var p = d.providers[0];
+      var provName = p.name || 'other';
+      var sel = document.getElementById('custom-provider-select');
+      // Check if provider exists in dropdown
+      var hasOpt = Array.from(sel.options).some(function(o) { return o.value === provName; });
+      sel.value = hasOpt ? provName : 'other';
+      await onProviderChange();
+      if (p.api_key_preview) document.getElementById('custom-api-key').placeholder = p.api_key_preview;
+      if (p.default_model) {
+        var ms = document.getElementById('custom-model-select');
+        if (ms.style.display !== 'none') ms.value = p.default_model;
+        else document.getElementById('custom-model-text').value = p.default_model;
+      }
+      if (p.base_url && (provName === 'ollama' || !hasOpt)) document.getElementById('custom-base-url').value = p.base_url;
+    }
+    // Subscription key status
+    if (d.subscription_key_configured) document.getElementById('subscription-key').placeholder = '*** 已配置 ***';
+    // Messaging channel status
+    if (d.telegram_configured) document.getElementById('ch-telegram-token').placeholder = '*** 已配置 ***';
+    if (d.wechat_configured && document.getElementById('ch-wechat-token')) document.getElementById('ch-wechat-token').placeholder = '*** 已配置 ***';
+    if (d.line_configured && document.getElementById('ch-line-token')) document.getElementById('ch-line-token').placeholder = '*** 已配置 ***';
+  } catch (e) { console.warn("[setup] loadExisting error:", e); }
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function showMsg(id, type, text) {
+  const el = document.getElementById(id);
+  el.className = `status-msg ${type} show`;
+  el.textContent = text;
+}
+
+// ── Page 4: Complete Setup ─────────────────────────────────────
+async function completeSetup() {
+  const pw = document.getElementById('setup-password').value;
+  const pw2 = document.getElementById('setup-password-confirm').value;
+  if (!pw || pw.length < 8) {
+    showMsg('setup-status', 'error', t('setup_password_short'));
+    return;
+  }
+  if (pw !== pw2) {
+    showMsg('setup-status', 'error', t('setup_password_mismatch'));
+    return;
+  }
+  const btn = document.getElementById('setup-complete-btn');
+  btn.innerHTML = '<span class="spinner"></span>' + t('setup_activating');
+  btn.disabled = true;
+
+  // Activate device (password change is handled server-side in h_setup_complete)
+  try {
+    const r = await fetch(`${API}/api/setup/complete`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ password: pw }),
+    });
+    const d = await r.json();
+    if (d.status === 'ok' && d.activated) {
+      showMsg('setup-status', 'success', t('setup_activate_ok'));
+      btn.innerHTML = '✓ ' + t('setup_activate_ok');
+      setTimeout(() => { window.location = '/'; }, 2000);
+    } else if (d.status === 'ok' && !d.activated) {
+      showMsg('setup-status', 'warn', t('setup_activate_partial'));
+      btn.innerHTML = '\u26a0 ' + t('setup_activate_partial');
+      setTimeout(() => { window.location = '/'; }, 4000);
+    } else {
+      console.error('Setup activate error:', d.error);
+      showMsg('setup-status', 'error', t('setup_activate_fail'));
+      btn.innerHTML = t('btn_complete_setup');
+      btn.disabled = false;
+    }
+  } catch (e) {
+    console.error('Setup activate error:', e);
+    showMsg('setup-status', 'error', t('setup_activate_fail'));
+    btn.innerHTML = t('btn_complete_setup');
+    btn.disabled = false;
+  }
+}
+
+// ── Load device UID on page load ──────────────────────────────
+async function loadDeviceUid() {
+  try {
+    const r = await fetch(`${API}/api/device/uid`);
+    const d = await r.json();
+    const uid = d.uid || d;
+    document.getElementById('device-uid').textContent = uid;
+    document.getElementById('final-uid').textContent = uid;
+  } catch (e) {
+    document.getElementById('device-uid').textContent = '—';
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  setLang(detectLang());
+  loadDeviceUid();
+  fetch(`${API}/api/wifi/status`).catch(() => {});
+});
+</script>
+</body>
+</html>

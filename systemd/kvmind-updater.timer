@@ -1,0 +1,10 @@
+[Unit]
+Description=KVMind OTA Update Timer
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=6h
+RandomizedDelaySec=30min
+
+[Install]
+WantedBy=timers.target

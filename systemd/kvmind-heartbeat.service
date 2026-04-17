@@ -1,0 +1,9 @@
+[Unit]
+Description=KVMind Device Heartbeat
+After=network-online.target kvmind.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/kvmind/kdkvm/bin/kvmind-heartbeat.sh
+User=root

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KVMind — 控制台</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%230f1923%27/%3E%3Cpath d=%27M18 4L8 18h6l-2 10 10-14h-6z%27 fill=%27%233ecf8e%27/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/kdkvm/kvmind.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+</head>
+<body data-theme="dark">
+
+    <!-- Toolbar -->
+    <div id="kvmind-toolbar">
+        <div class="kvmind-tb-logo">⚡ KVMind <span id="kvmind-ver" style="font-size:10px;font-weight:400;opacity:0.5"></span></div>
+        <div class="kvmind-tb-sep"></div>
+        <button class="kvmind-tb-btn" id="kvmind-btn-snap"></button>
+        <button class="kvmind-tb-btn" id="kvmind-btn-analyse"></button>
+        <button class="kvmind-tb-btn" id="kvmind-btn-copy"></button>
+        <button class="kvmind-tb-btn" id="kvmind-btn-kb"></button>
+        <div class="kvmind-tb-sep"></div>
+        <div id="kvmind-conn-status">
+            <div class="kvmind-conn-dot"></div>
+            <span id="kvmind-conn-text"></span>
+        </div>
+        <div id="kvmind-toolbar-right">
+            <button class="kvmind-tb-btn" id="kvmind-btn-term"></button>
+            <div id="kvmind-power-wrap">
+                <button class="kvmind-tb-btn danger" id="kvmind-btn-power"></button>
+                <div id="kvmind-power-menu">
+                    <button class="kvmind-power-item" data-action="on" data-label="Power On"></button>
+                    <div class="kvmind-power-divider"></div>
+                    <button class="kvmind-power-item danger" data-action="off" data-label="Power Off"></button>
+                    <button class="kvmind-power-item danger" data-action="reset" data-label="Restart"></button>
+                    <button class="kvmind-power-item danger" data-action="force_off" data-label="Force Off"></button>
+                </div>
+            </div>
+            <button class="kvmind-tb-btn" id="kvmind-btn-fullscreen">⛶</button>
+            <div id="kvmind-settings-wrap" style="position:relative">
+                <button class="kvmind-tb-btn" id="kvmind-btn-settings"></button>
+                <div id="kvmind-settings-menu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;min-width:420px;width:auto;max-width:90vw;max-height:70vh;overflow-y:auto;background:var(--kvsurface);border:1px solid var(--kvborder-lt);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:1500;padding:8px"></div>
+            </div>
+            <div class="kvmind-tb-sep"></div>
+            <button class="kvmind-tb-btn active" id="kvmind-btn-panel"></button>
+            <div class="kvmind-tb-sep"></div>
+            <div id="kvmind-user-wrap" style="position:relative">
+                <div id="kvmind-user-avatar"></div>
+                <div id="kvmind-user-menu" style="display:none">
+                    <div class="kvmind-user-header">
+                        <div class="kvmind-user-header-avatar">K</div>
+                        <div class="kvmind-user-header-info">
+                            <div class="kvmind-user-header-name">KVMind</div>
+                            <div class="kvmind-user-header-uid" id="kvmind-um-uid">KVM-****-****-****</div>
+                        </div>
+                    </div>
+                    <div class="kvmind-user-divider"></div>
+                    <button class="kvmind-user-item" id="kvmind-um-profile" data-action="profile"></button>
+                    <button class="kvmind-user-item" id="kvmind-um-changepw" data-action="changepw"></button>
+                    <div class="kvmind-user-divider"></div>
+                    <a class="kvmind-user-item" id="kvmind-um-dashboard" href="/dashboard/">
+                        <span id="kvmind-um-dashboard-text"></span>
+                    </a>
+                    <div class="kvmind-user-item" id="kvmind-um-plan" style="cursor:default">
+                        <span class="kvmind-plan-badge" id="kvmind-plan-badge"></span>
+                    </div>
+                    <div class="kvmind-user-divider"></div>
+                    <div class="kvmind-user-setting">
+                        <span id="kvmind-um-theme-label"></span>
+                        <select id="kvmind-um-theme">
+                            <option value="light">☀️ Light</option>
+                            <option value="dark">🌙 Dark</option>
+                            <option value="kvmind-light">⚡ KVMind Light</option>
+                            <option value="kvmind-dark">🌊 KVMind Dark</option>
+                        </select>
+                    </div>
+                    <div class="kvmind-user-setting">
+                        <span id="kvmind-um-lang-label"></span>
+                        <select id="kvmind-um-lang">
+                            <option value="zh">🇨🇳 中文</option>
+                            <option value="ja">🇯🇵 日本語</option>
+                            <option value="en">🇺🇸 EN</option>
+                        </select>
+                    </div>
+                    <div class="kvmind-user-divider"></div>
+                    <button class="kvmind-user-item danger" id="kvmind-um-logout" data-action="logout"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stream Area -->
+    <div id="kvmind-stream-area">
+        <div id="kvmind-stream-box">
+            <canvas id="kvmind-stream-canvas"></canvas>
+            <img id="kvmind-stream-img" alt="" style="display:none">
+            <div id="kvmind-stream-overlay" tabindex="-1"></div>
+            <div id="kvmind-stream-info"></div>
+            <div id="kvmind-no-signal" style="display:none"></div>
+        </div>
+        <!-- AI processing bar -->
+        <div id="kvmind-ai-bar">
+            <div class="kvmind-ai-spinner"></div>
+            <span id="kvmind-ai-bar-text">MyClaw working...</span>
+            <span id="kvmind-ai-step-badge"></span>
+            <button class="kvmind-abort-mini" id="kvmind-abort-mini"></button>
+        </div>
+        <!-- Virtual Keyboard overlay -->
+        <div id="kvmind-kb-overlay">
+            <div id="kvmind-kb-shortcuts">
+                <button class="kvmind-kb-key" data-shortcut="Escape">Esc</button>
+                <button class="kvmind-kb-key" data-shortcut="Tab">Tab</button>
+                <button class="kvmind-kb-key" data-shortcut="Enter">Enter</button>
+                <button class="kvmind-kb-key" data-shortcut="Backspace">Bksp</button>
+                <span class="kvmind-kb-sep"></span>
+                <button class="kvmind-kb-key" data-shortcut="ControlLeft">Ctrl</button>
+                <button class="kvmind-kb-key" data-shortcut="AltLeft">Alt</button>
+                <button class="kvmind-kb-key" data-shortcut="MetaLeft">Meta</button>
+                <button class="kvmind-kb-key" data-shortcut="ShiftLeft">Shift</button>
+                <span class="kvmind-kb-sep"></span>
+                <button class="kvmind-kb-key combo" data-combo="ControlLeft AltLeft Delete">Ctrl+Alt+Del</button>
+                <button class="kvmind-kb-key combo" data-combo="ControlLeft KeyC">Ctrl+C</button>
+                <button class="kvmind-kb-key combo" data-combo="ControlLeft KeyV">Ctrl+V</button>
+                <button class="kvmind-kb-key combo" data-combo="ControlLeft KeyA">Ctrl+A</button>
+                <button class="kvmind-kb-key combo" data-combo="ControlLeft KeyZ">Ctrl+Z</button>
+                <button class="kvmind-kb-key combo" data-combo="AltLeft F4">Alt+F4</button>
+            </div>
+            <div id="kvmind-kb-text-row">
+                <input id="kvmind-kb-input" type="text" autocomplete="off" spellcheck="false" placeholder="Type text to send (Enter send · Esc close)">
+                <button id="kvmind-kb-send">▶</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Panel -->
+    <div id="kvmind-chat-panel">
+        <div id="kvmind-chat-header">
+            <div class="kvmind-myclaw-badge">
+                <div class="kvmind-myclaw-dot"></div>
+                <span class="kvmind-myclaw-label">MyClaw</span>
+                <span class="kvmind-myclaw-sub">AI assistant</span>
+            </div>
+            <div id="kvmind-panel-mode-wrap">
+                <button class="kvmind-panel-mode-btn active" id="kvmind-pm-suggest"></button>
+                <button class="kvmind-panel-mode-btn" id="kvmind-pm-auto"></button>
+            </div>
+            <button id="kvmind-collapse-btn">▶</button>
+        </div>
+        <div id="kvmind-chat-messages">
+            <div id="kvmind-snap-hint" class="kvmind-msg-row system" style="cursor:pointer">
+                <div class="kvmind-chat-msg system"></div>
+            </div>
+            <div id="kvmind-empty-guide" class="kvmind-msg-row system" style="text-align:center;padding:32px 16px">
+                <div style="font-size:48px;margin-bottom:12px">🐾</div>
+                <div style="font-weight:600;margin-bottom:8px" id="kvmind-claw-ready"></div>
+                <div style="font-size:13px;color:var(--kvtext-muted);line-height:1.6">
+                    <span id="kvmind-claw-try"></span><br>
+                    <span id="kvmind-claw-ex1"></span><br>
+                    <span id="kvmind-claw-ex2"></span><br>
+                    <span id="kvmind-claw-ex3"></span>
+                </div>
+            </div>
+        </div>
+        <div id="kvmind-quick-cmds">
+            <button class="kvmind-quick-cmd"></button>
+            <button class="kvmind-quick-cmd"></button>
+            <button class="kvmind-quick-cmd"></button>
+            <button class="kvmind-quick-cmd"></button>
+            <button class="kvmind-quick-cmd"></button>
+        </div>
+        <div id="kvmind-chat-input-area">
+            <textarea id="kvmind-chat-input" rows="4"></textarea>
+            <div id="kvmind-input-actions">
+                <button class="kvmind-analyse-btn" id="kvmind-analyse-btn2">🔍</button>
+                <span id="kvmind-char-hint"></span>
+                <button class="kvmind-send-btn" id="kvmind-send-btn"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expand Tab (when panel collapsed) -->
+    <div id="kvmind-expand-tab">🐾 MyClaw</div>
+
+    <!-- Log Bar -->
+    <div id="kvmind-log-bar">
+        <div id="kvmind-log-tab">
+            <span>■ Log</span>
+            <span id="kvmind-log-tab-count" class="kvmind-log-tab-count">0</span>
+            <span class="kvmind-log-tab-arrow">▼</span>
+        </div>
+        <div id="kvmind-log-wrap">
+            <div id="kvmind-log-entries"></div>
+        </div>
+    </div>
+
+    <!-- Terminal Window (hidden, created dynamically) -->
+    <div id="webterm-window" class="kvmind-hidden" style="display:none">
+        <iframe id="webterm-iframe" src="about:blank" style="width:100%;height:100%;border:none"></iframe>
+    </div>
+
+    <!-- Screen Copy Modal -->
+    <div id="kvmind-copy-modal" style="display:none">
+        <div class="kvmind-copy-backdrop"></div>
+        <div class="kvmind-copy-dialog">
+            <div class="kvmind-copy-header">
+                <span id="kvmind-copy-title"></span>
+                <button class="kvmind-copy-close" id="kvmind-copy-close-btn">&times;</button>
+            </div>
+            <pre class="kvmind-copy-text" id="kvmind-copy-text"></pre>
+            <div class="kvmind-copy-actions">
+                <button class="kvmind-copy-btn" id="kvmind-copy-clipboard-btn"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts: KVMind standalone -->
+    <script src="/kdkvm/kvmind-session.js"></script>
+    <script src="/kdkvm/static/janus.js"></script>
+    <script src="/kdkvm/kvmind-stream.js"></script>
+    <script src="/kdkvm/kvmind-hid.js"></script>
+    <script src="/kdkvm/myclaw-gateway.js"></script>
+    <script src="/kdkvm/kvmind-core.js"></script>
+    <script src="/kdkvm/myclaw-sidebar.js"></script>
+    <script src="/kdkvm/kvmind-theme.js"></script>
+
+    <!-- Bootstrap: connect session, stream, HID -->
+    <script>
+    (function() {
+      "use strict";
+
+      function bootstrap() {
+        // 1. Create KVM session
+        var session = new KVMindSession();
+
+        // 2. Create stream
+        var stream = new KVMindStream();
+        stream.init();
+        stream.startStream();
+
+        // 3. Create HID
+        var hid = new KVMindHID(session, function() { return stream.getGeometry(); });
+        hid.init();
+
+        // 4. Wire session events
+        session.onStreamerState = function(state) {
+          stream.setState(state);
+        };
+
+        session.onHidState = function(state) {
+          hid.setState(state);
+        };
+
+        session.onConnected = function() {
+          var el = document.getElementById("kvmind-conn-status");
+          if (el) { el.className = "online"; }
+          var txt = document.getElementById("kvmind-conn-text");
+          if (txt) txt.textContent = "KVM Connected";
+        };
+
+        session.onDisconnected = function() {
+          var el = document.getElementById("kvmind-conn-status");
+          if (el) { el.className = "offline"; }
+          var txt = document.getElementById("kvmind-conn-text");
+          if (txt) txt.textContent = "Disconnected";
+        };
+
+        session.onAtxState = function(state) {
+          // Update ATX power LED indicator in toolbar
+          if (state && state.leds) {
+            var pwrBtn = document.getElementById("kvmind-btn-power");
+            if (pwrBtn) {
+              pwrBtn.style.color = state.leds.power ? "var(--kvgreen)" : "";
+            }
+          }
+        };
+
+        // 5. Start session
+        session.start();
+
+        // Expose for kvmind-core.js
+        window._kvmindSession = session;
+        window._kvmindStream = stream;
+        window._kvmindHid = hid;
+
+        console.log("[KVMind] Bootstrap complete");
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bootstrap);
+      } else {
+        bootstrap();
+      }
+    })();
+    </script>
+</body>
+</html>

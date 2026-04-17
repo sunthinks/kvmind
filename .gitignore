@@ -1,0 +1,37 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+.tox/
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Env / secrets — never commit
+.env
+.env.local
+.env.*.local
+*.local
+ai.env
+
+# Local config
+config.yaml
+!app/config.yaml.example
+
+# Release artifacts (use GitHub Releases instead)
+release/dist/
+*.zip
+*.sha256
+
+# Logs
+*.log

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KVMind — Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%230f1923%27/%3E%3Cpath d=%27M18 4L8 18h6l-2 10 10-14h-6z%27 fill=%27%233ecf8e%27/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/kdkvm/kvmind.css">
+<style>
+body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--kvbg);color:var(--kvtext);min-height:100vh}
+.db-header{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid var(--kvborder);background:var(--kvsurface)}
+.db-back{text-decoration:none;color:var(--kvaccent);font-size:14px;font-weight:600;display:flex;align-items:center;gap:4px}
+.db-back:hover{opacity:.8}
+.db-title{font-size:18px;font-weight:700;flex:1}
+.db-refresh{font-size:11px;color:var(--kvtext-sub)}
+.db-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;padding:24px;max-width:1200px;margin:0 auto}
+.db-card{background:var(--kvsurface);border:1px solid var(--kvborder);border-radius:12px;padding:20px}
+.db-card-title{font-size:13px;font-weight:700;color:var(--kvtext-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.db-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px}
+.db-row-label{color:var(--kvtext-sub)}
+.db-row-value{font-weight:600;font-family:monospace}
+.db-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.db-stat{text-align:center;padding:12px 8px;background:var(--kvsurface2);border-radius:8px}
+.db-stat-num{font-size:28px;font-weight:800;color:var(--kvaccent);font-family:monospace}
+.db-stat-label{font-size:11px;color:var(--kvtext-sub);margin-top:4px}
+.db-progress{height:6px;background:var(--kvsurface3);border-radius:3px;overflow:hidden;margin-top:4px}
+.db-progress-bar{height:100%;border-radius:3px;transition:width .3s}
+.db-progress-bar.ok{background:var(--kvaccent)}
+.db-progress-bar.warn{background:#f59e0b}
+.db-progress-bar.danger{background:#ef4444}
+.db-activity{padding:24px;max-width:1200px;margin:0 auto}
+.db-activity-title{font-size:13px;font-weight:700;color:var(--kvtext-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.db-activity-list{background:var(--kvsurface);border:1px solid var(--kvborder);border-radius:12px;overflow:hidden}
+.db-activity-item{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--kvborder);font-size:12px}
+.db-activity-item:last-child{border-bottom:none}
+.db-activity-time{color:var(--kvtext-sub);font-family:monospace;min-width:70px}
+.db-activity-type{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:var(--kvsurface3);color:var(--kvtext-muted)}
+.db-activity-type.task{background:rgba(59,130,246,.15);color:#3b82f6}
+.db-activity-type.action{background:rgba(124,58,237,.15);color:#7c3aed}
+.db-activity-type.error{background:rgba(239,68,68,.15);color:#ef4444}
+.db-activity-text{flex:1;color:var(--kvtext-sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.db-loading{text-align:center;padding:40px;color:var(--kvtext-sub);font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="db-header">
+    <a href="/kvm/" class="db-back">← KVM</a>
+    <div class="db-title" id="db-title">📊 Dashboard</div>
+    <div class="db-refresh" id="db-refresh"></div>
+</div>
+
+<div class="db-grid" id="db-grid">
+    <div class="db-loading" id="db-loading">Loading...</div>
+</div>
+
+<div class="db-activity" id="db-activity" style="display:none">
+    <div class="db-activity-title" id="db-activity-title">Recent Activity</div>
+    <div class="db-activity-list" id="db-activity-list"></div>
+</div>
+
+<script>
+(function(){
+function _escHtml(s){if(s==null)return"";var d=document.createElement("div");d.textContent=String(s);return d.innerHTML;}
+var _I18N = {
+    zh: {title:"📊 仪表板",device:"设备信息",version:"版本",hostname:"主机名",uid:"设备 ID",uptime:"运行时间",ai:"AI 使用",tasksToday:"今日任务",tasksWeek:"本周任务",actionsWeek:"本周操作",errorsWeek:"本周错误",health:"系统健康",cpuTemp:"CPU 温度",memory:"内存",disk:"磁盘",recent:"最近活动",refresh:"自动刷新 30s",hours:"小时",loading:"加载中..."},
+    ja: {title:"📊 ダッシュボード",device:"デバイス情報",version:"バージョン",hostname:"ホスト名",uid:"デバイスID",uptime:"稼働時間",ai:"AI使用状況",tasksToday:"今日のタスク",tasksWeek:"今週のタスク",actionsWeek:"今週の操作",errorsWeek:"今週のエラー",health:"システム健全性",cpuTemp:"CPU温度",memory:"メモリ",disk:"ディスク",recent:"最近のアクティビティ",refresh:"自動更新 30秒",hours:"時間",loading:"読み込み中..."},
+    en: {title:"📊 Dashboard",device:"Device Info",version:"Version",hostname:"Hostname",uid:"Device ID",uptime:"Uptime",ai:"AI Usage",tasksToday:"Tasks Today",tasksWeek:"Tasks This Week",actionsWeek:"Actions This Week",errorsWeek:"Errors This Week",health:"System Health",cpuTemp:"CPU Temp",memory:"Memory",disk:"Disk",recent:"Recent Activity",refresh:"Auto-refresh 30s",hours:"hours",loading:"Loading..."}
+};
+var lang = localStorage.getItem("kvmind_lang") || "zh";
+var T = _I18N[lang] || _I18N.en;
+
+document.getElementById("db-title").textContent = T.title;
+document.getElementById("db-loading").textContent = T.loading;
+
+function pct(used, total) { return total > 0 ? Math.round(used / total * 100) : 0; }
+function barClass(p) { return p > 90 ? "danger" : p > 70 ? "warn" : "ok"; }
+
+function render(d) {
+    var dev = d.device || {};
+    var ai = d.ai || {};
+    var h = d.health || {};
+    var memPct = pct(h.mem_used_mb || 0, h.mem_total_mb || 1);
+    var diskPct = pct(h.disk_used_gb || 0, h.disk_total_gb || 1);
+
+    var html = '';
+    // Device card
+    html += '<div class="db-card"><div class="db-card-title">🖥 ' + T.device + '</div>';
+    html += '<div class="db-row"><span class="db-row-label">' + T.version + '</span><span class="db-row-value">' + _escHtml(dev.version||'--') + ' (' + _escHtml(dev.build||'') + ')</span></div>';
+    html += '<div class="db-row"><span class="db-row-label">' + T.hostname + '</span><span class="db-row-value">' + _escHtml(dev.hostname||'--') + '</span></div>';
+    html += '<div class="db-row"><span class="db-row-label">' + T.uid + '</span><span class="db-row-value">' + _escHtml(dev.uid||'--') + '</span></div>';
+    html += '<div class="db-row"><span class="db-row-label">' + T.uptime + '</span><span class="db-row-value">' + _escHtml(dev.uptime_hours||0) + ' ' + T.hours + '</span></div>';
+    html += '</div>';
+
+    // AI card
+    html += '<div class="db-card"><div class="db-card-title">🤖 ' + T.ai + '</div>';
+    html += '<div class="db-stat-grid">';
+    html += '<div class="db-stat"><div class="db-stat-num">' + (ai.tasks_today||0) + '</div><div class="db-stat-label">' + T.tasksToday + '</div></div>';
+    html += '<div class="db-stat"><div class="db-stat-num">' + (ai.tasks_week||0) + '</div><div class="db-stat-label">' + T.tasksWeek + '</div></div>';
+    html += '<div class="db-stat"><div class="db-stat-num">' + (ai.actions_week||0) + '</div><div class="db-stat-label">' + T.actionsWeek + '</div></div>';
+    html += '<div class="db-stat"><div class="db-stat-num" style="color:' + (ai.errors_week > 0 ? '#ef4444' : 'var(--kvaccent)') + '">' + (ai.errors_week||0) + '</div><div class="db-stat-label">' + T.errorsWeek + '</div></div>';
+    html += '</div></div>';
+
+    // Health card
+    html += '<div class="db-card"><div class="db-card-title">💚 ' + T.health + '</div>';
+    html += '<div class="db-row"><span class="db-row-label">' + T.cpuTemp + '</span><span class="db-row-value">' + (h.cpu_temp ? h.cpu_temp + '°C' : '--') + '</span></div>';
+    html += '<div class="db-row"><span class="db-row-label">' + T.memory + '</span><span class="db-row-value">' + (h.mem_used_mb||0) + ' / ' + (h.mem_total_mb||0) + ' MB (' + memPct + '%)</span></div>';
+    html += '<div class="db-progress"><div class="db-progress-bar ' + barClass(memPct) + '" style="width:' + memPct + '%"></div></div>';
+    html += '<div class="db-row" style="margin-top:8px"><span class="db-row-label">' + T.disk + '</span><span class="db-row-value">' + (h.disk_used_gb||0) + ' / ' + (h.disk_total_gb||0) + ' GB (' + diskPct + '%)</span></div>';
+    html += '<div class="db-progress"><div class="db-progress-bar ' + barClass(diskPct) + '" style="width:' + diskPct + '%"></div></div>';
+    html += '</div>';
+
+    document.getElementById("db-grid").innerHTML = html;
+
+    // Activity
+    var recent = d.recent || [];
+    if (recent.length > 0) {
+        var actEl = document.getElementById("db-activity");
+        actEl.style.display = "block";
+        document.getElementById("db-activity-title").textContent = T.recent;
+        var al = '';
+        for (var i = 0; i < recent.length; i++) {
+            var e = recent[i];
+            var ts = e.ts ? new Date(e.ts).toLocaleTimeString() : '--';
+            var et = e.event_type || e.type || 'log';
+            var cls = et.indexOf('task') >= 0 ? 'task' : et.indexOf('error') >= 0 || (e.data && e.data.status === 'error') ? 'error' : et.indexOf('action') >= 0 ? 'action' : '';
+            var text = '';
+            if (e.data) {
+                if (e.data.instruction) text = e.data.instruction;
+                else if (e.data.name) text = e.data.name + (e.data.status ? ' → ' + e.data.status : '');
+                else if (e.data.message) text = e.data.message;
+                else if (e.data.text) text = e.data.text;
+                else text = JSON.stringify(e.data).substring(0, 80);
+            }
+            al += '<div class="db-activity-item"><span class="db-activity-time">' + _escHtml(ts) + '</span><span class="db-activity-type ' + _escHtml(cls) + '">' + _escHtml(et) + '</span><span class="db-activity-text">' + _escHtml(text) + '</span></div>';
+        }
+        document.getElementById("db-activity-list").innerHTML = al;
+    }
+}
+
+function load() {
+    fetch("/kdkvm/api/dashboard/stats", {credentials:"same-origin"})
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            render(d);
+            document.getElementById("db-refresh").textContent = T.refresh + " · " + new Date().toLocaleTimeString();
+        })
+        .catch(function(e) {
+            document.getElementById("db-grid").innerHTML = '<div class="db-loading">Error: ' + _escHtml(e.message) + '</div>';
+        });
+}
+
+load();
+setInterval(load, 30000);
+
+// Theme
+var theme = localStorage.getItem("kvmind-theme") || "light";
+document.documentElement.setAttribute("data-theme", theme);
+})();
+</script>
+</body>
+</html>

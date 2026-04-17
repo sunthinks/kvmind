@@ -1,0 +1,9 @@
+[Unit]
+Description=KVMind Registration Timer
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=6h
+
+[Install]
+WantedBy=timers.target

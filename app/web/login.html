@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KVMind — Login</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%230f1923%27/%3E%3Cpath d=%27M18 4L8 18h6l-2 10 10-14h-6z%27 fill=%27%233ecf8e%27/%3E%3C/svg%3E">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;height:100vh;overflow:hidden;display:grid;grid-template-columns:55% 45%;background:#111d2e}
+
+/* Left: Brand */
+.brand{background:linear-gradient(160deg,#111d2e 0%,#162840 50%,#111d2e 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:40px}
+.brand::before{content:'';position:absolute;width:500px;height:500px;background:radial-gradient(circle,rgba(62,207,142,0.08),transparent 70%);border-radius:50%;pointer-events:none}
+.brand-logo{font-size:48px;font-weight:800;color:#3ecf8e;margin-bottom:16px;z-index:1}
+.brand-tagline{font-size:16px;color:#7a8a9a;margin-bottom:32px;z-index:1;text-align:center}
+.features{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;z-index:1}
+.feat{padding:8px 16px;border-radius:20px;background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.2);color:#3ecf8e;font-size:13px;white-space:nowrap}
+
+/* Language switcher */
+.lang-group{position:absolute;top:20px;right:24px;display:flex;gap:4px;z-index:2}
+.lang-btn{padding:6px 12px;border:1px solid #2a3a4a;border-radius:6px;background:#1a2332;color:#5a6a7a;font-size:12px;cursor:pointer;transition:all .15s;font-family:inherit}
+.lang-btn:hover{border-color:#3ecf8e;color:#a0f0d0}
+.lang-btn.active{background:#3ecf8e;color:#0f1923;border-color:#3ecf8e;font-weight:600}
+
+/* Right: Form */
+.form-side{background:#152535;display:flex;align-items:center;justify-content:center;padding:48px 40px}
+.form-wrap{width:100%;max-width:380px}
+.form-title{font-size:24px;font-weight:700;color:#e8edf3;margin-bottom:8px}
+.form-subtitle{font-size:14px;color:#5a6a7a;margin-bottom:32px}
+
+/* Device UID badge */
+.uid-badge{display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:24px;background:rgba(62,207,142,0.06);border:1px solid rgba(62,207,142,0.15);border-radius:12px;font-size:13px;color:#7a8a9a}
+.uid-badge .uid-value{color:#3ecf8e;font-weight:600;font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
+
+/* Error */
+.error-msg{display:none;padding:10px 14px;margin-bottom:16px;background:rgba(239,83,80,0.1);border:1px solid rgba(239,83,80,0.25);border-radius:12px;color:#ef5350;font-size:13px;animation:shake .4s ease}
+.error-msg.show{display:block}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* Inputs */
+.field{margin-bottom:18px}
+.field label{display:block;font-size:12px;font-weight:500;color:#7a8a9a;margin-bottom:6px}
+.field input{width:100%;padding:12px 16px;border-radius:12px;border:1px solid #2a3a4a;background:#1a2332;color:#e8edf3;font-size:14px;outline:none;transition:border-color .3s;font-family:inherit}
+.field input:focus{border-color:#3ecf8e}
+.field input::placeholder{color:#5a6a7a}
+
+/* Remember row */
+.remember-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;font-size:13px}
+.remember-left{display:flex;align-items:center;gap:8px;color:#7a8a9a}
+.remember-left input[type=checkbox]{width:16px;height:16px;accent-color:#3ecf8e;cursor:pointer}
+
+/* Button */
+.login-btn{width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#3ecf8e,#2bb77a);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:all .3s;font-family:inherit}
+.login-btn:hover{filter:brightness(1.1);transform:translateY(-1px);box-shadow:0 4px 16px rgba(62,207,142,0.3)}
+.login-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;filter:none}
+
+/* Footer */
+.form-footer{text-align:center;margin-top:32px;font-size:12px;color:#5a6a7a}
+.form-footer a{color:#5a6a7a;text-decoration:none;margin:0 6px}
+.form-footer a:hover{color:#3ecf8e}
+.form-footer .dot{margin:0 4px}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:4px}
+
+/* Responsive */
+@media(max-width:768px){
+  body{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .brand{padding:24px 20px;min-height:auto}
+  .brand-logo{font-size:32px;margin-bottom:10px}
+  .brand-tagline{font-size:14px;margin-bottom:20px}
+  .features{gap:6px}
+  .feat{font-size:12px;padding:6px 12px}
+  .lang-group{top:12px;right:12px}
+  .form-side{padding:32px 24px}
+  .form-title{font-size:20px}
+}
+
+/* Modals */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal-box{background:#1a2332;border:1px solid #2a3a4a;border-radius:16px;max-width:520px;width:90%;padding:32px;position:relative;max-height:80vh;overflow-y:auto;animation:modalIn .2s ease}
+@keyframes modalIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.modal-close{position:absolute;top:16px;right:20px;font-size:24px;color:#5a6a7a;cursor:pointer;background:none;border:none;line-height:1;transition:color .15s}
+.modal-close:hover{color:#e8edf3}
+.modal-title{font-size:20px;font-weight:700;color:#3ecf8e;margin-bottom:20px}
+.modal-section{margin-bottom:16px}
+.modal-section h4{font-size:14px;font-weight:600;color:#e8edf3;margin-bottom:6px}
+.modal-section p{font-size:13px;color:#8899aa;line-height:1.7}
+.modal-section a{color:#3ecf8e;text-decoration:none}
+.modal-section a:hover{text-decoration:underline}
+.modal-copyright{font-size:12px;color:#5a6a7a;margin-top:20px;text-align:center}
+</style>
+</head>
+<body>
+
+<!-- LEFT: Brand -->
+<div class="brand">
+  <div class="lang-group">
+    <button class="lang-btn active" onclick="setLang('zh')">中文</button>
+    <button class="lang-btn" onclick="setLang('ja')">日本語</button>
+    <button class="lang-btn" onclick="setLang('en')">EN</button>
+  </div>
+  <div class="brand-logo">⚡ KVMind</div>
+  <div class="brand-tagline" data-i18n="brand_tagline">AI 驱动的远程 KVM 管理平台</div>
+  <div class="features">
+    <span class="feat" data-i18n="feat_ai">🤖 AI 智能控制</span>
+    <span class="feat" data-i18n="feat_remote">🌐 远程 KVM</span>
+    <span class="feat" data-i18n="feat_secure">🔒 安全加密</span>
+    <span class="feat" data-i18n="feat_fast">⚡ 低延迟</span>
+  </div>
+</div>
+
+<!-- RIGHT: Form -->
+<div class="form-side">
+  <div class="form-wrap">
+    <h2 class="form-title" data-i18n="welcome_back">欢迎回来</h2>
+    <p class="form-subtitle" data-i18n="login_subtitle">请输入设备密码以继续</p>
+
+    <div class="uid-badge">
+      <span data-i18n="label_device">设备:</span>
+      <span class="uid-value" id="device-uid">---</span>
+    </div>
+
+    <div id="error-msg" class="error-msg"></div>
+
+    <div class="field">
+      <label data-i18n="label_password">密码</label>
+      <input type="password" id="input-password" data-i18n-ph="ph_password" placeholder="输入设备密码" autocomplete="current-password" autofocus
+             onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+
+    <div class="remember-row">
+      <label class="remember-left">
+        <input type="checkbox" id="input-remember" checked>
+        <span data-i18n="remember_device">记住登录 · 7天</span>
+      </label>
+    </div>
+
+    <button class="login-btn" id="btn-login" onclick="doLogin()" data-i18n="btn_login">登录</button>
+
+    <div class="form-footer">
+      <span id="kvmind-version">v0.2.2-beta</span>
+      <span class="dot">·</span>
+      <a href="javascript:openModal('help')" data-i18n="help_link">帮助</a>
+      <span class="dot">·</span>
+      <a href="javascript:openModal('terms')" data-i18n="terms_link">条款</a>
+    </div>
+  </div>
+</div>
+
+<script>
+var L={
+zh:{welcome_back:"欢迎回来",login_subtitle:"请输入设备密码以继续",brand_tagline:"AI 驱动的远程 KVM 管理平台",feat_ai:"🤖 AI 智能控制",feat_remote:"🌐 远程 KVM",feat_secure:"🔒 安全加密",feat_fast:"⚡ 低延迟",label_device:"设备:",label_password:"密码",ph_password:"输入设备密码",remember_device:"记住登录 · 7天",btn_login:"登录",btn_logging_in:"登录中...",help_link:"帮助",terms_link:"条款",err_pw:"请输入密码",err_fail:"登录失败",err_net:"网络错误",help_title:"KVMind 使用帮助",help_login_t:"密码登录",help_login_p:"使用设备密码登录。首次使用时请查看设备标签上的初始密码，登录后系统会要求您修改密码。",help_forgot_t:"忘记密码",help_forgot_p:"请联系管理员重置设备密码，或通过SSH执行 kvmind-init.sh --force 重新生成。",help_support_t:"技术支持",terms_title:"服务条款与隐私政策",terms_tos_t:"服务条款",terms_tos_p:"KVMind 是一个开源项目，基于 Apache License 2.0 发布。本软件按原样提供，不附带任何明示或暗示的担保。",terms_privacy_t:"隐私说明",terms_privacy_p:"KVMind 在本地设备运行，默认不收集任何遥测数据。所有配置和会话数据仅存储于本设备。",terms_security_t:"数据安全",terms_security_p:"所有远程连接均采用端到端加密，设备控制数据仅保留在本机。"},
+ja:{welcome_back:"おかえりなさい",login_subtitle:"デバイスパスワードを入力してください",brand_tagline:"AI駆動リモートKVM管理プラットフォーム",feat_ai:"🤖 AIスマート制御",feat_remote:"🌐 リモートKVM",feat_secure:"🔒 セキュア暗号化",feat_fast:"⚡ 低遅延",label_device:"デバイス:",label_password:"パスワード",ph_password:"デバイスパスワードを入力",remember_device:"ログインを記憶 · 7日間",btn_login:"ログイン",btn_logging_in:"ログイン中...",help_link:"ヘルプ",terms_link:"利用規約",err_pw:"パスワードを入力してください",err_fail:"ログインに失敗しました",err_net:"ネットワークエラー",help_title:"KVMind ヘルプ",help_login_t:"パスワードログイン",help_login_p:"デバイスパスワードでログインします。初回使用時はデバイスラベルの初期パスワードを確認し、ログイン後にパスワード変更が求められます。",help_forgot_t:"パスワードを忘れた場合",help_forgot_p:"管理者にパスワードリセットを依頼するか、SSHで kvmind-init.sh --force を実行して再生成してください。",help_support_t:"テクニカルサポート",terms_title:"利用規約とプライバシーポリシー",terms_tos_t:"利用規約",terms_tos_p:"KVMind は Apache License 2.0 で公開されているオープンソースプロジェクトです。本ソフトウェアは現状のまま提供され、明示黙示を問わず一切の保証はありません。",terms_privacy_t:"プライバシー",terms_privacy_p:"KVMind はローカル端末で動作し、既定でテレメトリは一切収集しません。すべての設定とセッションデータは本端末のみに保存されます。",terms_security_t:"データセキュリティ",terms_security_p:"すべてのリモート接続はエンドツーエンド暗号化。デバイス制御データは本端末内にのみ保存されます。"},
+en:{welcome_back:"Welcome Back",login_subtitle:"Enter device password to continue",brand_tagline:"AI-Powered Remote KVM Management",feat_ai:"🤖 AI Smart Control",feat_remote:"🌐 Remote KVM",feat_secure:"🔒 Secure Encryption",feat_fast:"⚡ Low Latency",label_device:"Device:",label_password:"Password",ph_password:"Enter device password",remember_device:"Remember login · 7 days",btn_login:"Login",btn_logging_in:"Logging in...",help_link:"Help",terms_link:"Terms",err_pw:"Please enter password",err_fail:"Login failed",err_net:"Network error",help_title:"KVMind Help",help_login_t:"Password Login",help_login_p:"Log in with the device password. On first use, check the initial password on the device label. You will be prompted to change it after login.",help_forgot_t:"Forgot Password",help_forgot_p:"Contact the administrator to reset, or run kvmind-init.sh --force via SSH to regenerate.",help_support_t:"Technical Support",terms_title:"Terms of Service & Privacy Policy",terms_tos_t:"Terms of Service",terms_tos_p:"KVMind is an open-source project released under the Apache License 2.0. The software is provided \"as is\" without any warranty, express or implied.",terms_privacy_t:"Privacy",terms_privacy_p:"KVMind runs locally on your device and collects no telemetry by default. All configuration and session data stays on this device.",terms_security_t:"Data Security",terms_security_p:"All remote connections use end-to-end encryption. Device control data stays on this device."}
+};
+var _l='zh';
+function t(k){return L[_l]?.[k]||k}
+
+function setLang(v){
+  _l=v;localStorage.setItem('kvmind_lang',v);
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k=el.getAttribute('data-i18n'),s=L[v]?.[k];
+    if(s)el.textContent=s;
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(el){
+    var k=el.getAttribute('data-i18n-ph'),s=L[v]?.[k];
+    if(s)el.placeholder=s;
+  });
+  document.querySelectorAll('.lang-btn').forEach(function(b){
+    b.classList.toggle('active',b.textContent.trim()==={zh:'中文',ja:'日本語',en:'EN'}[v]);
+  });
+}
+
+function showErr(m){var e=document.getElementById('error-msg');e.textContent=m;e.classList.add('show')}
+
+async function doLogin(){
+  var errEl=document.getElementById('error-msg');
+  errEl.classList.remove('show');
+  var pw=document.getElementById('input-password').value;
+  if(!pw){showErr(t('err_pw'));return}
+
+  var btn=document.getElementById('btn-login');
+  btn.disabled=true;
+  btn.textContent=t('btn_logging_in');
+
+  try{
+    var r=await fetch('/kdkvm/api/auth/login',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        password:pw,
+        remember:document.getElementById('input-remember').checked
+      })
+    });
+    var d=await r.json();
+    if(r.ok&&d.status==='ok'){
+      window.location.href='/kvm/';
+    }else if(d.status==='change_password'){
+      window.location.href=d.redirect||'/change-password.html';
+    }else{
+      console.error('Login error:', d.error);
+      showErr(t('err_fail'));
+    }
+  }catch(e){
+    showErr(t('err_net'));
+  }finally{
+    btn.disabled=false;
+    btn.textContent=t('btn_login');
+  }
+}
+
+function openModal(id){document.getElementById('modal-'+id).classList.add('show')}
+function closeModal(id){document.getElementById('modal-'+id).classList.remove('show')}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.querySelectorAll('.modal-overlay.show').forEach(function(m){m.classList.remove('show')})}});
+
+window.addEventListener('DOMContentLoaded',function(){
+  // Language
+  var saved=localStorage.getItem('kvmind_lang');
+  var nav=(navigator.language||'').toLowerCase();
+  setLang(saved||(nav.startsWith('zh')?'zh':nav.startsWith('ja')?'ja':'en'));
+
+  // Fetch device UID
+  fetch('/api/device/uid').then(function(r){return r.json()}).then(function(d){
+    var el=document.getElementById('device-uid');
+    if(el&&d.uid)el.textContent=d.uid;
+  }).catch(function(){});
+
+  // Version
+  fetch('/kdkvm/version.json?t='+Date.now()).then(function(r){return r.json()}).then(function(d){
+    var el=document.getElementById('kvmind-version');
+    if(el)el.textContent='v'+d.version;
+  }).catch(function(){});
+});
+</script>
+
+<!-- Help Modal -->
+<div class="modal-overlay" id="modal-help" onclick="if(event.target===this)closeModal('help')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('help')">&times;</button>
+    <div class="modal-title" data-i18n="help_title">KVMind 使用帮助</div>
+    <div class="modal-section"><h4 data-i18n="help_login_t">密码登录</h4><p data-i18n="help_login_p">使用设备密码登录。首次使用时请查看设备标签上的初始密码，登录后系统会要求您修改密码。</p></div>
+    <div class="modal-section"><h4 data-i18n="help_forgot_t">忘记密码</h4><p data-i18n="help_forgot_p">请联系管理员重置设备密码，或通过SSH执行 kvmind-init.sh --force 重新生成。</p></div>
+    <div class="modal-section"><h4 data-i18n="help_support_t">技术支持</h4><p>📖 <a href="https://github.com/sunthinks/kvmind" target="_blank">GitHub Repository</a> &nbsp;|&nbsp; 🐛 <a href="https://github.com/sunthinks/kvmind/issues" target="_blank">Report Issues</a></p></div>
+  </div>
+</div>
+
+<!-- Terms Modal -->
+<div class="modal-overlay" id="modal-terms" onclick="if(event.target===this)closeModal('terms')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('terms')">&times;</button>
+    <div class="modal-title" data-i18n="terms_title">服务条款与隐私政策</div>
+    <div class="modal-section"><h4 data-i18n="terms_tos_t">开源协议</h4><p data-i18n="terms_tos_p">KVMind 是一个开源项目，基于 Apache License 2.0 发布。本软件按"原样"提供，不附带任何明示或暗示的担保。详见 <a href="https://github.com/sunthinks/kvmind/blob/master/LICENSE" target="_blank">LICENSE</a>。</p></div>
+    <div class="modal-section"><h4 data-i18n="terms_privacy_t">隐私说明</h4><p data-i18n="terms_privacy_p">KVMind 在本地设备运行，默认不收集任何遥测数据。所有配置、凭据和会话数据仅存储于本设备。</p></div>
+    <div class="modal-section"><h4 data-i18n="terms_security_t">数据安全</h4><p data-i18n="terms_security_p">所有远程连接均采用端到端加密，设备控制数据仅保留在本机。</p></div>
+    <div class="modal-copyright">Open-source under Apache 2.0 · <a href="https://github.com/sunthinks/kvmind" target="_blank" style="color:inherit">GitHub</a></div>
+  </div>
+</div>
+</body>
+</html>
