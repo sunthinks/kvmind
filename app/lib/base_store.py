@@ -205,6 +205,20 @@ class BaseSQLiteStore:
         other statement (SQLCipher requirement). If SQLCipher is unavailable,
         we transparently fall back to plain sqlite3 — see module docstring.
         """
+        # MSD lives on a read-only mount. SQLite opens with O_CREAT by default,
+        # so even a "read-only" SELECT path needs rw briefly if the DB file
+        # doesn't exist yet (first GET /api/ai/memory after a reset, for
+        # example). Same applies to first-call schema bootstrap. Writable
+        # callers already hold _msd_rw at a higher layer — refcount makes
+        # nesting safe.
+        db_exists = Path(self._db_path).exists()
+        needs_bootstrap = not self._schema_ready or not db_exists
+        if needs_bootstrap and not writable:
+            with _msd_rw(self._db_path):
+                return self._do_open_conn()
+        return self._do_open_conn()
+
+    def _do_open_conn(self) -> sqlite3.Connection:
         self._ensure_dir()
         module, key_hex = _try_load_sqlcipher()
         if module is not None and key_hex is not None:
@@ -224,11 +238,7 @@ class BaseSQLiteStore:
             conn = sqlite3.connect(self._db_path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         if not self._schema_ready:
-            if not writable:
-                with _msd_rw(self._db_path):
-                    conn.executescript(self._SCHEMA)
-            else:
-                conn.executescript(self._SCHEMA)
+            conn.executescript(self._SCHEMA)
             self._schema_ready = True
         return conn
 
