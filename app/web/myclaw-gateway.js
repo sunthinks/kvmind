@@ -237,7 +237,14 @@ KVMindGateway.prototype._handleMessage = function(raw) {
 
 KVMindGateway.prototype.sendChat = function(message, opts) {
   if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-    if (this.onChatError) this.onChatError("Not connected");
+    // Kick a reconnect so the next click actually has a chance to land.
+    // Don't show a raw English "Not connected" — onChatError gets a typed
+    // marker that core.js translates to a bilingual, actionable message.
+    var rs = this.ws ? this.ws.readyState : null;
+    if (rs === null || rs === WebSocket.CLOSED || rs === WebSocket.CLOSING) {
+      this.connect();
+    }
+    if (this.onChatError) this.onChatError({code: "ws_not_open", reason: rs});
     return Promise.resolve(null);
   }
 
