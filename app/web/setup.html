@@ -1250,6 +1250,15 @@ async function completeSetup() {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ password: pw }),
     });
+    // 403 = device already activated. Backend refuses to overwrite the
+    // admin password via this pre-auth endpoint (by design). Treat as
+    // "go to dashboard and log in" instead of showing an error.
+    if (r.status === 403) {
+      showMsg('setup-status', 'success', t('setup_activate_ok'));
+      btn.innerHTML = '✓ ' + t('setup_activate_ok');
+      setTimeout(() => { window.location = '/login.html'; }, 2000);
+      return;
+    }
     const d = await r.json();
     if (d.status === 'ok' && d.activated) {
       showMsg('setup-status', 'success', t('setup_activate_ok'));
@@ -1278,6 +1287,12 @@ async function loadDeviceUid() {
   try {
     const r = await fetch(`${API}/api/device/uid`);
     const d = await r.json();
+    // Already activated → this wizard shouldn't be accessible; send user
+    // to the login page. Wifi/AI reconfiguration lives in the admin console.
+    if (d && d.setup_done) {
+      window.location = '/login.html';
+      return;
+    }
     const uid = d.uid || d;
     document.getElementById('device-uid').textContent = uid;
     document.getElementById('final-uid').textContent = uid;

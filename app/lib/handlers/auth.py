@@ -127,8 +127,15 @@ def register(app):
         return resp
 
     async def h_device_uid(req: web.Request) -> web.Response:
-        """GET /api/device/uid — return device UID (no auth)."""
-        return json_response({"uid": get_uid()})
+        """GET /api/device/uid — return device UID and setup state (no auth).
+
+        setup_done signals setup.html to redirect to /login.html — already-
+        activated devices should use the admin console, not the setup wizard.
+        """
+        return json_response({
+            "uid": get_uid(),
+            "setup_done": not needs_password_change(),
+        })
 
     # ── Setup complete handler ────────────────────────────────────────────────
 
@@ -138,21 +145,15 @@ def register(app):
         Called from setup.html after customer sets password.
         Calls kdcms activate API to change device status to online.
         """
-        uid = get_uid()
-
-        # Idempotent: if already activated, return success without touching
-        # password or re-calling activate. setup.html is a persistent config
-        # page — users may reopen it post-activation. Password is intentionally
-        # NOT re-set here (that would let any LAN client overwrite the
-        # credential, since this endpoint is in NO_AUTH_PATHS).
+        # Guard: first-activation only. Allowing re-entry would let any LAN
+        # client overwrite the admin password (this endpoint is in NO_AUTH_PATHS
+        # because setup.html must reach it pre-login). Frontend catches 403 and
+        # treats the device as already activated — see completeSetup() in
+        # setup.html.
         if not needs_password_change():
-            log.info("Setup complete called on already-activated device: %s (no-op)", uid)
-            return json_response({
-                "status": "ok",
-                "activated": True,
-                "activationStatus": "already_activated",
-            })
+            return json_response({"error": "Setup already completed"}, 403)
 
+        uid = get_uid()
         log.info("Setup complete requested for device: %s", uid)
 
         # Try to change password if provided
