@@ -151,6 +151,11 @@ class WiFiManager:
 
     async def scan(self) -> List[WiFiNetwork]:
         """Return list of visible WiFi networks sorted by signal strength."""
+        # PiKVM leaves wlan0 DOWN by default (wpa_supplicant@wlan0 is disabled
+        # until the user connects), so `iw scan` fails with "Network is down".
+        # Bring the interface up idempotently before scanning.
+        await _run(["ip", "link", "set", INTERFACE, "up"])
+
         # Get currently connected SSID
         connected_ssid = None
         rc, stdout, _ = await _run(["iw", "dev", INTERFACE, "link"])
