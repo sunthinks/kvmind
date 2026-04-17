@@ -4,12 +4,17 @@
   <a href="README.ja.md">日本語</a>
 </p>
 
-# KVMind — AI-Powered KVM Assistant
+# KVMind Community Edition
 
 KVMind adds a natural-language AI assistant to your PiKVM device, letting you
 control remote servers through keyboard, mouse and screen analysis — all from
 a modern web console.
 
+> This repository is the **Community Edition** — fully local, DIY-friendly,
+> Apache 2.0. For the managed **Cloud Edition** with auto-execution, remote
+> Tunnel, multi-device fleet and team collaboration, see
+> [kvmind.com](https://kvmind.com).
+>
 > Project status: **beta**. Runs fully on-device; no cloud account required.
 
 ## Highlights
@@ -24,6 +29,33 @@ a modern web console.
   gated through confirmation and action-level policies.
 - **Modern console** — H.264 / MJPEG video, virtual keyboard, clipboard,
   full-screen, dark/light themes, zh/ja/en i18n.
+
+## Community vs Cloud Edition
+
+Both editions share the same device-side core. The difference is where
+execution authority and fleet management live.
+
+| | Community (this repo) | [Cloud](https://kvmind.com) |
+|---|:---:|:---:|
+| Screen analysis & suggestions | ✅ | ✅ |
+| Bring your own AI key (Gemini / Claude / OpenAI / Ollama) | ✅ | ✅ |
+| Manual tool execution (with confirmation) | ✅ | ✅ |
+| Local chat history & memory | ✅ | ✅ |
+| Self-hosted, air-gapped friendly | ✅ | — |
+| Apache 2.0 source you can fork & modify | ✅ | — |
+| **Auto-execution (no manual confirm)** | — | ✅ |
+| **Signed & verified tool runs (MyClaw Cloud)** | — | ✅ |
+| **Remote access via managed Tunnel** | — | ✅ |
+| **Multi-device fleet dashboard** | — | ✅ |
+| **Scheduled tasks** | — | ✅ |
+| **Team access & role-based controls** | — | ✅ |
+| **Managed OTA updates** | — | ✅ |
+
+**Community Edition** is for tinkerers and self-hosters — modify anything,
+run fully offline, keep every byte on your own hardware.
+
+**Cloud Edition** is for production use — managed signing, fleet operations,
+automations and team workflows at [kvmind.com](https://kvmind.com).
 
 ## Architecture
 
@@ -156,3 +188,9 @@ Code style, module boundaries and contribution guidelines are documented in
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE).
+
+---
+
+Want auto-execution, remote access, multi-device fleet and team collaboration?
+The managed KVMind Cloud Edition is available at
+[**kvmind.com**](https://kvmind.com).

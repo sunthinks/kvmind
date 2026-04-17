@@ -621,6 +621,9 @@ if [[ -f /etc/kdkvm/registration.secret ]]; then
     echo    "│  If you want to pair with an optional cloud backend, configure"
     echo    "│  bridge.backend_url in /etc/kdkvm/config.yaml."
     echo -e "${GREEN}│${NC}"
+    echo    "│  Want managed automation, Tunnel and fleet features?"
+    echo    "│  Check out KVMind Cloud at: https://kvmind.com"
+    echo -e "${GREEN}│${NC}"
     echo -e "${GREEN}└──────────────────────────────────────────────────────────────────────┘${NC}"
     echo ""
 else

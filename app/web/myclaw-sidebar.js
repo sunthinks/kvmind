@@ -514,6 +514,7 @@
       mem_empty: "\u6682\u65E0\u8BB0\u5FC6",
       save: "\u4FDD\u5B58", saved: "\u2705 \u5DF2\u4FDD\u5B58", save_fail: "\u274C \u4FDD\u5B58\u5931\u8D25",
       no_key: "\u8BF7\u8F93\u5165 API Key",
+      learn_cloud: "\u4E86\u89E3\u4E91\u7AEF\u7248 \u2192",
     },
     ja: {
       hd: "\u2699\uFE0F MyClaw \u8A2D\u5B9A",
@@ -532,6 +533,7 @@
       mem_empty: "\u30E1\u30E2\u30EA\u306A\u3057",
       save: "\u4FDD\u5B58", saved: "\u2705 \u4FDD\u5B58\u3057\u307E\u3057\u305F", save_fail: "\u274C \u4FDD\u5B58\u5931\u6557",
       no_key: "API Key \u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044",
+      learn_cloud: "\u30AF\u30E9\u30A6\u30C9\u7248\u3092\u898B\u308B \u2192",
     },
     en: {
       hd: "\u2699\uFE0F MyClaw Settings",
@@ -550,6 +552,7 @@
       mem_empty: "No memories",
       save: "Save", saved: "\u2705 Saved", save_fail: "\u274C Save failed",
       no_key: "Please enter API Key",
+      learn_cloud: "Learn about Cloud \u2192",
     }
   };
 
@@ -575,8 +578,9 @@
 
     // ── Plan status (read-only, community edition) ──
     '<div id="kv-set-sub-card" class="kv-subscription-card" style="margin:0 12px 12px;padding:10px 14px;border-radius:10px;border:1px solid var(--kvborder);background:var(--kvbg-card)">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
         '<span id="kv-sub-plan-label" style="font-weight:600;font-size:13px">Community</span>' +
+        '<a href="https://kvmind.com" target="_blank" rel="noopener" style="font-size:11px;color:var(--kvtext-sub);text-decoration:none;white-space:nowrap">' + L.learn_cloud + '</a>' +
       '</div>' +
       '<div id="kv-sub-features" style="font-size:11px;color:var(--kvtext-sub);margin-top:4px">\u2716 Tunnel &nbsp; \u2716 Messaging &nbsp; \u2716 OTA</div>' +
     '</div>' +
