@@ -28,7 +28,12 @@ CONFIG_PATH = os.environ.get("KVMIND_KVM_CONFIG", "/etc/kdkvm/config.yaml")
 
 KNOWN_PROVIDERS: Dict[str, Dict] = {
     "ollama": {
-        "base_url": "http://localhost:11434/v1",
+        # No default URL — user must enter the full URL of their Ollama server
+        # during setup, e.g. "http://192.168.1.50:11434/v1". Shipping a LAN IP
+        # as default leaks the developer's environment and wastes every other
+        # user's first-run (requests disappear into the void and surface as a
+        # 502 on /api/analyse with no hint of the cause).
+        "base_url": "",
         "default_model": "qwen3-vl:8b",
         "models": ["qwen3-vl:8b", "qwen3-vl:2b"],
         "key_envs": ["OLLAMA_API_KEY"],
