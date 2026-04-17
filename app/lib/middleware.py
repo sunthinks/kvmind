@@ -112,6 +112,9 @@ NO_AUTH_PATHS = {
     "/api/wifi/status",         # needed by setup.html pre-auth
     "/api/wifi/connect",        # needed by setup.html pre-auth
     "/api/wifi/disconnect",     # needed by setup.html pre-auth
+    "/api/ai/models",           # needed by setup.html AI step (static provider dict)
+    "/api/ai/config",           # needed by setup.html AI step (GET + POST)
+    "/api/ai/test",             # needed by setup.html AI step (test provider key)
     "/login.html",
     "/setup.html",
     "/change-password.html",
