@@ -104,6 +104,7 @@ NO_AUTH_PATHS = {
     # /api/auth/change-password intentionally NOT listed here — requires auth
     # via middleware (defense-in-depth). Handler has its own session check too.
     "/api/device/uid",
+    "/api/status",              # read-only probe, needed by setup.html test step
     "/api/setup/complete",
     "/api/subscription/sync",   # heartbeat timer (direct to bridge, blocked at Nginx)
     "/api/internal/chat-wipe",  # R4-C2 GDPR chat wipe (heartbeat shell → bridge, Nginx-blocked)
