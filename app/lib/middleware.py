@@ -112,6 +112,16 @@ NO_AUTH_PATHS = {
     "/change-password.html",
 }
 
+# Paths only exempt from auth during first-boot (before password changed).
+# Once /api/setup/complete has been called (password_changed=True), these
+# fall back to requiring a valid session.
+SETUP_ONLY_NO_AUTH_PATHS = {
+    "/api/wifi/scan",
+    "/api/wifi/status",
+    "/api/wifi/connect",
+    "/api/wifi/disconnect",
+}
+
 # Trusted proxy IPs — loaded from config at startup
 TRUSTED_PROXIES: set[str] = {"127.0.0.1"}
 
@@ -120,6 +130,11 @@ def _needs_auth(path: str) -> bool:
     """Determine if a request path requires authentication."""
     if path in NO_AUTH_PATHS:
         return False
+    if path in SETUP_ONLY_NO_AUTH_PATHS:
+        # Lazy import avoids circular dependency risk.
+        from .auth_manager import needs_password_change
+        if needs_password_change():
+            return False
     # No wildcard prefix match — all exempt paths must be listed explicitly
     # in NO_AUTH_PATHS to prevent accidental exposure of new routes.
     return True
