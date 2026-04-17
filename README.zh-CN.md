@@ -96,6 +96,12 @@ sudo ./install.sh
 服务启动后打开 `https://<设备-IP>/kvm/`——`/setup.html` 的设置向导会引导你
 完成初始密码和 AI 提供商配置。
 
+> **关于安装脚本**：`install.sh` 是默认开箱即用的版本 —— 会把设备配置为
+> [kvmind.com](https://kvmind.com) 的完整托管模式（远程访问、自动执行、
+> 舰队管理）。如需完全本地 / 离线安装，请在首次启动后编辑
+> `/etc/kdkvm/config.yaml`，将 `bridge.backend_url` 置空；或 fork 本仓库，
+> 用 `./release/build.sh` 构建自定义安装包。
+
 ## 系统要求
 
 - 硬件：PiKVM V3 / V4 或运行 PiKVM-OS（Arch Linux ARM）的 BliKVM v4

@@ -101,6 +101,14 @@ sudo ./install.sh
 `/setup.html` のセットアップウィザードが初期パスワードと AI プロバイダー設定を
 案内します。
 
+> **インストーラーについて**：`install.sh` はそのまま使える標準版です ——
+> デバイスを [kvmind.com](https://kvmind.com) のフルマネージド体験
+> （リモートアクセス、自動実行、フリート管理）向けに設定します。完全ローカル /
+> エアギャップインストールをご希望の場合は、初回起動後に
+> `/etc/kdkvm/config.yaml` を編集して `bridge.backend_url` を空にするか、
+> 本リポジトリを fork し `./release/build.sh` でカスタムインストーラーを
+> ビルドしてください。
+
 ## 動作要件
 
 - ハードウェア：PiKVM-OS（Arch Linux ARM）を搭載した PiKVM V3 / V4

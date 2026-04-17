@@ -319,7 +319,7 @@ bridge:
   host: "127.0.0.1"
   port: 8765
   mode: suggest
-  # backend_url: ""        # Optional cloud backend URL; leave empty for fully local/air-gapped mode.
+  backend_url: "https://kvmind.com"
 YAML
     ok "Config created: /etc/kdkvm/config.yaml (platform: $PLATFORM)"
 else
@@ -607,26 +607,37 @@ if [[ -d /opt/kvmind/kdkvm/lib/innerclaw ]]; then
 fi
 echo ""
 
-# ── Device identity summary ──
+# ── Bind credentials — printed last so they are the final thing on screen ──
 KDKVM_VERSION="__KDKVM_VERSION__"  # replaced by release/build.sh at package time
 if [[ -f /etc/kdkvm/registration.secret ]]; then
     BIND_SECRET=$(cat /etc/kdkvm/registration.secret)
-    echo -e "${GREEN}┌─ Device identity ───────────────────────────────────────────────────┐${NC}"
+    echo -e "${GREEN}┌─ IMPORTANT — Save these credentials ────────────────────────────────┐${NC}"
+    echo -e "${GREEN}│${NC}"
+    echo    "│  KVMind Web Login (https://<device-ip>/kvm/)"
+    if [[ -n "${INIT_PASSWORD:-}" ]]; then
+        echo    "│    Password:   ${INIT_PASSWORD}"
+    else
+        echo    "│    Password:   (unchanged — existing password preserved)"
+    fi
     echo -e "${GREEN}│${NC}"
     echo    "│  Device UID:   ${DEVICE_UID}"
     echo    "│  Bind Secret:  ${BIND_SECRET}"
     echo    "│  Version:      kdkvm-v${KDKVM_VERSION}"
     echo -e "${GREEN}│${NC}"
-    echo    "│  Open the setup wizard at: https://<device-ip>/setup.html"
-    echo    "│  If you want to pair with an optional cloud backend, configure"
-    echo    "│  bridge.backend_url in /etc/kdkvm/config.yaml."
+    echo    "│  Next step:  Go to kvmind.com → Dashboard → Add Device"
+    echo    "│  Enter the Device UID and Bind Secret to link this KVM"
+    echo    "│  to your account and enable remote access."
     echo -e "${GREEN}│${NC}"
-    echo    "│  Want managed automation, Tunnel and fleet features?"
-    echo    "│  Check out KVMind Cloud at: https://kvmind.com"
+    echo -e "${GREEN}│  ${RED}⚠  Screenshot or copy these now.${NC}"
+    echo    "│  Reinstalling kdkvm generates a new Bind Secret — the old one"
+    echo    "│  will stop working and you will need to re-bind on kvmind.com."
     echo -e "${GREEN}│${NC}"
     echo -e "${GREEN}└──────────────────────────────────────────────────────────────────────┘${NC}"
     echo ""
 else
+    if [[ -n "${INIT_PASSWORD:-}" ]]; then
+        echo    "  Web login password: ${INIT_PASSWORD}"
+    fi
     echo    "  Device UID:   ${DEVICE_UID}"
     echo    "  Version:      kdkvm-v${KDKVM_VERSION}"
     echo ""

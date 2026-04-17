@@ -102,6 +102,14 @@ Once the service is up, open `https://<device-ip>/kvm/` — the setup wizard at
 `/setup.html` will guide you through the initial password and AI provider
 configuration.
 
+> **About the installer**: `install.sh` is the batteries-included installer —
+> it configures the device for the full managed experience on
+> [kvmind.com](https://kvmind.com) (remote access, auto-execution, fleet
+> management). For a fully local / air-gapped install, edit
+> `/etc/kdkvm/config.yaml` after first boot and set `bridge.backend_url: ""`,
+> or fork this repository and build a custom installer with
+> `./release/build.sh`.
+
 ## Requirements
 
 - Hardware: PiKVM V3 / V4 or BliKVM v4 running PiKVM-OS (Arch Linux ARM)
