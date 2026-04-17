@@ -107,6 +107,8 @@ NO_AUTH_PATHS = {
     "/api/setup/complete",
     "/api/subscription/sync",   # heartbeat timer (direct to bridge, blocked at Nginx)
     "/api/internal/chat-wipe",  # R4-C2 GDPR chat wipe (heartbeat shell → bridge, Nginx-blocked)
+    "/api/wifi/scan",           # read-only probe, needed by setup.html pre-auth
+    "/api/wifi/status",         # read-only probe, needed by setup.html pre-auth
     "/login.html",
     "/setup.html",
     "/change-password.html",
@@ -114,10 +116,9 @@ NO_AUTH_PATHS = {
 
 # Paths only exempt from auth during first-boot (before password changed).
 # Once /api/setup/complete has been called (password_changed=True), these
-# fall back to requiring a valid session.
+# fall back to requiring a valid session. Used for destructive wifi ops
+# that must be reachable by the setup.html wizard but protected afterwards.
 SETUP_ONLY_NO_AUTH_PATHS = {
-    "/api/wifi/scan",
-    "/api/wifi/status",
     "/api/wifi/connect",
     "/api/wifi/disconnect",
 }
