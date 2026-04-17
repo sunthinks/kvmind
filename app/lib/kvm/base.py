@@ -27,11 +27,11 @@ class NoVideoSignalError(RuntimeError):
     leaking ``503, message='Service Unavailable', url='http://localhost/streamer/snapshot'``.
     """
 
+    USER_MSG = "无视频信号 — 请检查 HDMI 连接 / No video signal — please check the HDMI connection"
+
     def __init__(self, detail: str = "") -> None:
-        msg = "无视频信号 — 请检查 HDMI 连接 / No video signal — please check the HDMI connection"
-        if detail:
-            msg = f"{msg} ({detail})"
-        super().__init__(msg)
+        self.detail = detail
+        super().__init__(self.USER_MSG)
 
 
 class KVMBackend(ABC):

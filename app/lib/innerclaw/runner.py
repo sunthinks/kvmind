@@ -33,6 +33,7 @@ from .tools import (
     build_tool_result_message, screenshot_hash,
 )
 from ..config import get_config
+from ..kvm.base import NoVideoSignalError
 
 log = logging.getLogger(__name__)
 
@@ -164,8 +165,12 @@ class Runner:
         self, instruction: str, budget: Budget, cloud_prompt: str | None = None,
     ) -> AsyncIterator[RunnerEvent]:
         """Single AI call for suggest/ask modes. No tools."""
-        screenshot = await self._kvm.snapshot_b64()
-        yield RunnerEvent("screenshot", screenshot=screenshot)
+        try:
+            screenshot = await self._kvm.snapshot_b64()
+            yield RunnerEvent("screenshot", screenshot=screenshot)
+        except NoVideoSignalError as e:
+            log.warning("Advisory: no video signal — continuing text-only (%s)", e.detail or "unknown")
+            screenshot = None
 
         budget.use_ai_call()
         mode_desc = {
@@ -174,6 +179,12 @@ class Runner:
         }
         mode_info = mode_desc.get(self._mode, self._mode)
         prompt = f"[当前模式: {mode_info}]\n\n{self._with_context(instruction)}"
+        if screenshot is None:
+            prompt = (
+                "[注意：当前无视频信号，你无法看到屏幕。请仅基于用户文本作答；"
+                "若用户问题需要看屏幕，请告知其连接 HDMI 后重试。]\n\n"
+                + prompt
+            )
 
         yield RunnerEvent("thinking", step=0)
         try:
@@ -192,8 +203,16 @@ class Runner:
         self, instruction: str, budget: Budget, cloud_prompt: str | None = None,
     ) -> AsyncIterator[RunnerEvent]:
         """Protocol-driven observe->decide->validate->execute loop."""
-        # Build initial user message with screenshot
-        screenshot = await self._kvm.snapshot_b64()
+        # Build initial user message with screenshot.
+        # No video signal → agentic loop can't operate (no eyes), degrade to
+        # advisory so the user still gets a helpful text response.
+        try:
+            screenshot = await self._kvm.snapshot_b64()
+        except NoVideoSignalError as e:
+            log.warning("Agentic: no video signal — degrading to advisory (%s)", e.detail or "unknown")
+            async for ev in self._advisory_response(instruction, budget, cloud_prompt):
+                yield ev
+            return
         yield RunnerEvent("screenshot", screenshot=screenshot)
 
         content: list[dict] = [
