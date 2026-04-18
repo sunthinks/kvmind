@@ -97,13 +97,13 @@ automations and team workflows at [kvmind.com](https://kvmind.com).
 curl -sSL https://kvmind.com/install.sh | bash
 
 # Install a specific version:
-curl -sSL https://kvmind.com/install.sh | bash -s -- kdkvm-v0.2.11-beta.zip
+curl -sSL https://kvmind.com/install.sh | bash -s kdkvm-v0.2.21-beta.zip
 
 # Full reset (wipes config, memory, auth, cloud binding) then install latest:
-curl -sSL https://kvmind.com/install.sh | bash -s -- --reset
+curl -sSL https://kvmind.com/install.sh | bash -s reset
 
 # Full reset then install a specific version:
-curl -sSL https://kvmind.com/install.sh | bash -s -- --reset kdkvm-v0.2.11-beta.zip
+curl -sSL https://kvmind.com/install.sh | bash -s reset kdkvm-v0.2.21-beta.zip
 ```
 
 **Option B — install from a downloaded zip:**
