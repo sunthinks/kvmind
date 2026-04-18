@@ -90,13 +90,38 @@ automations and team workflows at [kvmind.com](https://kvmind.com).
 
 ## Quick install
 
-On your PiKVM device:
+**Option A — one-line install from kvmind.com (runs on the PiKVM device):**
 
 ```bash
-# Download the latest release zip from GitHub Releases, then:
+# Install / upgrade to the latest release:
+curl -sSL https://kvmind.com/install.sh | bash
+
+# Install a specific version:
+curl -sSL https://kvmind.com/install.sh | bash -s -- kdkvm-v0.2.11-beta.zip
+
+# Full reset (wipes config, memory, auth, cloud binding) then install latest:
+curl -sSL https://kvmind.com/install.sh | bash -s -- --reset
+
+# Full reset then install a specific version:
+curl -sSL https://kvmind.com/install.sh | bash -s -- --reset kdkvm-v0.2.11-beta.zip
+```
+
+**Option B — install from a downloaded zip:**
+
+```bash
+# Download the release zip from GitHub Releases, then on the device:
 unzip kdkvm-vX.Y.Z.zip && cd kdkvm-vX.Y.Z
 sudo ./install.sh
 ```
+
+### Install parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| *(none)* | Install / upgrade to the latest release |
+| `kdkvm-vX.Y.Z-beta.zip` | Install a specific release version |
+| `--reset` | Full reset before install: wipes `/etc/kdkvm/` config, `/var/lib/kvmd/msd/.kdkvm/` data (memory, auth, chat), and unregisters the device from KVMind cloud. Use when re-deploying or troubleshooting a stuck state. **Destructive — existing cloud bindings become invalid.** |
+| `--reset kdkvm-vX.Y.Z-beta.zip` | Reset then install a specific version |
 
 Once the service is up, open `https://<device-ip>/kvm/` — the setup wizard at
 `/setup.html` will guide you through the initial password and AI provider
