@@ -11,7 +11,6 @@ Frontend expects:
   {type: "tool_result", name, output, id}  — action done
   {type: "error",   message: "..."}        — error
   {type: "screenshot",  data: "base64..."}  — screenshot
-  {type: "confirm_required", action, args}  — dangerous action confirmation
 """
 from __future__ import annotations
 
@@ -111,14 +110,11 @@ class WebBridgeAdapter(BaseAdapter):
             return [{"type": "done", "full_response": event.get("message", "")}]
 
         if event_type == "task_error":
-            return [{"type": "error", "message": event.get("error", "")}]
-
-        if event_type == "confirm_required":
-            return [{
-                "type": "confirm_required",
-                "action": event.get("action", ""),
-                "args": event.get("args", {}),
-            }]
+            err = {"type": "error", "message": event.get("error", "")}
+            code = event.get("code")
+            if code:
+                err["code"] = code
+            return [err]
 
         # Unknown event — pass through
         return [{"type": event_type, **{k: v for k, v in event.items() if k != "event"}}]

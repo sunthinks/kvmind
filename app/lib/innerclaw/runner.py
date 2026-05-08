@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
 from typing import AsyncIterator
 
 from .budget import Budget
@@ -32,13 +31,32 @@ from .tools import (
     Action, ActionResult, INNERCLAW_TOOLS,
     build_tool_result_message, screenshot_hash,
 )
-from ..config import get_config
 from ..kvm.base import NoVideoSignalError
+from ..kvmind_client import AIError, ai_error_message
+from ..model_router import (
+    ERROR_EMPTY,
+    ERROR_FAILED,
+    ERROR_NO_TOOL_SUPPORT,
+)
+from ..errors import GatewayError
 
 log = logging.getLogger(__name__)
 
 # Protocol: known tool names (for validation)
 _KNOWN_TOOLS = {t["name"] for t in INNERCLAW_TOOLS}
+
+# Informational UX messages — NOT errors. Emitted when we gracefully degrade
+# (e.g. small local model can't use tools → tell the user, then run suggest).
+# True errors carry a `code` and are surfaced by the frontend i18n table.
+_NO_TOOL_FALLBACK_MSGS = {
+    "zh": "当前 AI 模型不支持工具调用，无法使用自动操作模式。\n请在 MyClaw 设置中切换到支持 Function Calling 的模型。\n当前已切换到建议模式。",
+    "ja": "現在のAIモデルはツール呼び出しに対応していないため、自動操作モードは使用できません。\nMyClaw設定からFunction Calling対応モデルに切り替えてください。\n提案モードに切り替えました。",
+    "en": "Your AI model doesn't support tool calling — auto mode is unavailable.\nPlease switch to a model that supports Function Calling in MyClaw Settings.\nSwitched to suggest mode.",
+}
+
+
+def _no_tool_fallback_text(lang: str) -> str:
+    return _NO_TOOL_FALLBACK_MSGS.get(lang, _NO_TOOL_FALLBACK_MSGS["en"])
 
 
 # ── Event ────────────────────────────────────────────────────────────────────
@@ -93,8 +111,6 @@ class Runner:
         self._cloud = CloudSession(gateway, trigger) if gateway else None
         self._internal_tools = internal_tools or {}
         self._abort = False
-        self._confirm_future: asyncio.Future | None = None
-        self._pending_confirm_action: dict | None = None
 
     def abort(self) -> None:
         self._abort = True
@@ -137,21 +153,33 @@ class Runner:
 
             # Cloud session
             cloud_prompt = None
+            response_format: dict | None = None
             if self._cloud:
                 cloud_intent = "decide" if effective_mode == "auto" else "analyse"
                 if await self._cloud.start(cloud_intent):
                     cloud_prompt = self._cloud.prompt
+                    response_format = self._cloud.response_format or None
 
             if effective_mode == "auto":
-                async for ev in self._agentic_loop(instruction, budget, cloud_prompt):
+                async for ev in self._agentic_loop(instruction, budget, cloud_prompt, response_format):
                     yield ev
             else:
-                async for ev in self._advisory_response(instruction, budget, cloud_prompt):
+                async for ev in self._advisory_response(instruction, budget, cloud_prompt, response_format):
                     yield ev
 
+        except GatewayError:
+            # V6: typed gateway errors propagate — the WS dispatcher has
+            # localized handlers with retry_after / usage_count / error
+            # codes. Swallowing them here would surface as a generic
+            # "AI request failed".
+            raise
         except Exception as e:
             log.exception("Runner error")
-            yield RunnerEvent("task_error", error=str(e))
+            yield RunnerEvent(
+                "task_error",
+                code=ERROR_FAILED,
+                error=ai_error_message(ERROR_FAILED, self._lang),
+            )
         finally:
             await self._audit.log("runner_end", {
                 "mode": self._mode,
@@ -162,7 +190,11 @@ class Runner:
     # ── Advisory response (suggest/ask) ──────────────────────────────────────
 
     async def _advisory_response(
-        self, instruction: str, budget: Budget, cloud_prompt: str | None = None,
+        self,
+        instruction: str,
+        budget: Budget,
+        cloud_prompt: str | None = None,
+        response_format: dict | None = None,
     ) -> AsyncIterator[RunnerEvent]:
         """Single AI call for suggest/ask modes. No tools."""
         try:
@@ -189,18 +221,37 @@ class Runner:
         yield RunnerEvent("thinking", step=0)
         try:
             text = await self._ai.analyse(
-                prompt, screenshot, lang=self._lang, cloud_prompt=cloud_prompt,
+                prompt, screenshot, lang=self._lang,
+                cloud_prompt=cloud_prompt, response_format=response_format,
             )
-            yield RunnerEvent("ai_text", text=text, step=0)
+        except AIError as e:
+            log.warning("[Runner] Advisory: AI error code=%s", e.code)
+            yield RunnerEvent(
+                "task_error",
+                code=e.code,
+                error=ai_error_message(e.code, self._lang),
+            )
+            return
         except Exception as e:
-            yield RunnerEvent("ai_text", text=f"分析失败: {e}", step=0)
+            log.exception("[Runner] Advisory: unexpected failure")
+            yield RunnerEvent(
+                "task_error",
+                code=ERROR_FAILED,
+                error=ai_error_message(ERROR_FAILED, self._lang),
+            )
+            return
 
-        yield RunnerEvent("task_done", message="")
+        yield RunnerEvent("ai_text", text=text, step=0)
+        yield RunnerEvent("task_done", message=text)
 
     # ── Agentic loop (auto mode) ─────────────────────────────────────────────
 
     async def _agentic_loop(
-        self, instruction: str, budget: Budget, cloud_prompt: str | None = None,
+        self,
+        instruction: str,
+        budget: Budget,
+        cloud_prompt: str | None = None,
+        response_format: dict | None = None,
     ) -> AsyncIterator[RunnerEvent]:
         """Protocol-driven observe->decide->validate->execute loop."""
         # Build initial user message with screenshot.
@@ -210,7 +261,7 @@ class Runner:
             screenshot = await self._kvm.snapshot_b64()
         except NoVideoSignalError as e:
             log.warning("Agentic: no video signal — degrading to advisory (%s)", e.detail or "unknown")
-            async for ev in self._advisory_response(instruction, budget, cloud_prompt):
+            async for ev in self._advisory_response(instruction, budget, cloud_prompt, response_format):
                 yield ev
             return
         yield RunnerEvent("screenshot", screenshot=screenshot)
@@ -240,7 +291,7 @@ class Runner:
             yield RunnerEvent("thinking", step=turn)
             result = await self._ai.decide(
                 history, tools=INNERCLAW_TOOLS, lang=self._lang,
-                cloud_prompt=cloud_prompt,
+                cloud_prompt=cloud_prompt, response_format=response_format,
             )
             response = result.response
             meta = result.meta
@@ -250,21 +301,24 @@ class Runner:
                 turn, meta.provider_name, meta.model, meta.attempts,
             )
 
-            # ── Degraded response detection ──
-            if meta.provider_name == "none":
-                if response.stop_reason == "no_tool_support":
-                    _no_tool_msgs = {
-                        "zh": "当前 AI 模型不支持工具调用，无法使用自动操作模式。\n请在 MyClaw 设置中切换到支持 Function Calling 的模型（如 Gemini、GPT-4o、Claude）。\n当前已切换到建议模式。",
-                        "ja": "現在のAIモデルはツール呼び出しに対応していないため、自動操作モードは使用できません。\nMyClaw設定からFunction Calling対応モデルに切り替えてください。\n提案モードに切り替えました。",
-                        "en": "Your AI model doesn't support tool calling — auto mode is unavailable.\nPlease switch to a model that supports Function Calling (e.g. Gemini, GPT-4o, Claude) in MyClaw Settings.\nSwitched to suggest mode.",
-                    }
-                    yield RunnerEvent("ai_text", text=_no_tool_msgs.get(self._lang, _no_tool_msgs["en"]), step=turn)
-                    async for ev in self._advisory_response(instruction, budget, cloud_prompt):
+            # ── Degraded response detection (router-level failure) ──
+            if not result.ok:
+                code = meta.error_code or ERROR_FAILED
+                if code == ERROR_NO_TOOL_SUPPORT:
+                    # Graceful degradation: inform user, fall back to advisory.
+                    yield RunnerEvent(
+                        "ai_text",
+                        text=_no_tool_fallback_text(self._lang),
+                        step=turn,
+                    )
+                    async for ev in self._advisory_response(instruction, budget, cloud_prompt, response_format):
                         yield ev
                     return
-                if response.text:
-                    yield RunnerEvent("ai_text", text=response.text, step=turn)
-                yield RunnerEvent("task_error", error="All AI providers unavailable")
+                yield RunnerEvent(
+                    "task_error",
+                    code=code,
+                    error=ai_error_message(code, self._lang),
+                )
                 return
 
             # ── Protocol validation (delegated to ProtocolValidator) ──
@@ -284,7 +338,12 @@ class Runner:
                 if not response.text.strip():
                     retry_msg = self._protocol.handle_empty_response()
                     if retry_msg is None:
-                        yield RunnerEvent("task_error", error="AI returned empty response")
+                        log.warning("[Runner] Agentic: AI returned empty response after retry")
+                        yield RunnerEvent(
+                            "task_error",
+                            code=ERROR_EMPTY,
+                            error=ai_error_message(ERROR_EMPTY, self._lang),
+                        )
                         return
                     history.append(retry_msg)
                     continue
@@ -400,53 +459,15 @@ class Runner:
                         yield RunnerEvent("action_done", action=action.name)
                     else:
                         yield RunnerEvent("action_error", action=action.name, error=error or "")
-            elif get_config().ai.allow_local_execution:
-                # ── Local execution (dev/offline — no cloud signing) ──
-                _VISUAL_ACTIONS = {"mouse_click", "mouse_double", "key_tap"}
-                is_batch = len(optimized) > 2
-
-                for i, action in enumerate(optimized):
-                    if self._abort:
-                        yield RunnerEvent("task_done", message="已中止")
-                        return
-
-                    if not budget.can_act():
-                        yield RunnerEvent("task_error", error=budget.exhausted_reason())
-                        return
-                    budget.use_action()
-
-                    yield RunnerEvent("action_start", action=action.name, args=action.input)
-
-                    t0 = time.monotonic()
-                    ar = await self._execute_action(action, history)
-
-                    if ar.status == "pending_confirm":
-                        yield RunnerEvent(
-                            "confirm_required", action=action.name, args=action.input,
-                        )
-                        ar = await self._finish_confirm(action, history)
-
-                    ar.duration_ms = int((time.monotonic() - t0) * 1000)
-                    ar.before_hash = before_hash
-                    results.append(ar)
-
-                    if ar.status == "ok":
-                        yield RunnerEvent("action_done", action=action.name)
-                    else:
-                        yield RunnerEvent("action_error", action=action.name, error=ar.error or "")
-
-                    if (is_batch
-                            and action.name in _VISUAL_ACTIONS
-                            and i < len(optimized) - 1
-                            and ar.status == "ok"):
-                        await asyncio.sleep(0.15)
-                        mid_ss = await self._kvm.snapshot_b64()
-                        ar.screenshot = mid_ss
-
             else:
-                yield RunnerEvent("task_error",
-                                  error="Cloud session required for auto-execution. "
-                                        "Enable allow_local_execution in config for offline/dev mode.")
+                # No cloud session → auto-execution is not permitted.
+                # AI actions always require a cloud-signed batch; there is no
+                # local / offline bypass.
+                if self._cloud is None:
+                    err = "Cloud session required for auto-execution. Please sign in."
+                else:
+                    err = "Cloud signing service unavailable. Please retry later."
+                yield RunnerEvent("task_error", error=err)
                 return
 
             # ⑤ Post-execution: visual stability detection (delegated to ObservationTracker)
@@ -464,94 +485,6 @@ class Runner:
             history.append(build_tool_result_message(results))
             current_ss = obs.screenshot
 
-    # ── Action execution with safety ─────────────────────────────────────────
-
-    async def _execute_action(
-        self, action: Action, history: list[dict],
-    ) -> ActionResult:
-        """Execute one action through guardrails."""
-        # Internal tools (non-KVM) — bypass executor
-        if action.name in self._internal_tools:
-            try:
-                result = await self._internal_tools[action.name](action.input)
-                return ActionResult(
-                    tool_use_id=action.id, tool_name=action.name,
-                    input=action.input,
-                    status="error" if result.get("error") else "ok",
-                    error=result.get("error"),
-                )
-            except Exception as exc:
-                return ActionResult(
-                    tool_use_id=action.id, tool_name=action.name,
-                    input=action.input, status="error", error=str(exc),
-                )
-
-        action_dict = {"name": action.name, "args": action.input}
-        result = await self._executor.execute(action_dict)
-
-        if result.get("blocked"):
-            if result.get("confirm"):
-                loop = asyncio.get_running_loop()
-                self._confirm_future = loop.create_future()
-                self._pending_confirm_action = action_dict
-                return ActionResult(
-                    tool_use_id=action.id, tool_name=action.name,
-                    input=action.input, status="pending_confirm",
-                )
-            else:
-                return ActionResult(
-                    tool_use_id=action.id, tool_name=action.name,
-                    input=action.input, status="blocked",
-                    error=result.get("reason", "Blocked by guardrails"),
-                )
-
-        if result.get("status") == "error":
-            return ActionResult(
-                tool_use_id=action.id, tool_name=action.name,
-                input=action.input, status="error",
-                error=result.get("error", "unknown"),
-            )
-
-        return ActionResult(
-            tool_use_id=action.id, tool_name=action.name,
-            input=action.input, status="ok",
-        )
-
-    async def _finish_confirm(
-        self, action: Action, history: list[dict], timeout: float = 60,
-    ) -> ActionResult:
-        """Wait for user confirmation and execute or reject the action."""
-        try:
-            approved = await asyncio.wait_for(self._confirm_future, timeout=timeout)
-        except asyncio.TimeoutError:
-            log.info("[Runner] Confirm timed out after %.0fs", timeout)
-            approved = False
-
-        action_dict = self._pending_confirm_action
-
-        if approved:
-            history.append({
-                "role": "user",
-                "content": f"User approved dangerous action: {action.name}",
-            })
-            result = await self._executor.execute_force(action_dict)
-            return ActionResult(
-                tool_use_id=action.id, tool_name=action.name,
-                input=action.input,
-                status="ok" if result.get("status") == "ok" else "error",
-                error=result.get("error"),
-            )
-        else:
-            history.append({
-                "role": "user",
-                "content": f"User rejected dangerous action: {action.name}",
-            })
-            return ActionResult(
-                tool_use_id=action.id, tool_name=action.name,
-                input=action.input, status="rejected",
-                error="User rejected dangerous operation",
-            )
-
     # ── Helpers ──────────────────────────────────────────────────────────────
 
     def _with_context(self, instruction: str) -> str:
@@ -563,8 +496,3 @@ class Runner:
             prefix = "用户" if m["role"] == "user" else "AI"
             lines.append(f"{prefix}: {m['content'][:200]}")
         return f"对话上下文:\n" + "\n".join(lines) + f"\n\n当前指令: {instruction}"
-
-    def resolve_confirm(self, approved: bool) -> None:
-        """Called by server.py when user responds to confirmation."""
-        if self._confirm_future and not self._confirm_future.done():
-            self._confirm_future.set_result(approved)

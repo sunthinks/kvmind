@@ -33,22 +33,66 @@ class Guardrails:
 
     # Shell command patterns — these match COMMAND SYNTAX, not natural language.
     # Shell syntax is language-independent, so English regex is correct here.
+    #
+    # audit-r4 R4-SEC-08 — This list is a BLACKLIST and cannot be exhaustive.
+    # We accept that tradeoff because a full whitelist of shell commands
+    # would break legitimate KVM usage (users routinely have the AI type
+    # mundane commands like `ls`, `cat`, `git status`). To narrow the gap
+    # we expanded coverage to include:
+    #   - common obfuscation (base64 decode → sh, rev, eval, hex)
+    #   - sudo-escalated forms of the above
+    #   - shell substitution that could hide any of these ($(...), `...`)
+    # Anything confirmed-dangerous still flips to confirm=True so the human
+    # in the loop is the backstop.
     DANGEROUS_SHELL_PATTERNS = [
-        r"\brm\s+(-[rRfi]+\s+)*(/|~|\*)",    # rm -rf /
-        r"\brm\s+/",                           # rm /path
-        r"\bmkfs\b",                            # format filesystem
-        r"\bdd\s+if=",                          # disk dump
-        r"\b(shutdown|reboot|poweroff|halt)\b", # system power
-        r"\bsystemctl\s+(stop|disable|mask)\s+",# stop services
-        r"\b(kill|killall)\s+-9\b",             # force kill
-        r"\bchmod\s+(-R\s+)?0?777\b",          # chmod 777
-        r"\biptables\s+-F\b",                   # flush firewall
-        r">\s*/dev/sd[a-z]",                    # write to raw disk
-        r":(){.*};:",                            # fork bomb
-        r"\bcurl\b.*\|\s*(ba)?sh",                 # curl pipe to shell
-        r"\bwget\b.*\|\s*(ba)?sh",                 # wget pipe to shell
-        r"\bpasswd\b",                              # password change
-        r"\bcrontab\s+-[re]",                       # crontab remove/edit
+        # --- Direct destructive commands -----------------------------------
+        r"\brm\s+(-[rRfi]+\s+)*(/|~|\*)",           # rm -rf /
+        r"\brm\s+/",                                   # rm /path
+        r"\bmkfs\b",                                    # format filesystem
+        r"\bdd\s+if=",                                  # disk dump
+        r"\b(shutdown|reboot|poweroff|halt)\b",         # system power
+        r"\bsystemctl\s+(stop|disable|mask|kill)\s+",  # stop services
+        r"\b(kill|killall|pkill)\s+-9\b",              # force kill
+        r"\bchmod\s+(-R\s+)?0?777\b",                  # chmod 777
+        r"\biptables\s+-F\b",                           # flush firewall
+        r"\bufw\s+(disable|reset)\b",                   # firewall disable
+        r">\s*/dev/sd[a-z]",                            # write to raw disk
+        r">\s*/dev/[nz]vme",                            # NVMe raw disk
+        r":(){.*};:",                                    # fork bomb
+        r"\bpasswd\b",                                    # password change
+        r"\bcrontab\s+-[re]",                             # crontab remove/edit
+        r"\buserdel\b|\bgroupdel\b",                      # account deletion
+
+        # --- Remote-execution patterns -------------------------------------
+        r"\bcurl\b.*\|\s*(ba|z|k)?sh\b",                 # curl | sh / bash / zsh
+        r"\bwget\b.*\|\s*(ba|z|k)?sh\b",                 # wget | sh
+        r"\bnc\b\s+-[el]",                                # netcat listen/exec
+        r"\bfetch\b.*\|\s*sh\b",                          # BSD fetch | sh
+
+        # --- Obfuscation / decode-then-exec (audit-r4 R4-SEC-08) ----------
+        r"\bbase64\s+(-d|--decode)\b.*\|\s*(ba|z|k)?sh\b",
+        r"\bxxd\s+-r\b.*\|\s*(ba|z|k)?sh\b",
+        r"\brev\b.*\|\s*(ba|z|k)?sh\b",
+        r"\beval\s*[\"'\$\(]",                            # eval "$(...)"
+        r"\bexec\s+(ba|z|k)?sh\s*<",                       # exec bash < file
+        r"\bpython3?\s+-c\s+[\"'].*(os\.|subprocess|system).*[\"']",
+        r"\bperl\s+-e\s+[\"'].*(exec|system|open).*[\"']",
+
+        # --- Escalation-wrapped forms --------------------------------------
+        r"\bsudo\s+(rm|mkfs|dd|shutdown|reboot|poweroff|halt|chmod\s+0?777|userdel)\b",
+        r"\bsudo\s+(ba|z|k)?sh\b",                         # sudo sh -c ...
+        r"\bsudo\s+-[iEs]\b",                               # sudo -i / -E / -s
+        r"\bsu\s+-\s+root\b",                               # su - root
+
+        # --- Secret / credential exfiltration ------------------------------
+        r"\bcat\s+/etc/(shadow|sudoers|ssh/.*_key)\b",
+        r"\bcat\s+~?/\.ssh/id_(rsa|ed25519|ecdsa)\b",
+        r"\bcat\s+/root/\.bash_history\b",
+
+        # --- Command substitution that could hide any of the above --------
+        # Conservative: the substitution alone isn't blocked (too broad), but
+        # substitution containing a dangerous primitive inside is caught via
+        # the general patterns above because re.search scans the whole text.
     ]
 
     def __init__(self) -> None:

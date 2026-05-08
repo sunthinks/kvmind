@@ -29,6 +29,7 @@ class CloudSession:
         self.session_id: str | None = None
         self.prompt: str | None = None
         self.policy: dict = {}
+        self.response_format: dict = {}
 
     async def start(self, intent: str) -> bool:
         """Start cloud session. Returns True if session started."""
@@ -37,6 +38,7 @@ class CloudSession:
             self.session_id = result.session_id
             self.prompt = result.prompt
             self.policy = result.policy
+            self.response_format = result.response_format
             log.info("[CloudSession] Started: id=%s", self.session_id)
             return True
         return False

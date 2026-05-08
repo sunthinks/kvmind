@@ -100,12 +100,12 @@ class TestConfigLoadFromYAML:
 
     def test_load_legacy_pikvm_section(self, tmp_path):
         config_file = tmp_path / "config.yaml"
-        data = {"pikvm": {"host": "192.0.2.10", "port": 443}}
+        data = {"pikvm": {"host": "192.168.1.100", "port": 443}}
         config_file.write_text(yaml.dump(data))
 
         cfg = Config.load(str(config_file))
 
-        assert cfg.kvm.host == "192.0.2.10"
+        assert cfg.kvm.host == "192.168.1.100"
 
     def test_load_bridge_section(self, tmp_path):
         config_file = tmp_path / "config.yaml"
@@ -251,7 +251,11 @@ class TestProviderConfigValidation:
 
 class TestKnownProviders:
     def test_all_providers_have_required_fields(self):
-        required = {"base_url", "default_model", "models", "display_name"}
+        # "AI Model Catalog Principle" (config.py): device does not ship a
+        # model list. Fields `models` and `default_model` are intentionally
+        # absent — models are discovered at runtime from provider APIs.
+        required = {"base_url", "display_name", "config_key", "console_url",
+                    "models_endpoint", "models_id_path"}
         for name, cfg in KNOWN_PROVIDERS.items():
             for f in required:
                 assert f in cfg, f"Provider '{name}' missing field '{f}'"
@@ -259,10 +263,17 @@ class TestKnownProviders:
     def test_ollama_does_not_require_key(self):
         assert KNOWN_PROVIDERS["ollama"].get("requires_key") is False
 
-    def test_all_providers_have_models_list(self):
+    def test_no_provider_hardcodes_models(self):
+        # Enforce the catalog principle: models must never be shipped in-tree.
         for name, cfg in KNOWN_PROVIDERS.items():
-            assert isinstance(cfg["models"], list)
-            assert len(cfg["models"]) > 0
+            assert "models" not in cfg, (
+                f"Provider '{name}' must not hardcode a 'models' list — "
+                "model discovery is runtime-only"
+            )
+            assert "default_model" not in cfg, (
+                f"Provider '{name}' must not hardcode 'default_model' — "
+                "users pick the model at setup time"
+            )
 
 
 class TestDefaultValues:
@@ -290,10 +301,12 @@ class TestDefaultValues:
 
 
 class TestSubscriptionConfigDefaults:
-    def test_community_defaults(self):
+    def test_v1_seat_defaults(self):
         cfg = SubscriptionConfig()
 
-        assert cfg.plan == "community"
+        assert cfg.claim_state == "unclaimed"
+        assert cfg.entitlement_state == "local_free"
+        assert cfg.assigned_subscription_id is None
         assert cfg.myclaw_limit == 5
         assert cfg.myclaw_daily_limit == 20
         assert cfg.myclaw_max_action_level == 1
@@ -309,14 +322,19 @@ class TestSubscriptionConfigDefaults:
     def test_subscription_in_config(self):
         cfg = Config()
 
-        assert cfg.subscription.plan == "community"
+        # V1 Seat 模型: 默认 unclaimed + local_free
+        assert cfg.subscription.claim_state == "unclaimed"
+        assert cfg.subscription.entitlement_state == "local_free"
+        assert cfg.subscription.assigned_subscription_id is None
         assert cfg.subscription.myclaw_limit == 5
 
     def test_load_subscription_from_yaml(self, tmp_path):
         config_file = tmp_path / "config.yaml"
         data = {
             "subscription": {
-                "plan": "pro",
+                "claim_state": "claimed",
+                "entitlement_state": "paid",
+                "assigned_subscription_id": 42,
                 "myclaw_limit": -1,
                 "myclaw_daily_limit": -1,
                 "myclaw_max_action_level": 3,
@@ -336,7 +354,9 @@ class TestSubscriptionConfigDefaults:
         try:
             cfg = Config.load(str(config_file))
 
-            assert cfg.subscription.plan == "pro"
+            assert cfg.subscription.claim_state == "claimed"
+            assert cfg.subscription.entitlement_state == "paid"
+            assert cfg.subscription.assigned_subscription_id == 42
             assert cfg.subscription.myclaw_limit == -1
             assert cfg.subscription.myclaw_daily_limit == -1
             assert cfg.subscription.myclaw_max_action_level == 3

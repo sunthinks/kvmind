@@ -28,9 +28,19 @@ def register(app):
         return json_response(st.as_dict())
 
     async def h_wifi_connect(req: web.Request) -> web.Response:
-        body = await req.json()
-        result = await wifi.connect(body["ssid"], body.get("password", ""))
-        await audit.log("wifi_connect", {"ssid": body["ssid"], "success": result["success"]})
+        # audit-r4 R4-SEC-03: explicit 400 for missing/blank ssid instead of 500
+        try:
+            body = await req.json()
+        except Exception:
+            return json_response({"error": "invalid JSON body"}, status=400)
+        if not isinstance(body, dict):
+            return json_response({"error": "body must be an object"}, status=400)
+        ssid = (body.get("ssid") or "").strip()
+        if not ssid:
+            return json_response({"error": "ssid is required"}, status=400)
+        password = body.get("password", "") or ""
+        result = await wifi.connect(ssid, password)
+        await audit.log("wifi_connect", {"ssid": ssid, "success": result.get("success", False)})
         return json_response(result)
 
     async def h_wifi_disconnect(req: web.Request) -> web.Response:

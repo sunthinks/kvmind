@@ -1,0 +1,16 @@
+[Unit]
+# M3.4 — renamed from kvmind-updater.service.
+# M5 — script now includes Ed25519 manifest verify + per-device canary gate
+# (SHA256(uid+build) mod 100 < canary_percent) + post-restart self-check +
+# auto rollback of lib/web/bin from /tmp/kvmind-backup. See
+# dev/kdkvm/app/bin/kvmind-updater.sh for details.
+Description=KVMind OTA Update Check (kdkvm)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/kvmind/kdkvm/bin/kvmind-updater.sh
+TimeoutStartSec=600
+Environment=KVMIND_AUTO_UPDATE=0
+Environment=KVMIND_STATE_DB=/var/lib/kdkvm/state.json

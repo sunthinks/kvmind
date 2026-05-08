@@ -1,15 +1,14 @@
 """
 InnerClaw Runner v5 — Executor
 
-Dispatches validated actions to KVM device through Guardrails.
-execute()             — manual HID, guardrails only
-execute_signed_batch() — AI auto execution, requires cloud signature
+Dispatches cloud-signed action batches to the KVM device through Guardrails.
+execute_signed_batch() is the only AI auto-execution entry; a valid cloud
+signature is required to reach _dispatch().
 """
 from __future__ import annotations
 
 import asyncio
 import logging
-import time
 
 from .guardrails import Guardrails
 
@@ -18,7 +17,7 @@ log = logging.getLogger(__name__)
 
 class Executor:
     """
-    Execute actions on KVM device after passing Guardrails checks.
+    Execute cloud-signed action batches on the KVM device after Guardrails checks.
     """
 
     MAX_WAIT_SECONDS = 10.0
@@ -31,59 +30,22 @@ class Executor:
         self._gateway = gateway
         self._abort_event = abort_event
 
-    async def execute(self, action: dict) -> dict:
-        """
-        Execute a single action.
-        Returns {"status": "ok"} or {"blocked": True, ...} or {"status": "error", ...}.
-        """
-        # Guardrails check first
-        check = self._guardrails.check(action)
-        if check.get("blocked"):
-            return check
-
-        name = action.get("name", "")
-        args = action.get("args", {})
-
-        try:
-            await self._dispatch(name, args)
-            return {"status": "ok"}
-        except asyncio.CancelledError as e:
-            log.info("[Executor] Action %s aborted: %s", name, e)
-            await self._release_hid_if_needed(name)
-            raise
-        except Exception as e:
-            log.error("[Executor] Action %s failed: %s", name, e)
-            await self._release_hid_if_needed(name)
-            return {"status": "error", "error": str(e)}
-
-    async def execute_force(self, action: dict) -> dict:
-        """Execute without guardrails check (for user-confirmed dangerous actions)."""
-        name = action.get("name", "")
-        args = action.get("args", {})
-        try:
-            await self._dispatch(name, args)
-            return {"status": "ok"}
-        except asyncio.CancelledError:
-            await self._release_hid_if_needed(name)
-            raise
-        except Exception as e:
-            log.error("[Executor] Force action %s failed: %s", name, e)
-            await self._release_hid_if_needed(name)
-            return {"status": "error", "error": str(e)}
-
     async def execute_signed_batch(self, signed, device_uid: str, session_id: str) -> list:
-        """Unique AI execution entry — requires valid cloud signature."""
-        # P1-7: forward customer_id so the verifier can reconstruct the new payload
-        # layout. Legacy responses set customer_id=None; the verifier falls through
-        # to the old layout in that case during the 30-day migration window.
+        """Unique AI execution entry — requires valid cloud signature.
+
+        Freshness (SIGNATURE_MAX_AGE_SECONDS, currently 300s) is enforced
+        inside ``gateway.verify_signature`` alongside the Ed25519 check; a
+        stale timestamp returns False from the same call, so there is no
+        second time-window check here. Keeping two windows in sync turned
+        out to be a footgun — the executor had 60s while the gateway had
+        300s, causing false rejects when devices had small NTP skew.
+        """
         if not self._gateway or not self._gateway.verify_signature(
             signed.actions, signed.signature, device_uid, session_id,
             signed.timestamp, signed.nonce,
-            customer_id=getattr(signed, "customer_id", None),
+            customer_id=signed.customer_id,
         ):
             return [{"blocked": True, "reason": "Invalid signature"}]
-        if abs(time.time() - signed.timestamp) > 60:
-            return [{"blocked": True, "reason": "Expired signature"}]
 
         results = []
         for action in signed.actions:

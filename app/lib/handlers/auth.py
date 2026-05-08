@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
-import aiohttp
 from aiohttp import web
 
 from ..auth_manager import (
@@ -54,17 +52,18 @@ def register(app):
             await audit.log("login_failed", {"error": err})
             return json_response({"error": err}, 403)
 
-        # Check if forced password change is needed
+        # Fresh device — force the full setup wizard (WiFi + AI + password +
+        # activation). change-password.html only sets a password and bypasses
+        # the rest, which left users stuck with a changed password but no AI
+        # configured. Setup wizard calls /api/setup/complete (NO_AUTH_PATHS),
+        # so no session cookie is needed here. Keep status name for frontend
+        # backward compatibility — only the redirect URL changes.
         if needs_password_change():
-            # Create a short-lived session for the change-password page
-            token, ttl = create_session(user="pending_change", remember=False)
-            resp = json_response({
+            return json_response({
                 "status": "change_password",
-                "message": "password change required",
-                "redirect": "/change-password.html",
+                "message": "initial setup required",
+                "redirect": "/setup.html",
             })
-            resp.set_cookie(SESSION_COOKIE, token, max_age=600, httponly=True, secure=True, samesite="Lax", path="/")
-            return resp
 
         token, ttl = create_session(remember=remember)
         await audit.log("login_success", {"remember": remember})
@@ -169,45 +168,16 @@ def register(app):
         except Exception as e:
             log.warning("Password handling error: %s", e)
 
-        # Call kdcms activate API
-        activate_url = f"{cfg.bridge.backend_url}/api/devices/{uid}/activate"
-        # Read device token for authentication (same pattern as subscription_binder.py)
-        device_token = ""
-        try:
-            token_path = Path("/etc/kdkvm/device.token")
-            if token_path.exists():
-                device_token = token_path.read_text().strip()
-        except OSError:
-            pass
-
-        activation_status = "not_attempted"
-        if not device_token:
-            activation_status = "skipped_no_token"
-            log.warning("No device token found, skipping activation")
-        else:
-            activate_headers = {"X-Device-Token": device_token}
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.post(activate_url, headers=activate_headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                        if resp.status == 200:
-                            activation_status = "success"
-                            log.info("Device %s activated successfully", uid)
-                        elif resp.status in (401, 403):
-                            activation_status = "auth_failed"
-                            text = await resp.text()
-                            log.warning("Activate API auth failed (%s): %s", resp.status, text[:200])
-                        else:
-                            activation_status = "auth_failed"
-                            text = await resp.text()
-                            log.warning("Activate API returned %s: %s", resp.status, text[:200])
-            except Exception as e:
-                activation_status = "network_error"
-                log.warning("Activate request failed: %s", e)
-
+        # V6: device→online transition happens in the heartbeat loop, not
+        # here. PR#1 removed /api/devices/{uid}/activate — its job (flipping
+        # devices.is_online) is now a side effect of every signed heartbeat.
+        # Setup Complete is therefore just "install the admin password" —
+        # the frontend no longer gates on activationStatus anyway, we keep
+        # the field for one release so old setup.html bundles don't JS-error.
         return json_response({
             "status": "ok",
-            "activated": activation_status == "success",
-            "activationStatus": activation_status,
+            "activated": True,
+            "activationStatus": "not_required",
         })
 
     # ── Route registration ─────────────────────────────────────────────────

@@ -1,0 +1,67 @@
+[Unit]
+# M3.4 (plan §13 + §16) — replaces legacy kvmind.service + kvmind-heartbeat.*
+# + kvmind-register.*. Heartbeat now runs as an asyncio task inside this
+# same process; registration is user-driven via the Device Code Flow UI.
+Description=KVMind Device Bridge (kdkvm)
+Documentation=https://kvmind.com/docs
+After=network-online.target kvmd.service
+Wants=network-online.target kvmd.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/kvmind/kdkvm
+# PiKVM (and KVMind's other supported KVM bases) ship with `/` mounted
+# read-only by design (+ errors=remount-ro so kernel auto-ro on I/O err).
+# We do NOT remount `/` rw at service-start — that was a sledgehammer
+# approach that leaves the root partition writable indefinitely and
+# defeats PiKVM's crash-consistency protection.
+#
+# Instead, writes to state.json go through `lib.remount.remount_rw(path)`,
+# a reference-counted context manager that toggles rw just around the
+# write and restores ro on exit. 0.5.25 retired the SQLite state.db in
+# favour of an in-memory dict + atomic JSON file (lib/state_store.py);
+# remount_rw is now invoked only on actual value changes, so 95%+ of
+# heartbeat ticks do zero filesystem work.
+#
+# These two ExecStartPre remain harmless: mkdir -p on an existing dir is
+# a no-op (state.db's parent is created by install.sh while `/` is rw);
+# chmod 700 also is a no-op if perms already match. On first install.sh
+# run `/` is already rw and these succeed; on subsequent boots the dir
+# already exists and ro `/` isn't a problem.
+ExecStartPre=/bin/mkdir -p /var/lib/kdkvm /var/log/kdkvm /var/log/nginx
+ExecStartPre=/bin/chmod 700 /var/lib/kdkvm
+ExecStart=/opt/kvmind/kdkvm/venv/bin/python -m lib.server
+# 0.5.39 hotfix — kdkvm-cloudflared.service has Requires=kdkvm.service which
+# only propagates *stop*, not *start*. Any kdkvm restart (OTA, on-failure
+# self-heal, manual) leaves cloudflared dead with the tunnel hostname unable
+# to resolve at the Cloudflare edge (Error 1033). The heartbeat-driven
+# _restart_cloudflared() only fires on tunnel_token *change*, which doesn't
+# happen on a same-subscription restart. We poke it from systemd itself: this
+# runs after ExecStart launches lib.server, --no-block keeps kdkvm startup
+# unblocked, try-restart is a no-op when the unit isn't installed yet (fresh
+# install before activation), and the leading `-` makes failure non-fatal so
+# kdkvm comes up even when cloudflared can't (cloudflared is auxiliary; the
+# device's local web stays reachable on the LAN regardless).
+ExecStartPost=-/bin/systemctl --no-block try-restart kdkvm-cloudflared.service
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=kdkvm
+
+Environment=KVMIND_KVM_CONFIG=/etc/kdkvm/config.yaml
+Environment=KVMIND_STATE_DB=/var/lib/kdkvm/state.json
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/opt/kvmind/kdkvm
+
+MemoryMax=256M
+MemoryHigh=200M
+CPUQuota=80%
+TasksMax=64
+ProtectHome=no
+
+[Install]
+WantedBy=multi-user.target

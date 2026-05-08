@@ -1,229 +1,151 @@
-<p align="right">
-  <b>English</b> ·
-  <a href="README.zh-CN.md">简体中文</a> ·
-  <a href="README.ja.md">日本語</a>
-</p>
+# KVMind — AI-Powered Remote Server Management
 
-# KVMind Community Edition
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Platform](https://img.shields.io/badge/platform-PiKVM%20%7C%20BliKVM-lightgrey)](https://pikvm.org/)
 
-KVMind adds a natural-language AI assistant to your PiKVM device, letting you
-control remote servers through keyboard, mouse and screen analysis — all from
-a modern web console.
+KVMind adds an AI assistant (MyClaw) to PiKVM, enabling natural language control of remote servers via keyboard, mouse, and screen analysis.
 
-> This repository is the **Community Edition** — fully local, DIY-friendly,
-> Apache 2.0. For the managed **Cloud Edition** with auto-execution, remote
-> Tunnel, multi-device fleet and team collaboration, see
-> [kvmind.com](https://kvmind.com).
->
-> Project status: **beta**. Runs fully on-device; no cloud account required.
-
-## Highlights
-
-- **Drop-in for PiKVM** — installs alongside `kvmd` on PiKVM V3/V4 and PiKVM-OS
-  compatible boards (BliKVM v4 tested; NanoKVM planned).
-- **Bring your own AI** — works with Gemini, Claude, ChatGPT, Ollama, or any
-  OpenAI-compatible endpoint.
-- **Air-gapped friendly** — all configuration, credentials and chat history are
-  stored locally. No telemetry, no mandatory cloud backend.
-- **Safe tool execution** — dangerous operations (power, system commands) are
-  gated through confirmation and action-level policies.
-- **Modern console** — H.264 / MJPEG video, virtual keyboard, clipboard,
-  full-screen, dark/light themes, zh/ja/en i18n.
-
-## Community vs Cloud Edition
-
-Both editions share the same device-side core. The difference is where
-execution authority and fleet management live.
-
-| | Community (this repo) | [Cloud](https://kvmind.com) |
-|---|:---:|:---:|
-| Screen analysis & suggestions | ✅ | ✅ |
-| Bring your own AI key (Gemini / Claude / OpenAI / Ollama) | ✅ | ✅ |
-| Manual tool execution (with confirmation) | ✅ | ✅ |
-| Local chat history & memory | ✅ | ✅ |
-| Self-hosted, air-gapped friendly | ✅ | — |
-| Apache 2.0 source you can fork & modify | ✅ | — |
-| **Auto-execution (no manual confirm)** | — | ✅ |
-| **Signed & verified tool runs (MyClaw Cloud)** | — | ✅ |
-| **Remote access via managed Tunnel** | — | ✅ |
-| **Multi-device fleet dashboard** | — | ✅ |
-| **Scheduled tasks** | — | ✅ |
-| **Team access & role-based controls** | — | ✅ |
-| **Managed OTA updates** | — | ✅ |
-
-**Community Edition** is for tinkerers and self-hosters — modify anything,
-run fully offline, keep every byte on your own hardware.
-
-**Cloud Edition** is for production use — managed signing, fleet operations,
-automations and team workflows at [kvmind.com](https://kvmind.com).
+**License**: MIT — see [LICENSE](./LICENSE) for full text. Third-party dependency notices: see [NOTICES.md](./NOTICES.md).
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
-│ Browser (KVMind console)                    │
-│ kvmind-core.js · kvmind-stream.js           │
-│ kvmind-hid.js  · kvmind-session.js          │
-│ myclaw-sidebar.js · kvmind-theme.js         │
+│ Browser (KVMind Console + MyClaw Panel)     │
+│ ├── kvmind-core.js    (主逻辑・i18n・API)  │
+│ ├── kvmind-stream.js  (H.264/MJPEG 视频流)  │
+│ ├── kvmind-hid.js     (键鼠输入)            │
+│ ├── kvmind-session.js (PiKVM WS 会话)       │
+│ ├── myclaw-gateway.js (MyClaw WS 客户端)    │
+│ ├── myclaw-sidebar.js (侧栏 Chat/Tasks)     │
+│ └── kvmind-theme.js   (主题切换)            │
 └──────────────┬──────────────────────────────┘
                │ wss://<host>/kdkvm/ws/*
 ┌──────────────▼──────────────────────────────┐
-│ kvmd-nginx (TLS termination)                │
-│ /kvm/*        → KVMind console              │
-│ /kdkvm/api/*  → bridge API                  │
-│ /kdkvm/ws/*   → bridge WebSocket            │
-│ /api/*        → kvmd (PiKVM upstream)       │
+│ kvmd-nginx (TLS termination, port 443)      │
+│ ├── /kvm/*           → KVMind 控制台 UI     │
+│ ├── /login/          → 登录页               │
+│ ├── /setup.html      → 初始化向导           │
+│ ├── /kdkvm/api/*     → KVMind Bridge API    │
+│ ├── /kdkvm/ws/*      → KVMind Bridge WS     │
+│ ├── /api/*           → PiKVM kvmd API       │
+│ ├── /api/media/ws    → PiKVM H.264 流       │
+│ ├── /streamer/*      → PiKVM MJPEG 流       │
+│ └── /share/*         → PiKVM 静态资源       │
 └──────────────┬──────────────────────────────┘
                │
-┌──────────────▼──────────────────────────────┐
-│ KVMind Bridge (Python, 127.0.0.1:8765)      │
-│ server.py · config.py · auth_manager.py     │
-│ kvmind_client.py · model_router.py          │
-│ lib/kvm/      — hardware abstraction        │
-│ lib/innerclaw — tool executor & guardrails  │
-└──────────────┬──────────────────────────────┘
-               │
-┌──────────────▼──────────────────────────────┐
-│ PiKVM kvmd (HID, media, ATX)                │
-└─────────────────────────────────────────────┘
+  ┌────────────▼──────────────────────────────┐
+  │ KVMind Bridge (Python, port 8765)         │
+  │ ├── server.py        (HTTP/WS 服务)       │
+  │ ├── config.py        (配置 + KNOWN_PROVIDERS) │
+  │ ├── auth_manager.py  (设备认证)            │
+  │ ├── kvmind_client.py (AI 调用 + 阶段超时 + 记忆注入) │
+  │ ├── model_router.py  (顺序 fallback + 语义校验 + 兜底) │
+  │ ├── ai_provider.py   (OpenAI/Anthropic 适配) │
+  │ ├── ai_intents.py   (Fallback Prompt)     │
+  │ ├── memory_store.py  (长期记忆 SQLite)    │
+  │ ├── chat_store.py    (聊天持久化 SQLite)  │
+  │ ├── kvm/             (KVM 硬件抽象层)     │
+  │ └── innerclaw/       (InnerClaw v3 AI 执行引擎)     │
+  └────────────┬──────────────────────────────┘
+  ┌────────────▼────────┐
+  │ PiKVM (kvmd)        │
+  │ ├── HID (keyboard/  │
+  │ │   mouse control)   │
+  │ ├── Media (WebRTC/   │
+  │ │   H.264/MJPEG)     │
+  │ └── ATX (power)      │
+  └─────────────────────┘
 ```
 
-## Quick install
-
-**Option A — one-line install from kvmind.com (runs on the PiKVM device):**
+## Quick Install
 
 ```bash
-# Install / upgrade to the latest release:
+# One-line install (latest release):
 curl -sSL https://kvmind.com/install.sh | bash
 
 # Install a specific version:
-curl -sSL https://kvmind.com/install.sh | bash -s kdkvm-v0.2.21-beta.zip
+curl -sSL https://kvmind.com/install.sh | bash -s kdkvm-v0.5.61.zip
 
-# Full reset (wipes config, memory, auth, cloud binding) then install latest:
+# Reset to clean state (wipes config, memory, auth — keeps OS):
 curl -sSL https://kvmind.com/install.sh | bash -s reset
 
-# Full reset then install a specific version:
-curl -sSL https://kvmind.com/install.sh | bash -s reset kdkvm-v0.2.21-beta.zip
+# Reset and install a specific version:
+curl -sSL https://kvmind.com/install.sh | bash -s reset kdkvm-v0.5.61.zip
+
+# Then open: https://<device-ip>/setup.html
 ```
 
-**Option B — install from a downloaded zip:**
-
-```bash
-# Download the release zip from GitHub Releases, then on the device:
-unzip kdkvm-vX.Y.Z.zip && cd kdkvm-vX.Y.Z
-sudo ./install.sh
-```
-
-### Install parameters
+### Install Parameters
 
 | Parameter | Description |
 |-----------|-------------|
-| *(none)* | Install / upgrade to the latest release |
-| `kdkvm-vX.Y.Z-beta.zip` | Install a specific release version |
-| `--reset` | Full reset before install: wipes `/etc/kdkvm/` config, `/var/lib/kvmd/msd/.kdkvm/` data (memory, auth, chat), and unregisters the device from KVMind cloud. Use when re-deploying or troubleshooting a stuck state. **Destructive — existing cloud bindings become invalid.** |
-| `--reset kdkvm-vX.Y.Z-beta.zip` | Reset then install a specific version |
-
-Once the service is up, open `https://<device-ip>/kvm/` — the setup wizard at
-`/setup.html` will guide you through the initial password and AI provider
-configuration.
-
-> **About the installer**: `install.sh` is the batteries-included installer —
-> it configures the device for the full managed experience on
-> [kvmind.com](https://kvmind.com) (remote access, auto-execution, fleet
-> management). For a fully local / air-gapped install, edit
-> `/etc/kdkvm/config.yaml` after first boot and set `bridge.backend_url: ""`,
-> or fork this repository and build a custom installer with
-> `./release/build.sh`.
+| *(none)* | Install / upgrade to latest release |
+| `kdkvm-vX.Y.Z.zip` | Install a specific release version |
+| `--reset` | Full reset before install: removes `/etc/kdkvm/` config, `/var/lib/kvmd/msd/.kdkvm/` data (memory, auth, chat), and unregisters the device from KVMind cloud. Use when re-deploying or troubleshooting a stuck state. |
+| `--reset kdkvm-vX.Y.Z.zip` | Reset then install a specific version |
 
 ## Requirements
 
-- Hardware: PiKVM V3 / V4 or BliKVM v4 running PiKVM-OS (Arch Linux ARM)
-- `kvmd` service reachable on the device (default PiKVM layout)
-- An AI provider — one of:
-  - [Google AI Studio](https://aistudio.google.com/apikey) (Gemini)
-  - [Anthropic](https://console.anthropic.com/settings/keys) (Claude)
-  - [OpenAI](https://platform.openai.com/api-keys) (GPT-4o / 4.1 / o-series)
-  - [Ollama](https://ollama.com) or any other OpenAI-compatible endpoint
+- Supported hardware: PiKVM V3/V4, BliKVM v4 (PiKVM OS). NanoKVM is on the v0.4.x roadmap and **not yet implemented** — `install.sh` will refuse to run on NanoKVM hardware.
+- Device OS with KVM daemon running (kvmd or equivalent)
+- AI provider: Gemini / Claude / OpenAI API key, or Ollama / custom OpenAI-compatible endpoint
 
-## Layout on device
+## Files
 
-| Path | Purpose |
-|------|---------|
-| `/opt/kvmind/kdkvm/lib/` | Python backend (bridge) |
-| `/opt/kvmind/kdkvm/web/` | Frontend assets |
-| `/opt/kvmind/kdkvm/bin/` | Helper scripts |
-| `/etc/kdkvm/` | `config.yaml`, `ai.env`, `device.uid`, prompts |
-| `/var/lib/kvmd/msd/.kdkvm/` | Persistent store (`memory.db`, `auth.json`) on MSD partition |
+| Path | Description |
+|------|-------------|
+| /opt/kvmind/kdkvm/lib/ | Python backend modules |
+| /opt/kvmind/kdkvm/web/ | Frontend JS/HTML/CSS |
+| /opt/kvmind/kdkvm/bin/ | Shell scripts (register, heartbeat, tunnel) |
+| /etc/kdkvm/ | Configuration (config.yaml, ai.env, device.uid, tunnel.token, prompts/) |
+| /var/lib/kvmd/msd/.kdkvm/ | Persistent data (memory.db, auth.json) on MSD partition (hidden dir) |
 
-## Systemd services
+## Systemd Services
 
-| Unit | Purpose |
-|------|---------|
-| `kvmind.service` | KVMind bridge (Python, port 8765) |
-| `kvmind-register.timer` | Optional cloud registration (no-op if `backend_url` empty) |
-| `kvmind-heartbeat.timer` | Optional cloud heartbeat (no-op if `backend_url` empty) |
-| `kvmind-updater.timer` | Optional OTA updates (no-op unless `update_url` configured) |
-| `kvmind-tunnel.service` | Optional Cloudflare Tunnel (requires your own CF account) |
+| Service | Description |
+|---------|-------------|
+| kdkvm.service | kdkvm Bridge (Python, port 8765) — also drives heartbeat, registration and OTA as in-process asyncio tasks |
+| kdkvm-cloudflared.service | Cloudflare Tunnel (cloudflared, auto-managed) |
 
-All optional cloud services are disabled by default when `backend_url` /
-`update_url` are empty in `/etc/kdkvm/config.yaml`. KVMind is fully operational
-without them.
+> The earlier `kvmind-heartbeat.timer` / `kvmind-register.timer` / `kvmind-updater.timer` systemd units were retired in M3.4 / M5 §16 — those loops now live inside the bridge process (`lib/heartbeat.py`, `lib/ota.py`) so there is no shell-script / cron-style indirection left.
 
-## Configuration
+## Subscription & Tunnel Lifecycle
 
-A minimal `/etc/kdkvm/config.yaml`:
+```
+购买订阅（带 device_uid）
+  → Stripe webhook → 创建 Order + Subscription
+  → 绑定设备（device.customer_id + plan_id）
+  → 自动开通 Cloudflare Tunnel
+  → 心跳同步 → 设备启动 cloudflared
 
-```yaml
-kvm:
-  backend: pikvm
-  unix_socket: /run/kvmd/kvmd.sock
+取消订阅
+  → status: active → cancelling（服务继续到 endDate）
+  → 到期后定时任务：回收隧道 + status → expired
 
-ai:
-  gemini_key: "AIza..."       # or claude_key / openai_key
-  timeout: 120
-
-bridge:
-  host: 127.0.0.1
-  port: 8765
-  mode: suggest               # suggest | auto
-  # backend_url: ""           # leave empty for fully local operation
-  # update_url: ""            # leave empty to disable OTA
+设备心跳（每60秒）
+  → POST /api/devices/heartbeat → 返回 planType + tunnelToken + features
+  → heartbeat 直连 bridge 8765（POST http://127.0.0.1:8765/api/subscription/sync）
+  → Nginx 封堵外部 /kdkvm/api/subscription/sync（返回 403）
+  → tunnelToken / features 变化时自动启停 cloudflared、OTA、Telegram、MyClaw 限额和定时任务
 ```
 
-See `app/config.yaml.example` for all supported options.
+**关键路径**：所有配置文件路径统一为 `/etc/kdkvm/`（不是 `/etc/kvmind/`）
 
-## Building from source
+## Post-Install
 
-```bash
-./release/build.sh            # produces release/dist/kdkvm-vX.Y.Z.zip
-```
+1. Open setup wizard: `https://<pikvm-ip>/setup.html`
+2. Choose AI plan (free trial / subscription / custom API key)
+3. Set access password and complete initialization
+4. Open console: `https://<pikvm-ip>/kvm/`
 
-## Development
+## MyClaw Capabilities
 
-Tests run against the bridge in isolation:
-
-```bash
-cd app && python -m pytest tests/ -v
-```
-
-Code style, module boundaries and contribution guidelines are documented in
-[CODING_RULES.md](CODING_RULES.md).
-
-## Security
-
-- Bridge binds to `127.0.0.1` by default; all external access goes through
-  `kvmd-nginx` with TLS.
-- Device password is hashed at rest; no default credentials ship in the release.
-- API keys supplied via environment variables are never written back to disk
-  (`source: env` skip rule in `save_config`).
-- Report issues: https://github.com/sunthinks/kvmind/issues
-
-## License
-
-Apache License 2.0 — see [LICENSE](LICENSE).
-
----
-
-Want auto-execution, remote access, multi-device fleet and team collaboration?
-The managed KVMind Cloud Edition is available at
-[**kvmind.com**](https://kvmind.com).
+- **Screenshot & Analysis**: Captures remote screen, analyzes via AI Vision
+- **Keyboard/Mouse**: Sends keystrokes and mouse clicks via PiKVM HID API
+- **System Management**: Runs commands, checks services, manages storage
+- **Multi-Provider AI**: Gemini, Claude, ChatGPT, Ollama, or custom OpenAI-compatible
+- **Safe Local Models**: Local models that emit tool JSON as text are downgraded to suggest mode, not executed
+- **Long-term Memory**: Remembers user preferences and device info across sessions
+- **Natural Language**: Chinese, Japanese, English

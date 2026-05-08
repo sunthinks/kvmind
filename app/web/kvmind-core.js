@@ -16,24 +16,22 @@ window._escHtml=_escHtml; // expose for dashboard.html and other files
 // Standalone mode
 
 var KVMIND_API="/kdkvm";
-var wsConn=null,agentMode="suggest",panelOpen=true,logCount=0,currentSubscription={plan:"community",messaging:false};
+var wsConn=null,agentMode="suggest",panelOpen=true,logCount=0,currentSubscription={plan:"free",messaging:false};
 
-// ── i18n ──
-var KVMIND_I18N={
-zh:{snap:"\ud83d\udcf7 \u622a\u56fe",analyse:"\ud83d\udd0d \u5206\u6790",keyboard:"\u2328\ufe0f \u952e\u76d8",suggest:"\ud83d\udca1 \u5efa\u8bae",auto:"\u26a1 \u81ea\u52a8",terminal:"\ud83d\udda5 \u7ec8\u7aef",settings:"\u2699 KVM\u8bbe\u7f6e",power:"\u23fb \u7535\u6e90",myclaw:"\u2726 MyClaw",powerOn:"\ud83d\udfe2 \u5f00\u673a",powerOff:"\u26ab \u5173\u673a",restart:"\ud83d\udd04 \u91cd\u542f",forceOff:"\u26a0\ufe0f \u5f3a\u5236\u65ad\u7535",connected:"KVM \u5df2\u8fde\u63a5",disconnected:"\u8fde\u63a5\u65ad\u5f00",aiWorking:"MyClaw \u6267\u884c\u4e2d\u2026",abort:"\u4e2d\u65ad",pmSuggest:"\u5efa\u8bae",pmAuto:"\u81ea\u52a8",qAnalyse:"\u5206\u6790\u5f53\u524d\u72b6\u6001",qError:"\u8fd9\u4e2a\u62a5\u9519\u662f\u4ec0\u4e48",qTerminal:"\u6253\u5f00\u7ec8\u7aef",qRestart:"\u91cd\u542f\u670d\u52a1",qDisk:"\u68c0\u67e5\u78c1\u76d8\u7a7a\u95f4",chatPH:"\u8f93\u5165\u6307\u4ee4\uff0c\u4f8b\u5982\uff1a\n\u2022 \u5e2e\u6211\u5b89\u88c5 nginx \u5e76\u914d\u7f6e\n\u2022 \u8fd9\u4e2a\u62a5\u9519\u600e\u4e48\u4fee\uff1f\n\u2022 \u68c0\u67e5\u78c1\u76d8\u4f7f\u7528\u60c5\u51b5",kbPH:"\u8f93\u5165\u6587\u5b57\u53d1\u9001\u81f3\u8fdc\u7a0b\u4e3b\u673a (Enter\u53d1\u9001 \u00b7 Esc\u5173\u95ed)",sendHint:"Ctrl+\u21a9 \u53d1\u9001",clawReady:"MyClaw AI Ready",clawTry:"\u8bd5\u8bd5\u8bf4\uff1a",clawEx1:"\u300c\u5e2e\u6211\u68c0\u67e5\u670d\u52a1\u5668\u72b6\u6001\u300d",clawEx2:"\u300c\u8fd9\u4e2a\u753b\u9762\u6709\u4ec0\u4e48\u95ee\u9898\uff1f\u300d",clawEx3:"\u300c\u81ea\u52a8\u5e2e\u6211\u5b89\u88c5 nginx\u300d",welcomeHint:"\ud83d\udcf7 \u70b9\u51fb\u622a\u56fe\uff0cMyClaw \u5373\u53ef\u770b\u5230\u5f53\u524d\u753b\u9762\u5e76\u5f00\u59cb\u5de5\u4f5c",kbHint:"Ctrl+A \u00b7 Ctrl+C \u00b7 Ctrl+V",send:"\u25b6 \u53d1\u9001",logout:"\u9000\u51fa",sysTitle:"System & Stream",kbTitle:"\u952e\u76d8\u5e03\u5c40 & \u6587\u5b57\u8f93\u5165",umProfile:"\ud83d\udcbb \u8bbe\u5907\u4fe1\u606f",umChangePw:"\ud83d\udd12 \u4fee\u6539\u5bc6\u7801",umDashboard:"\ud83d\udcca \u4eea\u8868\u76d8",umProfileUpdate:"\ud83d\udcbb \u8bbe\u5907\u4fe1\u606f \u00b7 \u2b06\ufe0f \u6709\u66f4\u65b0",updateAvailable:"\u6709\u65b0\u7248\u672c\u53ef\u7528",pfFirmware:"\u56fa\u4ef6\u7248\u672c",updateNewVer:"\u53d1\u73b0\u65b0\u7248\u672c",updateBtn:"\u7acb\u5373\u66f4\u65b0",updateInstalling:"\u6b63\u5728\u66f4\u65b0\u2026",updateStarted:"\u66f4\u65b0\u5df2\u542f\u52a8",updateWait:"\u66f4\u65b0\u4e2d\uff0c\u8bf7\u7a0d\u5019",updateDone:"\u2705 \u66f4\u65b0\u5b8c\u6210\uff0c\u5373\u5c06\u5237\u65b0",updateFailed:"\u274c \u66f4\u65b0\u5931\u8d25",umUpgrade:"\u26a1 \u5347\u7ea7\u8ba2\u9605",umSubscription:"\ud83d\udccb \u8ba2\u9605\u4fe1\u606f",umTheme:"\ud83c\udf19 \u4e3b\u9898",umLang:"\ud83c\udf10 \u8bed\u8a00",umLogout:"\ud83d\udeaa \u9000\u51fa\u767b\u5f55",upgradeAutoTitle:"\u81ea\u52a8\u6a21\u5f0f\u9700\u8981\u5347\u7ea7",upgradeAutoDesc:"\u81ea\u52a8\u6267\u884c\u6a21\u5f0f\u9700\u8981 Standard \u6216 Pro \u8ba2\u9605\u8ba1\u5212\u3002",upgradeAutoBtn:"\u7acb\u5373\u5347\u7ea7 \u2192",copy:"\ud83d\udccb \u590d\u5236",copyTitle:"\u5c4f\u5e55\u6587\u5b57",copyExtracting:"\u6b63\u5728\u63d0\u53d6\u5c4f\u5e55\u6587\u5b57\u2026",copyToClipboard:"\u590d\u5236\u5230\u526a\u8d34\u677f",copyCopied:"\u2705 \u5df2\u590d\u5236",copyFailed:"\u63d0\u53d6\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5",wsReconnecting:"\u8fde\u63a5\u5df2\u65ad\u5f00\uff0c\u6b63\u5728\u91cd\u8fde\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002\u82e5\u957f\u65f6\u95f4\u4e0d\u6062\u590d\uff0c\u8bf7\u5237\u65b0\u9875\u9762\u3002"},
-ja:{snap:"\ud83d\udcf7 \u30b9\u30ca\u30c3\u30d7",analyse:"\ud83d\udd0d \u5206\u6790",keyboard:"\u2328\ufe0f \u30ad\u30fc\u30dc\u30fc\u30c9",suggest:"\ud83d\udca1 \u63d0\u6848",auto:"\u26a1 \u81ea\u52d5",terminal:"\ud83d\udda5 \u30bf\u30fc\u30df\u30ca\u30eb",settings:"\u2699 KVM\u8a2d\u5b9a",power:"\u23fb \u96fb\u6e90",myclaw:"\u2726 MyClaw",powerOn:"\ud83d\udfe2 \u96fb\u6e90ON",powerOff:"\u26ab \u96fb\u6e90OFF",restart:"\ud83d\udd04 \u518d\u8d77\u52d5",forceOff:"\u26a0\ufe0f \u5f37\u5236OFF",connected:"KVM \u63a5\u7d9a\u6e08\u307f",disconnected:"\u5207\u65ad",aiWorking:"MyClaw \u5b9f\u884c\u4e2d\u2026",abort:"\u4e2d\u65ad",pmSuggest:"\u63d0\u6848",pmAuto:"\u81ea\u52d5",qAnalyse:"\u73fe\u5728\u306e\u72b6\u614b\u3092\u5206\u6790",qError:"\u3053\u306e\u30a8\u30e9\u30fc\u306f\u4f55\uff1f",qTerminal:"\u30bf\u30fc\u30df\u30ca\u30eb\u3092\u958b\u304f",qRestart:"\u30b5\u30fc\u30d3\u30b9\u3092\u518d\u8d77\u52d5",qDisk:"\u30c7\u30a3\u30b9\u30af\u5bb9\u91cf\u3092\u78ba\u8a8d",chatPH:"\u30b3\u30de\u30f3\u30c9\u3092\u5165\u529b\u2026",kbPH:"\u30ea\u30e2\u30fc\u30c8\u30db\u30b9\u30c8\u306b\u30c6\u30ad\u30b9\u30c8\u9001\u4fe1 (Enter\u9001\u4fe1 \u00b7 Esc\u9589\u3058\u308b)",sendHint:"Ctrl+\u21a9 \u9001\u4fe1",clawReady:"MyClaw AI Ready",clawTry:"\u8a66\u3057\u3066\u307f\u3066\u304f\u3060\u3055\u3044\uff1a",clawEx1:"\u300c\u30b5\u30fc\u30d0\u30fc\u306e\u72b6\u614b\u3092\u78ba\u8a8d\u3057\u3066\u300d",clawEx2:"\u300c\u3053\u306e\u753b\u9762\u306b\u554f\u984c\u306f\uff1f\u300d",clawEx3:"\u300cnginx \u3092\u81ea\u52d5\u30a4\u30f3\u30b9\u30c8\u30fc\u30eb\u300d",welcomeHint:"\ud83d\udcf7 \u30b9\u30af\u30ea\u30fc\u30f3\u30b7\u30e7\u30c3\u30c8\u3092\u30af\u30ea\u30c3\u30af",kbHint:"Ctrl+A \u00b7 Ctrl+C \u00b7 Ctrl+V",send:"\u25b6 \u9001\u4fe1",logout:"\u30ed\u30b0\u30a2\u30a6\u30c8",sysTitle:"System & Stream",kbTitle:"\u30ad\u30fc\u30dc\u30fc\u30c9 & \u30c6\u30ad\u30b9\u30c8\u5165\u529b",umProfile:"\ud83d\udcbb \u30c7\u30d0\u30a4\u30b9\u60c5\u5831",umChangePw:"\ud83d\udd12 \u30d1\u30b9\u30ef\u30fc\u30c9\u5909\u66f4",umDashboard:"\ud83d\udcca \u30c0\u30c3\u30b7\u30e5\u30dc\u30fc\u30c9",umProfileUpdate:"\ud83d\udcbb \u30c7\u30d0\u30a4\u30b9\u60c5\u5831 \u00b7 \u2b06\ufe0f \u66f4\u65b0\u3042\u308a",updateAvailable:"\u30a2\u30c3\u30d7\u30c7\u30fc\u30c8\u304c\u3042\u308a\u307e\u3059",pfFirmware:"\u30d5\u30a1\u30fc\u30e0\u30a6\u30a7\u30a2",updateNewVer:"\u65b0\u30d0\u30fc\u30b8\u30e7\u30f3\u304c\u3042\u308a\u307e\u3059",updateBtn:"\u4eca\u3059\u3050\u66f4\u65b0",updateInstalling:"\u66f4\u65b0\u4e2d\u2026",updateStarted:"\u66f4\u65b0\u958b\u59cb",updateWait:"\u66f4\u65b0\u4e2d\u3001\u304a\u5f85\u3061\u304f\u3060\u3055\u3044",updateDone:"\u2705 \u66f4\u65b0\u5b8c\u4e86\u3001\u30ea\u30ed\u30fc\u30c9\u3057\u307e\u3059",updateFailed:"\u274c \u66f4\u65b0\u5931\u6557",umUpgrade:"\u26a1 \u30d7\u30e9\u30f3\u5347\u7d1a",umSubscription:"\ud83d\udccb \u30b5\u30d6\u30b9\u30af\u60c5\u5831",umTheme:"\ud83c\udf19 \u30c6\u30fc\u30de",umLang:"\ud83c\udf10 \u8a00\u8a9e",umLogout:"\ud83d\udeaa \u30ed\u30b0\u30a2\u30a6\u30c8",upgradeAutoTitle:"\u81ea\u52d5\u30e2\u30fc\u30c9\u306b\u306f\u30a2\u30c3\u30d7\u30b0\u30ec\u30fc\u30c9\u304c\u5fc5\u8981",upgradeAutoDesc:"\u81ea\u52d5\u5b9f\u884c\u30e2\u30fc\u30c9\u306b\u306f Standard \u307e\u305f\u306f Pro \u30d7\u30e9\u30f3\u304c\u5fc5\u8981\u3067\u3059\u3002",upgradeAutoBtn:"\u30a2\u30c3\u30d7\u30b0\u30ec\u30fc\u30c9 \u2192",copy:"\ud83d\udccb \u30b3\u30d4\u30fc",copyTitle:"\u753b\u9762\u30c6\u30ad\u30b9\u30c8",copyExtracting:"\u30c6\u30ad\u30b9\u30c8\u62bd\u51fa\u4e2d\u2026",copyToClipboard:"\u30af\u30ea\u30c3\u30d7\u30dc\u30fc\u30c9\u306b\u30b3\u30d4\u30fc",copyCopied:"\u2705 \u30b3\u30d4\u30fc\u3057\u307e\u3057\u305f",copyFailed:"\u62bd\u51fa\u306b\u5931\u6557\u3057\u307e\u3057\u305f",wsReconnecting:"\u63a5\u7d9a\u304c\u5207\u308c\u307e\u3057\u305f\u3002\u518d\u63a5\u7d9a\u4e2d\u3067\u3059\u3002\u5c11\u3057\u5f85\u3063\u3066\u3082\u3046\u4e00\u5ea6\u304a\u8a66\u3057\u304f\u3060\u3055\u3044\u3002\u6539\u5584\u3057\u306a\u3044\u5834\u5408\u306f\u30da\u30fc\u30b8\u3092\u66f4\u65b0\u3057\u3066\u304f\u3060\u3055\u3044\u3002"},
-en:{snap:"\ud83d\udcf7 Snap",analyse:"\ud83d\udd0d Analyse",keyboard:"\u2328\ufe0f Keyboard",suggest:"\ud83d\udca1 Suggest",auto:"\u26a1 Auto",terminal:"\ud83d\udda5 Terminal",settings:"\u2699 KVM Settings",power:"\u23fb Power",myclaw:"\u2726 MyClaw",powerOn:"\ud83d\udfe2 Power On",powerOff:"\u26ab Power Off",restart:"\ud83d\udd04 Restart",forceOff:"\u26a0\ufe0f Force Off",connected:"KVM Connected",disconnected:"Disconnected",aiWorking:"MyClaw working\u2026",abort:"Abort",pmSuggest:"Suggest",pmAuto:"Auto",qAnalyse:"Analyze status",qError:"What's this error",qTerminal:"Open terminal",qRestart:"Restart service",qDisk:"Check disk space",chatPH:"Enter command, e.g.:\n\u2022 Install and configure nginx\n\u2022 How to fix this error?\n\u2022 Check disk usage",kbPH:"Type text to send (Enter send \u00b7 Esc close)",sendHint:"Ctrl+\u21a9 Send",clawReady:"MyClaw AI Ready",clawTry:"Try saying:",clawEx1:"\u201cCheck my server status\u201d",clawEx2:"\u201cWhat\u2019s wrong with this screen?\u201d",clawEx3:"\u201cAuto-install nginx for me\u201d",welcomeHint:"\ud83d\udcf7 Click screenshot to start",kbHint:"Ctrl+A \u00b7 Ctrl+C \u00b7 Ctrl+V",send:"\u25b6 Send",logout:"Logout",sysTitle:"System & Stream",kbTitle:"Keyboard & Text Input",umProfile:"\ud83d\udcbb Device Info",umChangePw:"\ud83d\udd12 Change Password",umDashboard:"\ud83d\udcca Dashboard",umProfileUpdate:"\ud83d\udcbb Device Info \u00b7 \u2b06\ufe0f Update",updateAvailable:"Update available",pfFirmware:"Firmware",updateNewVer:"New version available",updateBtn:"Update Now",updateInstalling:"Updating\u2026",updateStarted:"Update started",updateWait:"Updating, please wait",updateDone:"\u2705 Update complete, reloading",updateFailed:"\u274c Update failed",umUpgrade:"\u26a1 Upgrade",umSubscription:"\ud83d\udccb Subscription",umTheme:"\ud83c\udf19 Theme",umLang:"\ud83c\udf10 Language",umLogout:"\ud83d\udeaa Logout",upgradeAutoTitle:"Auto mode requires upgrade",upgradeAutoDesc:"Auto execution mode requires a Standard or Pro subscription.",upgradeAutoBtn:"Upgrade now \u2192",copy:"\ud83d\udccb Copy",copyTitle:"Screen Text",copyExtracting:"Extracting text\u2026",copyToClipboard:"Copy to Clipboard",copyCopied:"\u2705 Copied!",copyFailed:"Extraction failed, please retry",wsReconnecting:"Connection lost \u2014 reconnecting. Please try again in a moment; if it keeps failing, refresh the page."}
-};
-function kvmindGetLang(){return localStorage.getItem("kvmind_lang")||"zh";}
-function kvmindT(k){var l=kvmindGetLang();return(KVMIND_I18N[l]&&KVMIND_I18N[l][k])||(KVMIND_I18N.zh[k])||k;}
+// ── i18n：本文件是注入到 PiKVM 控制台 /kvm/index.html 的 overlay，所以 i18n
+//    命名空间名字叫 "kvm"；i18n 字典本身仍由 /kdkvm/kvmind-i18n.js 提供（KVMind
+//    自己的资源全部在 /kdkvm/ 下，不部署到 /kvm/ 路径）。──
+if(window.KVMindI18n&&window.KVMindI18n.init){try{window.KVMindI18n.init("kvm");}catch(e){}}
+function kvmindGetLang(){return (window.KVMindI18n && window.KVMindI18n.getLang()) || "zh";}
+function kvmindT(k){return (window.KVMindI18n && window.KVMindI18n.t(k, null, "kvm")) || k;}
 function kvmindApplyLang(){
 var t=kvmindT;
 var map={"kvmind-btn-snap":"snap","kvmind-btn-analyse":"analyse","kvmind-btn-copy":"copy","kvmind-btn-kb":"keyboard","kvmind-btn-term":"terminal","kvmind-btn-settings":"settings","kvmind-btn-power":"power","kvmind-btn-panel":"myclaw","kvmind-pm-suggest":"pmSuggest","kvmind-pm-auto":"pmAuto","kvmind-abort-mini":"abort","kvmind-char-hint":"sendHint","kvmind-send-btn":"send","kvmind-um-profile":"umProfile","kvmind-um-changepw":"umChangePw","kvmind-claw-ready":"clawReady","kvmind-claw-try":"clawTry","kvmind-claw-ex1":"clawEx1","kvmind-claw-ex2":"clawEx2","kvmind-claw-ex3":"clawEx3","kvmind-um-dashboard-text":"umDashboard","kvmind-um-theme-label":"umTheme","kvmind-um-lang-label":"umLang","kvmind-um-logout":"umLogout"};
 for(var id in map){var el=document.getElementById(id);if(el)el.textContent=t(map[id]);}
-// Update plan-dependent text (upgrade/subscription button + badge)
+// Update entitlement-dependent text (upgrade/subscription button + badge)
 var _planBtn=document.getElementById("kvmind-btn-upgrade");
 var _planText=document.getElementById("kvmind-um-upgrade-text");
-if(currentSubscription.plan!=="community"){
+if(currentSubscription.paid){
 if(_planBtn)_planBtn.textContent=t("umSubscription");
 if(_planText)_planText.textContent=t("umSubscription");
 }else{
@@ -60,23 +58,18 @@ if(el.textContent.match(/Keyboard|Text|键盘|キーボード/i))el.textContent=
 }
 
 
-var KVMIND_KVM_I18N={
-zh:{"Runtime settings & tools":"\u8fd0\u884c\u65f6\u8bbe\u7f6e\u4e0e\u5de5\u5177","Resolution:":"\u5206\u8fa8\u7387:","JPEG quality:":"JPEG \u8d28\u91cf:","JPEG max fps:":"JPEG \u6700\u5927\u5e27\u7387:","H.264 kbps:":"H.264 kbps:","H.264 gop:":"H.264 gop:","Video mode":"\u89c6\u9891\u6a21\u5f0f","Orientation:":"\u65b9\u5411:","Default":"\u9ed8\u8ba4","Audio volume:":"\u97f3\u91cf:","Microphone:":"\u9ea6\u514b\u98ce:","Show stream":"\u663e\u793a\u89c6\u9891\u6d41","Screenshot":"\u622a\u56fe","Reset stream":"\u91cd\u7f6e\u89c6\u9891\u6d41","Keyboard mode:":"\u952e\u76d8\u6a21\u5f0f:","Mouse mode":"\u9f20\u6807\u6a21\u5f0f","Keyboard & mouse (HID) settings":"\u952e\u76d8\u4e0e\u9f20\u6807 (HID) \u8bbe\u7f6e","Swap Left Ctrl and Caps keys:":"\u4ea4\u6362\u5de6Ctrl\u548cCaps\u952e:","Mouse polling:":"\u9f20\u6807\u8f6e\u8be2\u7387:","Relative sensitivity:":"\u76f8\u5bf9\u7075\u654f\u5ea6:","Squash relative moves:":"\u538b\u7f29\u76f8\u5bf9\u79fb\u52a8:","Reverse scrolling:":"\u53cd\u5411\u6eda\u52a8:","Cumulative scrolling:":"\u7d2f\u79ef\u6eda\u52a8:","Scroll rate:":"\u6eda\u52a8\u901f\u7387:","Show the blue dot:":"\u663e\u793a\u84dd\u8272\u5149\u6807\u70b9:","Show local cursor:":"\u663e\u793a\u672c\u5730\u5149\u6807:","Web UI settings":"Web UI \u8bbe\u7f6e","Ask page close confirmation:":"\u5173\u95ed\u9875\u9762\u65f6\u786e\u8ba4:","Expand for the entire tab by default:":"\u9ed8\u8ba4\u5168\u5c4f\u5c55\u5f00:","Bad link mode (release keys immediately):":"\u5f31\u8fde\u63a5\u6a21\u5f0f(\u7acb\u5373\u91ca\u653e\u6309\u952e):","Connect HID to Server:":"HID\u8fde\u63a5\u670d\u52a1\u5668:","Mouse jiggler":"\u9f20\u6807\u9632\u7761","Mute all input HID events:":"\u9759\u97f3\u6240\u6709HID\u8f93\u5165:","Connect main USB to Server:":"\u4e3bUSB\u8fde\u63a5\u670d\u52a1\u5668:","Enable locator LED:":"\u542f\u7528\u5b9a\u4f4d LED:","Reset HID":"\u91cd\u7f6eHID","Show keyboard":"\u663e\u793a\u952e\u76d8","Paste text as keypress sequence":"\u7c98\u8d34\u6587\u5b57\u4e3a\u6309\u952e\u5e8f\u5217","Please note that KVMind cannot switch the keyboard layout":"\u6ce8\u610f: KVMind \u65e0\u6cd5\u5207\u6362\u952e\u76d8\u5e03\u5c40","Slow typing:":"\u6162\u901f\u8f93\u5165:","Hide input text:":"\u9690\u85cf\u8f93\u5165\u6587\u5b57:","Ask paste confirmation:":"\u7c98\u8d34\u65f6\u786e\u8ba4:","using host keymap":"\u4f7f\u7528\u4e3b\u673a\u952e\u4f4d\u6620\u5c04",
-"Video Settings":"\u89c6\u9891\u8bbe\u7f6e","Stream mode:":"\u6d41\u6a21\u5f0f:","sm-auto":"\u81ea\u52a8","sm-webrtc":"WebRTC","sm-h264":"H.264","sm-mjpeg":"MJPEG","Audio volume:":"\u97f3\u91cf:","audio-hint":"HDMI \u97f3\u9891\u4ec5\u5728 WebRTC \u6a21\u5f0f\u4e0b\u53ef\u7528","Codec:":"\u7f16\u7801:","H.264 kbps:":"H.264 kbps:","H.264 gop:":"H.264 gop:","\ud83c\udfac Video":"\ud83c\udfac \u89c6\u9891","Mouse Settings":"\u9f20\u6807\u8bbe\u7f6e","Cursor style:":"\u5149\u6807\u6837\u5f0f:","cs-none":"\u9690\u85cf","cs-blue-dot":"\u84dd\u70b9","cs-crosshair":"\u5341\u5b57","cs-default":"\u7bad\u5934","cs-pointer":"\u624b\u578b","Mouse mode:":"\u9f20\u6807\u6a21\u5f0f:","mm-absolute":"\u7edd\u5bf9","mm-relative":"\u76f8\u5bf9","Reverse scroll:":"\u53cd\u5411\u6eda\u52a8:","Scroll speed:":"\u6eda\u52a8\u901f\u5ea6:","Sensitivity:":"\u7075\u654f\u5ea6:","Move squash:":"\u79fb\u52a8\u538b\u7f29:","Squash rate:":"\u538b\u7f29\u95f4\u9694:","Actions":"\u64cd\u4f5c","Reset Stream":"\u91cd\u7f6e\u89c6\u9891\u6d41","View Log":"\u67e5\u770b\u65e5\u5fd7","\ud83d\uddb1 Mouse":"\ud83d\uddb1 \u9f20\u6807","\u2699 Actions":"\u2699 \u64cd\u4f5c","\u2328 HID":"\u2328 HID","Keyboard layout:":"\u952e\u76d8\u5e03\u5c40:"},
-ja:{"Runtime settings & tools":"\u30e9\u30f3\u30bf\u30a4\u30e0\u8a2d\u5b9a\u3068\u30c4\u30fc\u30eb","Resolution:":"\u89e3\u50cf\u5ea6:","JPEG quality:":"JPEG \u54c1\u8cea:","JPEG max fps:":"JPEG \u6700\u5927fps:","H.264 kbps:":"H.264 kbps:","H.264 gop:":"H.264 gop:","Video mode":"\u30d3\u30c7\u30aa\u30e2\u30fc\u30c9","Orientation:":"\u5411\u304d:","Default":"\u30c7\u30d5\u30a9\u30eb\u30c8","Audio volume:":"\u97f3\u91cf:","Microphone:":"\u30de\u30a4\u30af:","Show stream":"\u30b9\u30c8\u30ea\u30fc\u30e0\u8868\u793a","Screenshot":"\u30b9\u30af\u30ea\u30fc\u30f3\u30b7\u30e7\u30c3\u30c8","Reset stream":"\u30b9\u30c8\u30ea\u30fc\u30e0\u30ea\u30bb\u30c3\u30c8","Keyboard mode:":"\u30ad\u30fc\u30dc\u30fc\u30c9\u30e2\u30fc\u30c9:","Mouse mode":"\u30de\u30a6\u30b9\u30e2\u30fc\u30c9","Keyboard & mouse (HID) settings":"\u30ad\u30fc\u30dc\u30fc\u30c9\u3068\u30de\u30a6\u30b9 (HID) \u8a2d\u5b9a","Swap Left Ctrl and Caps keys":"\u5de6Ctrl\u3068Caps\u3092\u5165\u308c\u66ff\u3048:","Mouse polling:":"\u30de\u30a6\u30b9\u30dd\u30fc\u30ea\u30f3\u30b0:","Relative sensitivity:":"\u76f8\u5bfe\u611f\u5ea6:","Squash relative moves:":"\u76f8\u5bfe\u79fb\u52d5\u3092\u5727\u7e2e:","Reverse scrolling:":"\u30b9\u30af\u30ed\u30fc\u30eb\u53cd\u8ee2:","Cumulative scrolling:":"\u7d2f\u7a4d\u30b9\u30af\u30ed\u30fc\u30eb:","Scroll rate:":"\u30b9\u30af\u30ed\u30fc\u30eb\u901f\u5ea6:","Show the blue dot:":"\u9752\u3044\u30c9\u30c3\u30c8\u3092\u8868\u793a:","Show local cursor:":"\u30ed\u30fc\u30ab\u30eb\u30ab\u30fc\u30bd\u30eb\u8868\u793a:","Web UI settings":"Web UI \u8a2d\u5b9a","Ask page close confirmation:":"\u30da\u30fc\u30b8\u9589\u3058\u308b\u6642\u306b\u78ba\u8a8d:","Expand for the entire tab by default:":"\u30c7\u30d5\u30a9\u30eb\u30c8\u3067\u5168\u753b\u9762:","Bad link mode (release keys immediately):":"\u4e0d\u5b89\u5b9a\u63a5\u7d9a\u30e2\u30fc\u30c9:","Connect HID to Server:":"HID\u3092\u30b5\u30fc\u30d0\u30fc\u306b\u63a5\u7d9a:","Mouse jiggler":"\u30de\u30a6\u30b9\u30b8\u30b0\u30e9\u30fc","Mute all input HID events:":"\u5168HID\u5165\u529b\u3092\u30df\u30e5\u30fc\u30c8:","Connect main USB to Server:":"\u30e1\u30a4\u30f3USB\u3092\u30b5\u30fc\u30d0\u30fc\u306b\u63a5\u7d9a:","Enable locator LED:":"\u30ed\u30b1\u30fc\u30bf\u30fcLED:","Reset HID":"HID\u30ea\u30bb\u30c3\u30c8","Show keyboard":"\u30ad\u30fc\u30dc\u30fc\u30c9\u8868\u793a","Paste text as keypress sequence":"\u30c6\u30ad\u30b9\u30c8\u3092\u30ad\u30fc\u5165\u529b\u3068\u3057\u3066\u8cbc\u308a\u4ed8\u3051","Please note that KVMind cannot switch the keyboard layout":"KVMind\u306f\u30ad\u30fc\u30dc\u30fc\u30c9\u30ec\u30a4\u30a2\u30a6\u30c8\u3092\u5207\u308a\u66ff\u3048\u3089\u308c\u307e\u305b\u3093","Slow typing:":"\u4f4e\u901f\u5165\u529b:","Hide input text:":"\u5165\u529b\u30c6\u30ad\u30b9\u30c8\u3092\u96a0\u3059:","Ask paste confirmation:":"\u8cbc\u308a\u4ed8\u3051\u6642\u306b\u78ba\u8a8d:","using host keymap":"\u30db\u30b9\u30c8\u30ad\u30fc\u30de\u30c3\u30d7\u4f7f\u7528",
-"Video Settings":"\u30d3\u30c7\u30aa\u8a2d\u5b9a","Stream mode:":"\u30b9\u30c8\u30ea\u30fc\u30e0\u30e2\u30fc\u30c9:","sm-auto":"\u81ea\u52d5","sm-webrtc":"WebRTC","sm-h264":"H.264","sm-mjpeg":"MJPEG","Audio volume:":"\u97f3\u91cf:","audio-hint":"HDMI\u97f3\u58f0\u306fWebRTC\u30e2\u30fc\u30c9\u306e\u307f","Codec:":"\u30b3\u30fc\u30c7\u30c3\u30af:","\ud83c\udfac Video":"\ud83c\udfac \u30d3\u30c7\u30aa","Mouse Settings":"\u30de\u30a6\u30b9\u8a2d\u5b9a","Cursor style:":"\u30ab\u30fc\u30bd\u30eb\u30b9\u30bf\u30a4\u30eb:","cs-none":"\u975e\u8868\u793a","cs-blue-dot":"\u9752\u30c9\u30c3\u30c8","cs-crosshair":"\u5341\u5b57","cs-default":"\u77e2\u5370","cs-pointer":"\u6307\u578b","Mouse mode:":"\u30de\u30a6\u30b9\u30e2\u30fc\u30c9:","mm-absolute":"\u7d76\u5bfe","mm-relative":"\u76f8\u5bfe","Reverse scroll:":"\u30b9\u30af\u30ed\u30fc\u30eb\u53cd\u8ee2:","Scroll speed:":"\u30b9\u30af\u30ed\u30fc\u30eb\u901f\u5ea6:","Sensitivity:":"\u611f\u5ea6:","Move squash:":"\u79fb\u52d5\u5727\u7e2e:","Squash rate:":"\u5727\u7e2e\u9593\u9694:","Actions":"\u64cd\u4f5c","Reset Stream":"\u30b9\u30c8\u30ea\u30fc\u30e0\u30ea\u30bb\u30c3\u30c8","View Log":"\u30ed\u30b0\u8868\u793a","\ud83d\uddb1 Mouse":"\ud83d\uddb1 \u30de\u30a6\u30b9","\u2699 Actions":"\u2699 \u64cd\u4f5c","\u2328 HID":"\u2328 HID","Keyboard layout:":"\u30ad\u30fc\u30dc\u30fc\u30c9\u30ec\u30a4\u30a2\u30a6\u30c8:"},
-en:{"Video Settings":"Video Settings","Stream mode:":"Stream mode:","sm-auto":"Auto","sm-webrtc":"WebRTC","sm-h264":"H.264","sm-mjpeg":"MJPEG","Audio volume:":"Audio volume:","audio-hint":"HDMI audio only available in WebRTC mode","Codec:":"Codec:","H.264 kbps:":"H.264 kbps:","H.264 gop:":"H.264 gop:","\ud83c\udfac Video":"\ud83c\udfac Video","Mouse Settings":"Mouse Settings","Cursor style:":"Cursor style:","cs-none":"None","cs-blue-dot":"Blue Dot","cs-crosshair":"Crosshair","cs-default":"Arrow","cs-pointer":"Hand","Mouse mode:":"Mouse mode:","mm-absolute":"Absolute","mm-relative":"Relative","Reverse scroll:":"Reverse scroll:","Scroll speed:":"Scroll speed:","Sensitivity:":"Sensitivity:","Move squash:":"Move squash:","Squash rate:":"Squash rate:","Actions":"Actions","Reset Stream":"Reset Stream","Screenshot":"Screenshot","View Log":"View Log","\ud83d\uddb1 Mouse":"\ud83d\uddb1 Mouse","\u2699 Actions":"\u2699 Actions","\u2328 HID":"\u2328 HID","Keyboard layout:":"Keyboard layout:","Reset HID":"Reset HID","Runtime settings & tools":"Runtime settings & tools","Resolution:":"Resolution:","JPEG quality:":"JPEG quality:","JPEG max fps:":"JPEG max fps:","Video mode":"Video mode","Orientation:":"Orientation:","Default":"Default","Audio volume:":"Audio volume:","Microphone:":"Microphone:","Show stream":"Show stream","Reset stream":"Reset stream","Keyboard mode:":"Keyboard mode:","Mouse mode":"Mouse mode","Keyboard & mouse (HID) settings":"Keyboard & mouse (HID) settings","Swap Left Ctrl and Caps keys:":"Swap Left Ctrl and Caps keys:","Mouse polling:":"Mouse polling:","Relative sensitivity:":"Relative sensitivity:","Squash relative moves:":"Squash relative moves:","Reverse scrolling:":"Reverse scrolling:","Cumulative scrolling:":"Cumulative scrolling:","Scroll rate:":"Scroll rate:","Show the blue dot:":"Show the blue dot:","Show local cursor:":"Show local cursor:","Web UI settings":"Web UI settings","Ask page close confirmation:":"Ask page close confirmation:","Expand for the entire tab by default:":"Expand for the entire tab by default:","Bad link mode (release keys immediately):":"Bad link mode (release keys immediately):","Connect HID to Server:":"Connect HID to Server:","Mouse jiggler":"Mouse jiggler","Mute all input HID events:":"Mute all input HID events:","Connect main USB to Server:":"Connect main USB to Server:","Enable locator LED:":"Enable locator LED:","Show keyboard":"Show keyboard","Paste text as keypress sequence":"Paste text as keypress sequence","Please note that KVMind cannot switch the keyboard layout":"Please note that KVMind cannot switch the keyboard layout","Slow typing:":"Slow typing:","Hide input text:":"Hide input text:","Ask paste confirmation:":"Ask paste confirmation:","using host keymap":"using host keymap"}
-};
+// kvmd 设置菜单翻译（英文原文 → 本地化）：字典由 KVMindI18n._kvmdSettings 维护
 function kvmindTranslateKVM(){
 var lang=kvmindGetLang();
-var enDict=KVMIND_KVM_I18N.en||{};
-var dict=KVMIND_KVM_I18N[lang]||{};
 var menu=document.getElementById("kvmind-settings-menu");
 if(!menu)return;
-// Build reverse lookup: any translated value -> english key
-var allKeys={};
-for(var k in(KVMIND_KVM_I18N.zh||{}))allKeys[k]=true;
-for(var k2 in(KVMIND_KVM_I18N.ja||{}))allKeys[k2]=true;
+var xlate=function(orig){
+if(window.KVMindI18n&&window.KVMindI18n.translateKvmdSetting){
+var r=window.KVMindI18n.translateKvmdSetting(orig);
+if(r!=null)return r;
+}
+return null;
+};
 // Translate <td>, <summary>, <b>, <sub>, <sup> text content (not inputs/selects)
 var targets=menu.querySelectorAll("td,summary,b,sub,sup,div.text b");
 targets.forEach(function(el){
@@ -84,12 +77,10 @@ if(el.tagName==="SELECT"||el.tagName==="INPUT"||el.tagName==="TEXTAREA")return;
 if(el.children.length>0&&el.tagName!=="SUMMARY"&&el.tagName!=="B")return;
 var txt=el.textContent.trim();
 if(!txt||txt.length<2)return;
-// Save original on first visit
 if(!el.getAttribute("data-kv-orig")){el.setAttribute("data-kv-orig",txt);}
 var orig=el.getAttribute("data-kv-orig");
-// Strip trailing colon for matching
-var origClean=orig;
-if(dict[origClean]){el.textContent=dict[origClean];}
+var tr=xlate(orig);
+if(tr!=null){el.textContent=tr;}
 else if(lang==="en"){el.textContent=orig;}
 });
 // Translate buttons: only if their text (without bullet) is in the dictionary
@@ -102,7 +93,8 @@ if(!clean||clean.length<2)return;
 if(!el.getAttribute("data-kv-orig")){el.setAttribute("data-kv-orig",clean);el.setAttribute("data-kv-bullet",hasBullet?"1":"0");}
 var orig=el.getAttribute("data-kv-orig");
 var useBullet=el.getAttribute("data-kv-bullet")==="1";
-if(dict[orig]){el.textContent=(useBullet?"\u2022 ":"")+dict[orig];}
+var tr=xlate(orig);
+if(tr!=null){el.textContent=(useBullet?"\u2022 ":"")+tr;}
 else if(lang==="en"){el.textContent=(useBullet?"\u2022 ":"")+orig;}
 });
 }
@@ -139,9 +131,8 @@ var status=results[2]||{};
 var verInfo=results[3]||{};
 var updateInfo=results[4]||{};
 var sub=aiCfg.subscription||{};
-currentSubscription={plan:sub.plan||"community",messaging:!!sub.messaging};
-var planMap={community:["Community","#6b7280"],standard:["Standard","#3ecf8e"],pro:["Pro","#8f77b5"]};
-var planInfo=planMap[currentSubscription.plan]||[currentSubscription.plan,"#888"];
+currentSubscription={paid:sub.entitlement_state==="paid",messaging:!!sub.messaging};
+var planInfo=currentSubscription.paid?["Paid","#3ecf8e"]:["Free","#6b7280"];
 var kvmOk=(status.kvm||status.pikvm)==="ok";
 if(status.stream_urls&&window.KVMStream){window.KVMStream.configure(status.stream_urls);}
 var bridgeOk=status.bridge==="ok";
@@ -156,26 +147,46 @@ var latestVer=updateInfo.latest_version||"";
 var changelog=updateInfo.changelog||"";
 var fwDisplay="v"+_escHtml(fwVer)+(_escHtml(fwBuild)?" ("+_escHtml(fwBuild)+")":"");
 var fwVal=hasUpdate?fwDisplay+' <span style="color:#ef4444;font-size:11px;margin-left:4px">\u2192 v'+_escHtml(latestVer)+'</span>':fwDisplay;
-card.innerHTML='<div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">'
-+'<div style="width:44px;height:44px;border-radius:50%;background:var(--kvaccent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0">K</div>'
-+'<div><div style="font-size:15px;font-weight:600;color:var(--kvtext)">KVMind Device</div>'
-+'<div style="font-size:12px;color:var(--kvtext-muted);font-family:\'JetBrains Mono\',monospace">'+_escHtml(uid)+'</div></div></div>'
-+'<div style="display:flex;flex-direction:column;font-size:13px;color:var(--kvtext)">'
+// 头部：图标 + 标题
+card.innerHTML='<div style="text-align:center;margin-bottom:16px">'
++'<div style="width:48px;height:48px;border-radius:14px;background:var(--kvaccent-dim);color:var(--kvaccent);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 8px">💻</div>'
++'<div style="font-size:15px;font-weight:600;color:var(--kvtext)">'+_escHtml(kvmindT("pfDeviceInfo"))+'</div>'
++'</div>'
+// 核心组：UID（带复制按钮）/ 订阅 / 固件
++'<div style="display:flex;flex-direction:column;font-size:13px;color:var(--kvtext);margin-bottom:8px">'
++'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--kvborder)">'
++'<span style="color:var(--kvtext-muted)">'+_escHtml(kvmindT("pfDeviceUid"))+'</span>'
++'<span style="display:flex;align-items:center;gap:6px">'
++'<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px">'+_escHtml(uid)+'</span>'
++'<button id="kvmind-pf-copy-uid" title="'+_escHtml(kvmindT("pfCopyUid"))+'" style="border:none;background:transparent;cursor:pointer;color:var(--kvtext-muted);padding:2px 6px;border-radius:4px;font-size:14px;line-height:1">📋</button>'
++'</span></div>'
++_row(kvmindT("pfPlan"),_badge(planInfo[0],planInfo[1]))
 +_row(kvmindT("pfFirmware"),fwVal)
-+_row("AI Plan",_badge(planInfo[0],planInfo[1]))
++'</div>'
+// 升级提示框
++(hasUpdate?'<div id="kvmind-update-section" style="margin-top:8px;padding:12px;border:1px solid rgba(59,130,246,.3);border-radius:8px;background:rgba(59,130,246,.05)">'
++'<div style="font-size:12px;font-weight:600;color:var(--kvtext);margin-bottom:4px">'+kvmindT("updateNewVer")+' v'+_escHtml(latestVer)+'</div>'
++(changelog?'<div style="font-size:11px;color:var(--kvtext-muted);margin-bottom:10px">'+_escHtml(changelog)+'</div>':'')
++'<button id="kvmind-update-btn" style="width:100%;padding:8px 0;border:none;border-radius:6px;background:#3b82f6;color:#fff;cursor:pointer;font-size:13px;font-weight:600">'+kvmindT("updateBtn")+'</button>'
++'</div>':'')
+// 折叠：技术详情
++'<details style="margin-top:10px"><summary style="cursor:pointer;color:var(--kvtext-muted);font-size:12px;padding:4px 0;list-style:none;user-select:none">▸ '+_escHtml(kvmindT("pfTechDetails"))+'</summary>'
++'<div style="margin-top:6px;font-size:13px;color:var(--kvtext)">'
 +_row("AI Provider",_escHtml(providerNames),false)
 +_row("Model",_escHtml(model),true)
 +_row("Mode",'<span style="text-transform:capitalize">'+_escHtml(mode)+'</span>',false)
 +_row("Bridge",bridgeOk?_badge("Online","#3ecf8e"):_badge("Offline","#ef5350"))
 +_row(status.backend||"KVM",kvmOk?_badge("Online","#3ecf8e"):_badge("Offline","#ef5350"))
-+'</div>'
-+(hasUpdate?'<div id="kvmind-update-section" style="margin-top:14px;padding:12px;border:1px solid rgba(59,130,246,.3);border-radius:8px;background:rgba(59,130,246,.05)">'
-+'<div style="font-size:12px;font-weight:600;color:var(--kvtext);margin-bottom:4px">'+kvmindT("updateNewVer")+' v'+_escHtml(latestVer)+'</div>'
-+(changelog?'<div style="font-size:11px;color:var(--kvtext-muted);margin-bottom:10px">'+_escHtml(changelog)+'</div>':'')
-+'<button id="kvmind-update-btn" style="width:100%;padding:8px 0;border:none;border-radius:6px;background:#3b82f6;color:#fff;cursor:pointer;font-size:13px;font-weight:600">'+kvmindT("updateBtn")+'</button>'
-+'</div>':'')
-+'<button id="kvmind-profile-close" style="margin-top:'+(hasUpdate?'10':'18')+'px;width:100%;padding:8px 0;border:1px solid var(--kvborder);border-radius:6px;background:var(--kvsurface2);color:var(--kvtext);cursor:pointer;font-size:13px">OK</button>';
++'</div></details>'
++'<button id="kvmind-profile-close" style="margin-top:'+(hasUpdate?'10':'14')+'px;width:100%;padding:8px 0;border:1px solid var(--kvborder);border-radius:6px;background:var(--kvsurface2);color:var(--kvtext);cursor:pointer;font-size:13px">OK</button>';
 document.getElementById("kvmind-profile-close").addEventListener("click",function(){overlay.remove();});
+// 复制 UID 处理
+var copyUidBtn=document.getElementById("kvmind-pf-copy-uid");
+if(copyUidBtn)copyUidBtn.addEventListener("click",function(){
+    var doneFlash=function(){var orig=copyUidBtn.textContent;copyUidBtn.textContent="✓";copyUidBtn.style.color="var(--kvgreen)";setTimeout(function(){copyUidBtn.textContent=orig;copyUidBtn.style.color="";},1500);};
+    if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(uid).then(doneFlash).catch(function(){});}
+    else{var ta=document.createElement("textarea");ta.value=uid;ta.style.position="fixed";ta.style.left="-9999px";document.body.appendChild(ta);ta.select();try{document.execCommand("copy");doneFlash();}catch(e){}document.body.removeChild(ta);}
+});
 if(hasUpdate){
 var ubtn=document.getElementById("kvmind-update-btn");
 if(ubtn)ubtn.addEventListener("click",function(){
@@ -214,9 +225,86 @@ document.getElementById("kvmind-profile-close").addEventListener("click",functio
 function kvmindFetch(path,opts){return fetch(KVMIND_API+path,opts);}
 
 // ── Connection ──
-function kvmindCheckStatus(){kvmindFetch("/api/status").then(function(r){return r.json();}).then(function(){kvmindSetConn(true);}).catch(function(){kvmindSetConn(false);});kvmindSyncPlan();}
-function kvmindSyncPlan(){fetch(KVMIND_API+"/api/subscription").then(function(r){return r.json();}).then(function(sub){var plan=sub.plan||"community";if(plan!==currentSubscription.plan){currentSubscription={plan:plan,messaging:!!sub.messaging};kvmindUpdatePlanUI(plan);}}).catch(function(e){console.warn("[kvmind]",e);});}
-function kvmindSetConn(online){var el=document.getElementById("kvmind-conn-status");var txt=document.getElementById("kvmind-conn-text");if(!el)return;el.className=online?"online":"offline";txt.textContent=kvmindT(online?"connected":"disconnected");}
+// 3 态融合：connected · 画面正常 / connected · 等待画面 / disconnected
+// 视频流状态从 #kvmind-no-signal 元素的可见性推断（kvmind-stream.js 控制）
+function kvmindCheckStatus(){
+    kvmindFetch("/api/status").then(function(r){return r.json();}).then(function(){
+        var noSig=document.getElementById("kvmind-no-signal");
+        var hasSignal=!noSig||noSig.style.display==="none"||noSig.style.display==="";
+        // 仅当 noSig 元素显式 inline display !== "none" 时认为无信号
+        var visible=noSig&&noSig.style.display&&noSig.style.display!=="none";
+        kvmindSetConn(visible?"no-signal":"connected");
+    }).catch(function(){kvmindSetConn("disconnected");});
+    kvmindSyncPlan();
+}
+function kvmindSyncPlan(){fetch(KVMIND_API+"/api/subscription").then(function(r){return r.json();}).then(function(sub){var paid=sub.entitlement_state==="paid";var claimed=sub.claim_state==="claimed";if(paid!==currentSubscription.paid||claimed!==currentSubscription.claimed){currentSubscription={paid:paid,messaging:!!sub.messaging,claimed:claimed};kvmindUpdatePlanUI(paid);}}).catch(function(e){console.warn("[kvmind]",e);});}
+function kvmindSetConn(state){
+    var el=document.getElementById("kvmind-conn-status");
+    var txt=document.getElementById("kvmind-conn-text");
+    if(!el)return;
+    // 兼容旧 boolean 入参
+    if(state===true)state="connected"; else if(state===false)state="disconnected";
+    var stateMap={
+        "connected":   {cls:"online",    key:"connStatusOk"},
+        "no-signal":   {cls:"no-signal", key:"connStatusNoSignal"},
+        "disconnected":{cls:"offline",   key:"connStatusOffline"}
+    };
+    var s=stateMap[state]||stateMap["disconnected"];
+    el.className=s.cls;
+    txt.textContent=kvmindT(s.key);
+}
+function kvmindUpdatePlanUI(paid){
+    var btn=document.getElementById("kvmind-btn-upgrade");
+    var umUpgrade=document.getElementById("kvmind-um-upgrade");
+    var umText=document.getElementById("kvmind-um-upgrade-text");
+    var badge=document.getElementById("kvmind-plan-badge");
+    var label=paid?"Paid":"Free";
+    var color=paid?"#3ecf8e":"#6b7280";
+    if(badge){badge.textContent=label;badge.style.background=color;}
+    // 设备绑定状态：参考 umProfile 模式，文案后追加状态后缀（✓ 绿 / ⚠ 红）
+    var claimText=document.getElementById("kvmind-um-claim-text");
+    if(claimText){
+        var claimKey,statusColor="";
+        if(currentSubscription.claimed===true){claimKey="umClaimBound";statusColor="var(--kvgreen)";}
+        else if(currentSubscription.claimed===false){claimKey="umClaimUnbound";statusColor="var(--kvred)";}
+        else{claimKey="umClaim";}
+        claimText.setAttribute("data-i18n",claimKey);
+        var raw=kvmindT(claimKey);
+        if(statusColor){
+            // i18n 文案是受控字符串，仅 ✓/⚠ 符号被 span 包色，其余 textContent 安全
+            claimText.innerHTML=raw
+                .replace("✓",'<span style="color:'+statusColor+';font-weight:700">✓</span>')
+                .replace("⚠",'<span style="color:'+statusColor+';font-weight:700">⚠</span>');
+        }else{
+            claimText.textContent=raw;
+        }
+    }
+    if(!paid){
+        // Free：顶栏「⚡ 升级订阅」CTA 显示，引导到 pricing；菜单项「订阅」也指向 pricing
+        if(btn){btn.style.display="";btn.textContent=kvmindT("umUpgrade");btn.style.background="#f59e0b";btn.href="https://kvmind.com/pricing";}
+        if(umText)umText.textContent=kvmindT("umSubscription");
+        if(umUpgrade){umUpgrade.style.display="";umUpgrade.href="https://kvmind.com/pricing";}
+    }else{
+        // Paid：顶栏 CTA 隐藏（避免与菜单重复），菜单项「订阅」指向 account 看详情
+        if(btn){btn.style.display="none";}
+        if(umText)umText.textContent=kvmindT("umSubscription");
+        if(umUpgrade){umUpgrade.style.display="";umUpgrade.href="https://kvmind.com/account";}
+    }
+    kvmindUpdateModeTooltip(paid);
+}
+
+// 聊天面板 [💡 Suggest] [⚡ Auto] 模式按钮 tooltip + Free 用户 Auto 锁标
+function kvmindUpdateModeTooltip(paid){
+    var pmSuggest=document.getElementById("kvmind-pm-suggest");
+    var pmAuto=document.getElementById("kvmind-pm-auto");
+    if(pmSuggest)pmSuggest.title=kvmindT("pmSuggestTooltip");
+    if(pmAuto){
+        pmAuto.title=paid?kvmindT("pmAutoTooltip"):kvmindT("pmAutoLockTooltip");
+        var hasLock=pmAuto.classList.contains("kv-pm-locked");
+        if(paid&&hasLock)pmAuto.classList.remove("kv-pm-locked");
+        else if(!paid&&!hasLock)pmAuto.classList.add("kv-pm-locked");
+    }
+}
 
 // ── WebSocket ──
 var _wsReconnectAttempts=0;
@@ -262,6 +350,198 @@ if(extraClass)bubble.classList.add(extraClass);if(status)bubble.classList.add(st
 bubble.textContent=text;row.appendChild(bubble);c.appendChild(row);c.scrollTop=c.scrollHeight;
 }
 
+function kvmindAppendNotice(notice){
+var c=document.getElementById("kvmind-chat-messages");if(!c)return;
+var row=document.createElement("div");row.className="kvmind-msg-row ai";
+var s=document.createElement("div");s.className="kvmind-msg-sender";s.textContent="MyClaw";row.appendChild(s);
+var bubble=document.createElement("div");bubble.className="kvmind-chat-msg notice";
+if(notice&&notice.code)bubble.setAttribute("data-notice-code",notice.code);
+var icon=document.createElement("span");icon.className="kvmind-notice-icon";icon.textContent="\u26a0\ufe0f";
+var body=document.createElement("span");body.className="kvmind-notice-body";body.textContent=(notice&&notice.message)||"";
+bubble.appendChild(icon);bubble.appendChild(body);row.appendChild(bubble);c.appendChild(row);c.scrollTop=c.scrollHeight;
+kvmindAddLog("warn","notice: "+((notice&&notice.code)||"generic"));
+}
+
+// ── V6 Gateway error → CTA bubble ────────────────────────────────────────
+// Contract: see dev/kdcms/api-spec/error-codes.md. The three pipeline layers
+// (kdcms → kdkvm → this UI) must match 1:1; editing the table below without
+// updating websocket.py / DeviceSigFilter.java will break the UX.
+//
+// Each entry provides (a) a localized {title} for the bubble and (b) an
+// optional {cta} with localized {label} and {action}. Actions:
+//   - "href:<url>"   — anchor click to URL (new tab allowed)
+//   - "retry"        — resend window._kvLastChatText via the gateway
+//   - null           — no button, text-only bubble (used for advisory codes)
+var _KV_CHAT_ERROR_TEXTS = {
+  // HTTP 401 family → re-activate CTA. invalid_signature / unknown_device_uid /
+  // replay / unsupported_sig_version all share the same remediation.
+  device_unbound: {
+    zh: {title:"设备未绑定或签名被拒，请重新激活。", cta:{label:"前往激活", action:"href:/activate.html"}},
+    ja: {title:"デバイス未連携または署名が拒否されました。再連携してください。", cta:{label:"アクティベーションへ", action:"href:/activate.html"}},
+    en: {title:"Device unbound or signature rejected — please re-activate.", cta:{label:"Activate", action:"href:/activate.html"}}
+  },
+  // HTTP 429 → Upgrade CTA. retry_after seconds is appended to the title.
+  myclaw_rate_limit: {
+    zh: {title:"本次额度已用完。", cta:{label:"升级订阅", action:"href:https://kvmind.com/pricing"}},
+    ja: {title:"今回の使用枠を使い切りました。", cta:{label:"プランをアップグレード", action:"href:https://kvmind.com/pricing"}},
+    en: {title:"Usage quota reached.", cta:{label:"Upgrade plan", action:"href:https://kvmind.com/pricing"}}
+  },
+  // HTTP 403 schedule_not_allowed → Pro upgrade. PolicyError.code is carried
+  // in the WS code suffix so this dispatch needs one entry per known slug.
+  myclaw_forbidden_schedule_not_allowed: {
+    zh: {title:"定时任务需要 Pro 订阅。", cta:{label:"升级 Pro", action:"href:https://kvmind.com/pricing"}},
+    ja: {title:"スケジュールタスクには Pro プランが必要です。", cta:{label:"Pro にアップグレード", action:"href:https://kvmind.com/pricing"}},
+    en: {title:"Scheduled tasks require Pro.", cta:{label:"Upgrade to Pro", action:"href:https://kvmind.com/pricing"}}
+  },
+  // Budget is a transient ceiling (per-turn), not a plan limit — no upsell.
+  myclaw_forbidden_budget_exceeded: {
+    zh: {title:"本轮操作预算已用尽，请稍后再试。", cta:null},
+    ja: {title:"本ターンの操作予算を使い切りました。しばらくしてから再度お試しください。", cta:null},
+    en: {title:"Operation budget exceeded — retry later.", cta:null}
+  }
+  // myclaw_offline is handled specially below because the CTA depends on
+  // err.reason (unreachable/server_error/clock_skew), not just the code.
+};
+
+// myclaw_offline sub-reason → localized CTA. Kept separate so the reason
+// dispatch has one place to live.
+var _KV_CHAT_OFFLINE_TEXTS = {
+  unreachable: {
+    zh: {title:"MyClaw 服务连不上，请检查网络。", cta:{label:"重试", action:"retry"}},
+    ja: {title:"MyClaw に接続できません。ネットワークをご確認ください。", cta:{label:"再試行", action:"retry"}},
+    en: {title:"MyClaw unreachable — check the network.", cta:{label:"Retry", action:"retry"}}
+  },
+  server_error: {
+    zh: {title:"MyClaw 服务器暂不可用，请稍后再试。", cta:null},
+    ja: {title:"MyClaw サーバーが一時的に利用できません。後ほど再試行してください。", cta:null},
+    en: {title:"MyClaw server unavailable — retry later.", cta:null}
+  },
+  clock_skew: {
+    zh: {title:"设备时钟异常（签名超出 5 分钟窗口），请在系统设置检查 NTP。", cta:null},
+    ja: {title:"デバイスの時刻が 5 分以上ずれています。NTP をご確認ください。", cta:null},
+    en: {title:"Device clock drift exceeds 5 min — please check NTP.", cta:null}
+  }
+};
+
+function _kvPickLang(table){
+  var l = kvmindGetLang();
+  return table[l] || table.en;
+}
+
+// Build and return the {title, cta} bundle for a given err payload, or null
+// if we don't know the code. Callers decide how to render / fall back.
+function _kvResolveChatError(err){
+  if(!err||typeof err!=="object")return null;
+  if(err.code==="myclaw_offline"){
+    var reason = err.reason || "unreachable";
+    var tbl = _KV_CHAT_OFFLINE_TEXTS[reason] || _KV_CHAT_OFFLINE_TEXTS.unreachable;
+    return _kvPickLang(tbl);
+  }
+  var direct = _KV_CHAT_ERROR_TEXTS[err.code];
+  if(direct)return _kvPickLang(direct);
+  return null;
+}
+
+function kvmindAppendChatError(err){
+  // Gateway layer (myclaw-gateway.js) owns reconnection; ws_not_open is a
+  // transient device-side state that deserves a simpler text bubble instead
+  // of a branded CTA — the reconnect is automatic.
+  if(err&&err.code==="ws_not_open"){
+    var t = kvmindT("wsReconnecting")||"Reconnecting — please try again in a moment.";
+    kvmindAppendMsg("system","\u26a0 "+t);
+    kvmindAddLog("warn","ws_not_open");
+    return;
+  }
+  var bundle = _kvResolveChatError(err);
+  // Unknown code → server-localized fallback (backend always ships a
+  // `message` field), or the raw code if nothing else is available.
+  if(!bundle){
+    var fallback = (err&&err.message) || (err&&err.code&&_kvAiErrorText(err.code)) || "unknown error";
+    kvmindAppendMsg("system","\u26a0 "+fallback);
+    kvmindAddLog("error",(err&&err.code)||"unknown");
+    return;
+  }
+
+  var c=document.getElementById("kvmind-chat-messages");if(!c){kvmindAddLog("error",err.code);return;}
+  var row=document.createElement("div");row.className="kvmind-msg-row ai";
+  var bubble=document.createElement("div");bubble.className="kvmind-chat-msg err";
+  bubble.setAttribute("data-err-code",err.code||"");
+  if(err.reason)bubble.setAttribute("data-err-reason",err.reason);
+
+  var head=document.createElement("div");head.className="kvmind-err-head";
+  var icon=document.createElement("span");icon.className="kvmind-err-icon";icon.textContent="\u26a0\ufe0f";
+  var title=document.createElement("span");title.className="kvmind-err-title";
+  // For rate limit, prefer the server-formatted message (it already carries
+  // the localized X/Y count + retry_after seconds, e.g. "MyClaw 使用已达上限
+  // (5/5)，3600 秒后重试"). The bundle.title is a stripped fallback used only
+  // when the server didn't include a message. Either way the bundle.cta
+  // ("升级订阅") still gets attached below.
+  var titleText = bundle.title;
+  if(err.code==="myclaw_rate_limit"){
+    if(err.message){
+      titleText = err.message;
+    } else if(err.retry_after){
+      titleText += " ("+err.retry_after+"s)";
+    }
+  }
+  title.textContent = titleText;
+  head.appendChild(icon);head.appendChild(title);
+  bubble.appendChild(head);
+
+  if(bundle.cta){
+    var btn=document.createElement("button");
+    btn.type="button";
+    btn.className="kvmind-err-cta";
+    btn.textContent=bundle.cta.label;
+    var action=bundle.cta.action||"";
+    if(action.indexOf("href:")===0){
+      var url=action.substring(5);
+      btn.addEventListener("click",function(){
+        try{
+          if(url.charAt(0)==="/"){ window.location.assign(url); }
+          else{ window.open(url,"_blank","noopener,noreferrer"); }
+        }catch(e){ console.warn("[kvmind] err cta open:",e); }
+      });
+    }else if(action==="retry"){
+      btn.addEventListener("click",function(){
+        var last = window._kvLastChatText;
+        if(!last||!window._kvGw){ kvmindAddLog("warn","retry: nothing to resend"); return; }
+        kvmindAppendMsg("user",last);
+        var ab=document.getElementById("kvmind-ai-bar");if(ab)ab.classList.add("show");
+        var at=document.getElementById("kvmind-ai-bar-text");if(at)at.textContent=kvmindT("aiWorking");
+        window._kvGw.sendChat(last,{mode:typeof agentMode!=="undefined"?agentMode:"suggest",lang:kvmindGetLang()});
+        btn.disabled=true;btn.classList.add("disabled");
+      });
+    }
+    bubble.appendChild(btn);
+  }
+  row.appendChild(bubble);c.appendChild(row);c.scrollTop=c.scrollHeight;
+  kvmindAddLog("error",(err.code||"")+(err.reason?":"+err.reason:""));
+}
+
+function kvmindShowToast(message,opts){
+opts=opts||{};
+var severity=opts.severity||"info";
+var host=document.getElementById("kvmind-toast-host");
+if(!host){host=document.createElement("div");host.id="kvmind-toast-host";
+host.style.cssText="position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10000;display:flex;flex-direction:column;gap:8px;pointer-events:none";
+document.body.appendChild(host);}
+var toast=document.createElement("div");
+toast.className="kvmind-toast kvmind-toast-"+severity;
+var msg=document.createElement("span");msg.className="kvmind-toast-msg";msg.textContent=message;
+var close=document.createElement("button");close.type="button";close.className="kvmind-toast-close";close.setAttribute("aria-label","Close");close.textContent="×";
+toast.appendChild(msg);toast.appendChild(close);
+host.appendChild(toast);
+var dismissed=false;
+function dismiss(){if(dismissed)return;dismissed=true;toast.style.transition="opacity .2s";toast.style.opacity="0";setTimeout(function(){if(toast.parentNode)toast.parentNode.removeChild(toast);},220);}
+close.addEventListener("click",dismiss);
+var timer=setTimeout(dismiss,opts.duration||5000);
+// hover 暂停自动消失（防止用户读到一半被关掉）
+toast.addEventListener("mouseenter",function(){if(!dismissed)clearTimeout(timer);});
+toast.addEventListener("mouseleave",function(){if(!dismissed)timer=setTimeout(dismiss,2000);});
+}
+window.kvmindShowToast=kvmindShowToast;
+
 function kvmindShowConfirm(text,cid,runId){
 var c=document.getElementById("kvmind-chat-messages");if(!c)return;
 var row=document.createElement("div");row.className="kvmind-msg-row ai";
@@ -275,12 +555,14 @@ bubble.querySelector(".no").onclick=function(){kvmindDoConfirm(cid,false,bubble,
 function kvmindDoConfirm(id,approved,bubble,runId){
 if(bubble){var btns=bubble.querySelector(".kvmind-confirm-btns");if(btns)btns.remove();var r=document.createElement("div");r.style.cssText="margin-top:6px;font-size:11px;font-weight:600";r.textContent=approved?"\u26a1 Approved":"\u2717 Denied";bubble.appendChild(r);bubble.style.opacity=".6";}
 if(id&&id.startsWith("power-")&&approved){var act=id.replace("power-","");kvmindFetch("/api/atx/power",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:act})});}
-else if(window._kvGw){window._kvGw.sendConfirm(approved,runId);}
 }
 
 // ── Send ──
 function kvmindDoSend(){
 var inp=document.getElementById("kvmind-chat-input");if(!inp)return;var text=inp.value.trim();if(!text)return;
+// PR#3: remember the last user input so myclaw_offline/unreachable error
+// bubbles can offer a one-click "Retry" without the user re-typing.
+window._kvLastChatText=text;
 kvmindAppendMsg("user",text);inp.value="";kvmindAddLog("info","CMD: "+text.slice(0,60));
 var ab=document.getElementById("kvmind-ai-bar");if(ab)ab.classList.add("show");
 var at=document.getElementById("kvmind-ai-bar-text");if(at)at.textContent=kvmindT("aiWorking");
@@ -295,25 +577,58 @@ kvmindAppendMsg("system","\u26a0 AI \u672a\u8fde\u63a5\uff0c\u8bf7\u5237\u65b0\u
 }
 }
 
+// ── Toolbar button loading state ──
+function kvmindSetBtnLoading(id,on){var b=document.getElementById(id);if(!b)return;if(on){b.classList.add("loading");b.setAttribute("disabled","disabled");}else{b.classList.remove("loading");b.removeAttribute("disabled");}}
+
+// ── AI error fallback (if backend didn't provide a message) ──
+// Used as defense-in-depth — backend already localizes via lang param.
+function _kvAiErrorText(code,fallback){
+var l=kvmindGetLang();
+var T={zh:{no_providers:"AI \u672a\u914d\u7f6e\uff0c\u8bf7\u5728\u8bbe\u7f6e\u4e2d\u586b\u5165 API Key\u3002",ai_timeout:"AI \u8d85\u65f6\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002",ai_connect:"\u65e0\u6cd5\u8fde\u63a5 AI \u670d\u52a1\u3002",ai_empty:"AI \u8fd4\u56de\u7a7a\u7ed3\u679c\uff0c\u8bf7\u91cd\u8bd5\u3002",ai_no_tools:"\u5f53\u524d\u6a21\u578b\u4e0d\u652f\u6301\u5de5\u5177\u8c03\u7528\u3002",ai_failed:"AI \u8bf7\u6c42\u5931\u8d25\u3002",no_video:"\u65e0\u89c6\u9891\u4fe1\u53f7\uff0c\u8bf7\u68c0\u67e5 HDMI\u3002"},
+ja:{no_providers:"AI \u304c\u672a\u8a2d\u5b9a\u3067\u3059\u3002",ai_timeout:"AI \u30bf\u30a4\u30e0\u30a2\u30a6\u30c8\u3057\u307e\u3057\u305f\u3002",ai_connect:"AI \u306b\u63a5\u7d9a\u3067\u304d\u307e\u305b\u3093\u3002",ai_empty:"AI \u304c\u7a7a\u306e\u5fdc\u7b54\u3092\u8fd4\u3057\u307e\u3057\u305f\u3002",ai_no_tools:"\u73fe\u5728\u306e\u30e2\u30c7\u30eb\u306f\u30c4\u30fc\u30eb\u547c\u3073\u51fa\u3057\u672a\u5bfe\u5fdc\u3067\u3059\u3002",ai_failed:"AI \u30ea\u30af\u30a8\u30b9\u30c8\u5931\u6557\u3002",no_video:"\u30d3\u30c7\u30aa\u4fe1\u53f7\u304c\u3042\u308a\u307e\u305b\u3093\u3002"},
+en:{no_providers:"AI is not configured.",ai_timeout:"AI request timed out.",ai_connect:"Cannot reach AI service.",ai_empty:"AI returned an empty response.",ai_no_tools:"Current model does not support tool calls.",ai_failed:"AI request failed.",no_video:"No video signal."}};
+var b=T[l]||T.en;return (b&&b[code])||T.en[code]||fallback||code;
+}
+
+// Unified response parser for REST AI endpoints.
+// Returns {ok:true, data} on success, {ok:false, code, message} on failure.
+function _kvParseAiResponse(txt,httpOk){
+var d=null;try{d=JSON.parse(txt);}catch(_e){}
+if(!d){return {ok:false,code:"ai_failed",message:_kvAiErrorText("ai_failed")};}
+if(!httpOk||d.error){
+var err=d.error||{};
+var code=(typeof err==="object"&&err.code)||"ai_failed";
+var message=(typeof err==="object"&&err.message)||(typeof err==="string"?err:"")||_kvAiErrorText(code);
+return {ok:false,code:code,message:message};
+}
+return {ok:true,data:d};
+}
+
 // ── Analyse ──
 function kvmindDoAnalyse(){
 var sh=document.getElementById("kvmind-snap-hint");if(sh)sh.style.display="none";
 kvmindAppendMsg("system","\u5206\u6790\u4e2d\u2026");kvmindAddLog("info","Analysing...");
-kvmindFetch("/api/analyse",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lang:kvmindGetLang()})}).then(function(r){return r.text();}).then(function(txt){
-var d;try{d=JSON.parse(txt);}catch(e){d=null;}
-if(!d||d.error){console.error("Analyse error:",d?d.error:txt);kvmindAppendMsg("action","\u26a0 AI \u670d\u52a1\u6682\u65f6\u4e0d\u53ef\u7528",null,"err");return;}
-kvmindAppendMsg("ai",d.text||JSON.stringify(d));kvmindAddLog("ok","Analysis done");
-}).catch(function(e){console.error("Analyse fetch error:",e);kvmindAppendMsg("system","\u26a0 \u8bf7\u6c42\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5");});
+kvmindSetBtnLoading("kvmind-btn-analyse",true);
+kvmindFetch("/api/analyse",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lang:kvmindGetLang()})}).then(function(r){var ok=r.ok;return r.text().then(function(t){return {ok:ok,txt:t};});}).then(function(res){
+var parsed=_kvParseAiResponse(res.txt,res.ok);
+if(!parsed.ok){console.warn("Analyse error:",parsed.code,parsed.message);kvmindAppendMsg("action","\u26a0 "+parsed.message,null,"err");kvmindAddLog("error","Analyse "+parsed.code);return;}
+var d=parsed.data;
+if(!d.text||!d.text.trim()){var msg=_kvAiErrorText("ai_empty");kvmindAppendMsg("action","\u26a0 "+msg,null,"err");kvmindAddLog("warn","Analyse empty");return;}
+kvmindAppendMsg("ai",d.text);kvmindAddLog("ok","Analysis done");
+}).catch(function(e){console.error("Analyse fetch error:",e);kvmindAppendMsg("system","\u26a0 "+_kvAiErrorText("ai_failed"));}).finally(function(){kvmindSetBtnLoading("kvmind-btn-analyse",false);});
 }
 
 // ── Screen Copy (OCR) ──
 function kvmindDoScreenCopy(){
 kvmindAppendMsg("system",kvmindT("copyExtracting"));kvmindAddLog("info","Screen copy...");
-kvmindFetch("/api/screen/copy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lang:kvmindGetLang()})}).then(function(r){return r.text();}).then(function(txt){
-var d;try{d=JSON.parse(txt);}catch(e){d=null;}
-if(!d||d.error){kvmindAppendMsg("action",kvmindT("copyFailed"),null,"err");kvmindAddLog("error","Screen copy failed");return;}
-kvmindShowCopyModal(d.text||"");kvmindAddLog("ok","Screen copy done");
-}).catch(function(e){console.error("Screen copy error:",e);kvmindAppendMsg("system",kvmindT("copyFailed"));});
+kvmindSetBtnLoading("kvmind-btn-copy",true);
+kvmindFetch("/api/screen/copy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lang:kvmindGetLang()})}).then(function(r){var ok=r.ok;return r.text().then(function(t){return {ok:ok,txt:t};});}).then(function(res){
+var parsed=_kvParseAiResponse(res.txt,res.ok);
+if(!parsed.ok){kvmindAppendMsg("action","\u26a0 "+parsed.message,null,"err");kvmindAddLog("error","Screen copy "+parsed.code);return;}
+var d=parsed.data;
+if(!d.text||!d.text.trim()){var msg=_kvAiErrorText("ai_empty");kvmindAppendMsg("action","\u26a0 "+msg,null,"err");kvmindAddLog("warn","Screen copy empty");return;}
+kvmindShowCopyModal(d.text);kvmindAddLog("ok","Screen copy done");
+}).catch(function(e){console.error("Screen copy error:",e);kvmindAppendMsg("system","\u26a0 "+_kvAiErrorText("ai_failed"));}).finally(function(){kvmindSetBtnLoading("kvmind-btn-copy",false);});
 }
 function kvmindShowCopyModal(text){
 var modal=document.getElementById("kvmind-copy-modal");if(!modal)return;
@@ -335,6 +650,7 @@ modal.style.display="flex";
 // ── Screenshot ──
 function kvmindDoScreenshot(){
 var sh=document.getElementById("kvmind-snap-hint");if(sh)sh.style.display="none";
+kvmindSetBtnLoading("kvmind-btn-snap",true);
 fetch("/streamer/snapshot").then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.blob();}).then(function(blob){
 var url=URL.createObjectURL(blob);var c=document.getElementById("kvmind-chat-messages");if(!c)return;
 var row=document.createElement("div");row.className="kvmind-msg-row ai";
@@ -342,12 +658,22 @@ var bubble=document.createElement("div");bubble.className="kvmind-chat-msg snap"
 var img=document.createElement("img");img.src=url;img.style.cssText="width:100%;display:block";img.onload=function(){URL.revokeObjectURL(url);};
 var cap=document.createElement("div");cap.className="kvmind-snap-cap";var capL=document.createElement("span");capL.textContent="Screenshot";var capR=document.createElement("span");capR.textContent=new Date().toLocaleTimeString();cap.appendChild(capL);cap.appendChild(capR);
 bubble.appendChild(img);bubble.appendChild(cap);row.appendChild(bubble);c.appendChild(row);c.scrollTop=c.scrollHeight;
-}).catch(function(e){console.error("Screenshot error:",e);kvmindAppendMsg("system","\u26a0 \u622a\u56fe\u83b7\u53d6\u5931\u8d25");});
+}).catch(function(e){console.error("Screenshot error:",e);kvmindAppendMsg("system","\u26a0 \u622a\u56fe\u83b7\u53d6\u5931\u8d25");}).finally(function(){kvmindSetBtnLoading("kvmind-btn-snap",false);});
 }
 
 function kvmindDoAbort(){if(window._kvGw&&window._kvGw.connected)window._kvGw.abortChat();else kvmindFetch("/api/agent/abort",{method:"POST"});_endChat();}
 function kvmindSetMode(mode){
 agentMode=mode;["suggest","auto"].forEach(function(m){var pm=document.getElementById("kvmind-pm-"+m);if(pm)pm.classList.toggle("active",m===mode);});
+if(mode==="auto"){
+// 优先判订阅：未订阅设备根本无权 auto，与本地模型能力无关。否则用户会
+// 看到"换模型"提示但实际换模型也没用 —— 真正缺的是 seat。
+if(!currentSubscription||!currentSubscription.paid){
+kvmindShowToast(kvmindT("autoToastNoSubscription"),{severity:"warn",duration:6000});
+}else if(window._kvmindSupportsTools===false){
+// 已订阅但用户在本机又填了不支持 tool calling 的自家模型
+kvmindShowToast(kvmindT("autoToastNoTools"),{severity:"warn",duration:6000});
+}
+}
 }
 function kvmindTogglePower(){var m=document.getElementById("kvmind-power-menu");if(m)m.classList.toggle("show");}
 function kvmindPowerAction(action,label){var m=document.getElementById("kvmind-power-menu");if(m)m.classList.remove("show");if(action==="on"){kvmindFetch("/api/atx/power",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:action})});}else{kvmindShowConfirm(label+"?","power-"+action);}}
@@ -464,134 +790,136 @@ function kvmindLoadSettings(tab){
 var m=document.getElementById("kvmind-settings-menu");if(!m)return;
 if(tab){_kvSettingsActiveTab=tab;localStorage.setItem("kvmind-settings-tab",tab);}
 var hid=window._kvmindHid;
-var T=_kvSettT;
-var tabs=[{id:"video",label:T("\ud83c\udfac Video")},{id:"mouse",label:T("\ud83d\uddb1 Mouse")},{id:"actions",label:T("\u2699 Actions")},{id:"hid",label:T("\u2328 HID")}];
+var T=kvmindT;
+function row(label,ctrlHtml){return '<div class="kvs-row"><span class="kvs-label">'+label+'</span><span class="kvs-ctrl-inline">'+ctrlHtml+'</span></div>';}
+function section(title,inner){return '<div class="kvmind-settings-section"><div class="kvmind-settings-title">'+title+'</div>'+inner+'</div>';}
+
+var tabs=[
+  {id:"video",   icon:"🎬", labelKey:"setTabVideo"},
+  {id:"mouse",   icon:"🖱", labelKey:"setTabMouse"},
+  {id:"hid",     icon:"⌨",       labelKey:"setTabHID"},
+  {id:"actions", icon:"⚙",       labelKey:"setTabActions"}
+];
 var html='<div class="kvmind-settings-tabs">';
 for(var t=0;t<tabs.length;t++){
-html+='<button class="kvmind-settings-tab'+(tabs[t].id===_kvSettingsActiveTab?' active':'')+'" onclick="event.stopPropagation();kvmindLoadSettings(\''+tabs[t].id+'\')">'+tabs[t].label+'</button>';
+  var tb=tabs[t];
+  html+='<button class="kvmind-settings-tab'+(tb.id===_kvSettingsActiveTab?' active':'')+'" onclick="event.stopPropagation();kvmindLoadSettings(\''+tb.id+'\')">'+tb.icon+' '+T(tb.labelKey)+'</button>';
 }
 html+='</div>';
 
-// ── Video Tab ──
+// ============ Video Tab ============
 html+='<div class="kvmind-settings-tab-panel'+(_kvSettingsActiveTab==="video"?" active":"")+'">';
-html+='<div class="kvmind-settings-section"><div class="kvmind-settings-title">'+T("Video Settings")+'</div>';
-html+='<table class="kvmind-settings-table">';
 var _curSM=(window._kvmindStream&&window._kvmindStream.getPreferredMode)?window._kvmindStream.getPreferredMode():"auto";
 var _actSM=(window._kvmindStream&&window._kvmindStream.getMode)?window._kvmindStream.getMode():"";
-html+='<tr><td class="kvs-label">'+T("Stream mode:")+'</td>';
-html+='<td class="kvs-ctrl"><div class="kvmind-mode-pills" id="kvs-stream-mode">';
-var _smOpts=["auto","webrtc","media","mjpeg"];
-var _smKeys={"auto":"sm-auto","webrtc":"sm-webrtc","media":"sm-h264","mjpeg":"sm-mjpeg"};
-for(var _si=0;_si<_smOpts.length;_si++){var _sv=_smOpts[_si];html+='<button class="kvmind-pill'+(_curSM===_sv?" active":"")+'" data-val="'+_sv+'" onclick="window._kvmindStream&&window._kvmindStream.setMode(\''+_sv+'\');kvmindLoadSettings(\'video\')">'+T(_smKeys[_sv])+'</button>';}
-html+='</div></td></tr>';
 var _modeLabel={"webrtc":"WebRTC","media":"H.264","mjpeg":"MJPEG"};
-html+='<tr><td class="kvs-label">'+T("Codec:")+'</td><td class="kvs-ctrl"><span id="kvs-codec-display" style="font-family:monospace;font-weight:600">--'+(_actSM&&_modeLabel[_actSM]?" ["+_modeLabel[_actSM]+"]":"")+'</span></td></tr>';
-html+='<tr><td class="kvs-label">'+T("H.264 kbps:")+'</td>';
-html+='<td class="kvs-ctrl"><div class="kvmind-slider-wrap"><input type="range" id="kvs-h264-bitrate" min="1000" max="20000" step="500" value="20000" class="kvmind-settings-range" oninput="document.getElementById(\'kvs-br-val\').textContent=this.value+\' kbps\'" onchange="fetch(\'/api/streamer/set_params?h264_bitrate=\'+this.value,{method:\'POST\',credentials:\'same-origin\'})"><span id="kvs-br-val" class="kvmind-slider-val">20000 kbps</span></div></td></tr>';
-html+='<tr><td class="kvs-label">'+T("H.264 gop:")+'</td>';
-html+='<td class="kvs-ctrl"><div class="kvmind-slider-wrap"><input type="range" id="kvs-h264-gop" min="0" max="60" step="5" value="0" class="kvmind-settings-range" oninput="document.getElementById(\'kvs-gop-val\').textContent=this.value" onchange="fetch(\'/api/streamer/set_params?h264_gop=\'+this.value,{method:\'POST\',credentials:\'same-origin\'})"><span id="kvs-gop-val" class="kvmind-slider-val">0</span></div></td></tr>';
+
+// 流媒体分区
+var _smOpts=["auto","webrtc","media","mjpeg"];
+var _smLabels={"auto":T("setStreamModeAuto"),"webrtc":"WebRTC","media":"H.264","mjpeg":"MJPEG"};
+var pillsHtml='<div class="kvmind-mode-pills" id="kvs-stream-mode">';
+for(var _si=0;_si<_smOpts.length;_si++){
+  var _sv=_smOpts[_si];
+  pillsHtml+='<button class="kvmind-pill'+(_curSM===_sv?" active":"")+'" data-val="'+_sv+'" onclick="window._kvmindStream&&window._kvmindStream.setMode(\''+_sv+'\');kvmindLoadSettings(\'video\')">'+_smLabels[_sv]+'</button>';
+}
+pillsHtml+='</div>';
+var streamSec=row(T("setStreamMode"),pillsHtml)
+  +row(T("setCodec"),'<span class="kvs-display" id="kvs-codec-display">--'+(_actSM&&_modeLabel[_actSM]?" ["+_modeLabel[_actSM]+"]":"")+'</span>');
+html+=section(T("setStreamSection"),streamSec);
+
+// H.264 编码分区
+var encSec=row(T("setH264Bitrate"),'<div class="kvmind-slider-wrap"><input type="range" id="kvs-h264-bitrate" min="1000" max="20000" step="500" value="20000" class="kvmind-settings-range" oninput="document.getElementById(\'kvs-br-val\').textContent=this.value+\' kbps\'" onchange="fetch(\'/api/streamer/set_params?h264_bitrate=\'+this.value,{method:\'POST\',credentials:\'same-origin\'})"><span id="kvs-br-val" class="kvmind-slider-val">20000 kbps</span></div>')
+  +row(T("setH264Gop"),'<div class="kvmind-slider-wrap"><input type="range" id="kvs-h264-gop" min="0" max="60" step="5" value="0" class="kvmind-settings-range" oninput="document.getElementById(\'kvs-gop-val\').textContent=this.value" onchange="fetch(\'/api/streamer/set_params?h264_gop=\'+this.value,{method:\'POST\',credentials:\'same-origin\'})"><span id="kvs-gop-val" class="kvmind-slider-val">0</span></div>');
+html+=section(T("setEncodeSection"),encSec);
+
+// 音频分区
 var _audioVol=window._kvmindStream&&window._kvmindStream.getVolume?window._kvmindStream.getVolume():0.5;
 var _audioVolPct=Math.round(_audioVol*100);
-html+='<tr><td class="kvs-label">'+T("Audio volume:")+'</td>';
-html+='<td class="kvs-ctrl"><div class="kvmind-slider-wrap"><input type="range" id="kvs-audio-vol" min="0" max="100" step="5" value="'+_audioVolPct+'" class="kvmind-settings-range" oninput="var v=this.value/100;window._kvmindStream&&window._kvmindStream.setVolume(v);document.getElementById(\'kvs-vol-val\').textContent=this.value+\'%\'" onchange="var v=this.value/100;window._kvmindStream&&window._kvmindStream.setVolume(v)"><span id="kvs-vol-val" class="kvmind-slider-val">'+_audioVolPct+'%</span></div>';
-html+='<div style="font-size:11px;color:var(--kvtext-muted);margin-top:2px">'+T("audio-hint")+'</div></td></tr>';
-html+='</table></div></div>';
+var audSec=row(T("setVolume"),'<div class="kvmind-slider-wrap"><input type="range" id="kvs-audio-vol" min="0" max="100" step="5" value="'+_audioVolPct+'" class="kvmind-settings-range" oninput="var v=this.value/100;window._kvmindStream&&window._kvmindStream.setVolume(v);document.getElementById(\'kvs-vol-val\').textContent=this.value+\'%\'" onchange="var v=this.value/100;window._kvmindStream&&window._kvmindStream.setVolume(v)"><span id="kvs-vol-val" class="kvmind-slider-val">'+_audioVolPct+'%</span></div>')
+  +'<div class="kvs-hint">ⓘ '+T("setAudioHint")+'</div>';
+html+=section(T("setAudioSection"),audSec);
 
-// ── Mouse Tab ──
+html+='</div>';
+
+// ============ Mouse Tab ============
 html+='<div class="kvmind-settings-tab-panel'+(_kvSettingsActiveTab==="mouse"?" active":"")+'">';
-html+='<div class="kvmind-settings-section"><div class="kvmind-settings-title">'+T("Mouse Settings")+'</div>';
-html+='<table class="kvmind-settings-table">';
-
-var curStyle=hid&&hid.getCursorStyle?hid.getCursorStyle():"blue-dot";
-html+='<tr><td class="kvs-label">'+T("Cursor style:")+'</td>';
-html+='<td class="kvs-ctrl"><select id="kvs-cursor-style" class="kvmind-settings-select" onchange="window._kvmindHid&&window._kvmindHid.setCursorStyle(this.value)">';
-var csOpts=["none","blue-dot","crosshair","default","pointer"];
-for(var i=0;i<csOpts.length;i++){
-  html+='<option value="'+csOpts[i]+'"'+(curStyle===csOpts[i]?' selected':'')+'>'+T("cs-"+csOpts[i])+'</option>';
-}
-html+='</select></td></tr>';
 
 var mMode=hid&&hid.getMouseMode?hid.getMouseMode():"absolute";
-html+='<tr><td class="kvs-label">'+T("Mouse mode:")+'</td>';
-html+='<td class="kvs-ctrl"><div class="kvmind-mode-pills" id="kvs-mouse-mode">';
-html+='<button class="kvmind-pill'+(mMode==="absolute"?" active":"")+'" data-val="absolute" onclick="window._kvmindHid&&window._kvmindHid.setMouseMode(\'absolute\');kvmindLoadSettings(\'mouse\')">'+T("mm-absolute")+'</button>';
-html+='<button class="kvmind-pill'+(mMode==="relative"?" active":"")+'" data-val="relative" onclick="window._kvmindHid&&window._kvmindHid.setMouseMode(\'relative\');kvmindLoadSettings(\'mouse\')">'+T("mm-relative")+'</button>';
-html+='</div></td></tr>';
+var modeHtml='<div class="kvmind-mode-pills" id="kvs-mouse-mode">'
+  +'<button class="kvmind-pill'+(mMode==="absolute"?" active":"")+'" onclick="window._kvmindHid&&window._kvmindHid.setMouseMode(\'absolute\');kvmindLoadSettings(\'mouse\')">'+T("setMouseAbs")+'</button>'
+  +'<button class="kvmind-pill'+(mMode==="relative"?" active":"")+'" onclick="window._kvmindHid&&window._kvmindHid.setMouseMode(\'relative\');kvmindLoadSettings(\'mouse\')">'+T("setMouseRel")+'</button>'
+  +'</div>';
+var curStyle=hid&&hid.getCursorStyle?hid.getCursorStyle():"blue-dot";
+var csOpts=["none","blue-dot","crosshair","default","pointer"];
+var csLabels={"none":T("setCursorNone"),"blue-dot":T("setCursorBlue"),"crosshair":T("setCursorCross"),"default":T("setCursorArrow"),"pointer":T("setCursorHand")};
+var cursorHtml='<select id="kvs-cursor-style" class="kvmind-settings-select" onchange="window._kvmindHid&&window._kvmindHid.setCursorStyle(this.value)">';
+for(var i=0;i<csOpts.length;i++){
+  cursorHtml+='<option value="'+csOpts[i]+'"'+(curStyle===csOpts[i]?' selected':'')+'>'+csLabels[csOpts[i]]+'</option>';
+}
+cursorHtml+='</select>';
+html+=section(T("setPointerSection"),row(T("setMouseMode"),modeHtml)+row(T("setCursorStyle"),cursorHtml));
 
 var revScroll=hid&&hid.getScrollReverse?hid.getScrollReverse():false;
-html+='<tr><td class="kvs-label">'+T("Reverse scroll:")+'</td>';
-html+='<td class="kvs-ctrl"><label class="kvmind-toggle"><input type="checkbox" id="kvs-reverse-scroll"'+(revScroll?' checked':'')+' onchange="window._kvmindHid&&window._kvmindHid.setScrollReverse(this.checked)"><span class="kvmind-toggle-slider"></span></label></td></tr>';
-
 var scrollRate=hid&&hid.getScrollRate?hid.getScrollRate():5;
-html+='<tr><td class="kvs-label">'+T("Scroll speed:")+'</td>';
-html+='<td class="kvs-ctrl"><div class="kvmind-slider-wrap"><input type="range" id="kvs-scroll-rate" min="1" max="25" value="'+scrollRate+'" class="kvmind-settings-range" oninput="window._kvmindHid&&window._kvmindHid.setScrollRate(this.value);document.getElementById(\'kvs-scroll-val\').textContent=this.value"><span id="kvs-scroll-val" class="kvmind-slider-val">'+scrollRate+'</span></div></td></tr>';
-
 var sens=hid&&hid.getSensitivity?hid.getSensitivity():1.0;
-html+='<tr class="kvs-rel-only" style="'+(mMode==="relative"?"":"display:none")+'"><td class="kvs-label">'+T("Sensitivity:")+'</td>';
-html+='<td class="kvs-ctrl"><div class="kvmind-slider-wrap"><input type="range" id="kvs-sensitivity" min="1" max="19" value="'+Math.round(sens*10)+'" class="kvmind-settings-range" oninput="var v=this.value/10;window._kvmindHid&&window._kvmindHid.setSensitivity(v);document.getElementById(\'kvs-sens-val\').textContent=v.toFixed(1)"><span id="kvs-sens-val" class="kvmind-slider-val">'+sens.toFixed(1)+'</span></div></td></tr>';
-
 var squash=hid&&hid.getSquashEnabled?hid.getSquashEnabled():true;
-html+='<tr><td class="kvs-label">'+T("Move squash:")+'</td>';
-html+='<td class="kvs-ctrl"><label class="kvmind-toggle"><input type="checkbox" id="kvs-squash"'+(squash?' checked':'')+' onchange="window._kvmindHid&&window._kvmindHid.setSquashEnabled(this.checked)"><span class="kvmind-toggle-slider"></span></label></td></tr>';
-
 var mRate=hid&&hid.getMoveRate?hid.getMoveRate():10;
-html+='<tr><td class="kvs-label">'+T("Squash rate:")+'</td>';
-html+='<td class="kvs-ctrl"><div class="kvmind-slider-wrap"><input type="range" id="kvs-move-rate" min="10" max="100" step="10" value="'+mRate+'" class="kvmind-settings-range" oninput="window._kvmindHid&&window._kvmindHid.setMoveRate(this.value);document.getElementById(\'kvs-rate-val\').textContent=this.value+\'ms\'"><span id="kvs-rate-val" class="kvmind-slider-val">'+mRate+'ms</span></div></td></tr>';
-
-html+='</table></div>';
-html+='</div>';
-
-// ── Actions Tab ──
-html+='<div class="kvmind-settings-tab-panel'+(_kvSettingsActiveTab==="actions"?" active":"")+'">';
-html+='<div class="kvmind-settings-section"><div class="kvmind-settings-title">'+T("Actions")+'</div>';
-html+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
-html+='<button class="kvmind-tb-btn" onclick="fetch(\'/api/streamer/reset\',{method:\'POST\',credentials:\'same-origin\'});kvmindAddLog(\'ok\',\'Stream reset\')">'+T("Reset Stream")+'</button>';
-html+='<button class="kvmind-tb-btn" onclick="window.open(\'/api/streamer/snapshot\',\'_blank\')">'+T("Screenshot")+'</button>';
-html+='<button class="kvmind-tb-btn" onclick="window.open(\'/api/log?seek=3600&follow=1\',\'_blank\')">'+T("View Log")+'</button>';
-html+='</div></div>';
-html+='</div>';
-
-// ── HID Tab ──
-html+='<div class="kvmind-settings-tab-panel'+(_kvSettingsActiveTab==="hid"?" active":"")+'">';
-html+='<div class="kvmind-settings-section"><div class="kvmind-settings-title">HID</div>';
-html+='<table class="kvmind-settings-table">';
-html+='<tr><td class="kvs-label">'+T("Keyboard layout:")+'</td>';
-html+='<td class="kvs-ctrl"><select id="kvs-kb-layout" class="kvmind-settings-select" onchange="window._kvmindHid&&window._kvmindHid.setKeyboardLayout&&window._kvmindHid.setKeyboardLayout(this.value)">';
-var kbLayout=(hid&&hid.getKeyboardLayout)?hid.getKeyboardLayout():"en-us";
-var kbOpts=[["en-us","English (US)"],["en-gb","English (UK)"],["de","Deutsch"],["fr","Fran\u00e7ais"],["es","Espa\u00f1ol"],["it","Italiano"],["ja","Japanese"],["ko","Korean"],["zh","Chinese"]];
-for(var k=0;k<kbOpts.length;k++){
-html+='<option value="'+kbOpts[k][0]+'"'+(kbLayout===kbOpts[k][0]?' selected':'')+'>'+kbOpts[k][1]+'</option>';
+var scrollSec=row(T("setReverseScroll"),'<label class="kvmind-toggle"><input type="checkbox" id="kvs-reverse-scroll"'+(revScroll?' checked':'')+' onchange="window._kvmindHid&&window._kvmindHid.setScrollReverse(this.checked)"><span class="kvmind-toggle-slider"></span></label>')
+  +row(T("setScrollSpeed"),'<div class="kvmind-slider-wrap"><input type="range" id="kvs-scroll-rate" min="1" max="25" value="'+scrollRate+'" class="kvmind-settings-range" oninput="window._kvmindHid&&window._kvmindHid.setScrollRate(this.value);document.getElementById(\'kvs-scroll-val\').textContent=this.value"><span id="kvs-scroll-val" class="kvmind-slider-val">'+scrollRate+'</span></div>');
+if(mMode==="relative"){
+  scrollSec+=row(T("setSensitivity"),'<div class="kvmind-slider-wrap"><input type="range" id="kvs-sensitivity" min="1" max="19" value="'+Math.round(sens*10)+'" class="kvmind-settings-range" oninput="var v=this.value/10;window._kvmindHid&&window._kvmindHid.setSensitivity(v);document.getElementById(\'kvs-sens-val\').textContent=v.toFixed(1)"><span id="kvs-sens-val" class="kvmind-slider-val">'+sens.toFixed(1)+'</span></div>');
 }
-html+='</select></td></tr>';
-html+='</table>';
-html+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px">';
-html+='<button class="kvmind-tb-btn" onclick="window._kvmindHid&&window._kvmindHid.resetHID();kvmindAddLog(\'ok\',\'HID reset\')">'+T("Reset HID")+'</button>';
-html+='</div></div>';
+scrollSec+=row(T("setMoveSquash"),'<label class="kvmind-toggle"><input type="checkbox" id="kvs-squash"'+(squash?' checked':'')+' onchange="window._kvmindHid&&window._kvmindHid.setSquashEnabled(this.checked)"><span class="kvmind-toggle-slider"></span></label>')
+  +row(T("setSquashRate"),'<div class="kvmind-slider-wrap"><input type="range" id="kvs-move-rate" min="10" max="100" step="10" value="'+mRate+'" class="kvmind-settings-range" oninput="window._kvmindHid&&window._kvmindHid.setMoveRate(this.value);document.getElementById(\'kvs-rate-val\').textContent=this.value+\'ms\'"><span id="kvs-rate-val" class="kvmind-slider-val">'+mRate+'ms</span></div>');
+html+=section(T("setScrollSection"),scrollSec);
+
+html+='</div>';
+
+// ============ HID Tab ============
+html+='<div class="kvmind-settings-tab-panel'+(_kvSettingsActiveTab==="hid"?" active":"")+'">';
+var kbLayout=(hid&&hid.getKeyboardLayout)?hid.getKeyboardLayout():"en-us";
+var kbOpts=[["en-us","English (US)"],["en-gb","English (UK)"],["de","Deutsch"],["fr","Français"],["es","Español"],["it","Italiano"],["ja","Japanese"],["ko","Korean"],["zh","Chinese"]];
+var kbHtml='<select id="kvs-kb-layout" class="kvmind-settings-select" onchange="window._kvmindHid&&window._kvmindHid.setKeyboardLayout&&window._kvmindHid.setKeyboardLayout(this.value)">';
+for(var k=0;k<kbOpts.length;k++){
+  kbHtml+='<option value="'+kbOpts[k][0]+'"'+(kbLayout===kbOpts[k][0]?' selected':'')+'>'+kbOpts[k][1]+'</option>';
+}
+kbHtml+='</select>';
+html+=section(T("setKbSection"),row(T("setKbLayout"),kbHtml)
+  +'<div class="kvs-action-grid"><button class="kvs-action-btn" onclick="window._kvmindHid&&window._kvmindHid.resetHID();kvmindAddLog(\'ok\',\'HID reset\')">'+T("setResetHid")+'</button></div>');
+html+='</div>';
+
+// ============ Actions Tab ============
+html+='<div class="kvmind-settings-tab-panel'+(_kvSettingsActiveTab==="actions"?" active":"")+'">';
+html+=section(T("setToolsSection"),
+  '<div class="kvs-action-grid">'
+  +'<button class="kvs-action-btn" onclick="window.open(\'/api/streamer/snapshot\',\'_blank\')">'+T("setActScreenshot")+'</button>'
+  +'<button class="kvs-action-btn" onclick="window.open(\'/api/log?seek=3600&follow=1\',\'_blank\')">'+T("setActViewLog")+'</button>'
+  +'</div>');
+html+=section(T("setMaintSection"),
+  '<div class="kvs-action-grid">'
+  +'<button class="kvs-action-btn danger" onclick="fetch(\'/api/streamer/reset\',{method:\'POST\',credentials:\'same-origin\'});kvmindAddLog(\'ok\',\'Stream reset\')">'+T("setActResetStream")+'</button>'
+  +'</div>');
 html+='</div>';
 
 m.innerHTML=html;
-kvmindTranslateKVM();
 if(_kvSettingsActiveTab==="video"){
-fetch("/api/streamer",{credentials:"same-origin"}).then(function(r){return r.json();}).then(function(d){
-var p=d.result.params;
-var s=d.result.streamer;
-var brEl=document.getElementById("kvs-h264-bitrate");
-var gopEl=document.getElementById("kvs-h264-gop");
-var codecEl=document.getElementById("kvs-codec-display");
-if(brEl){brEl.value=p.h264_bitrate;document.getElementById("kvs-br-val").textContent=p.h264_bitrate+" kbps";}
-if(gopEl){gopEl.value=p.h264_gop;document.getElementById("kvs-gop-val").textContent=p.h264_gop;}
-if(codecEl&&s){
-var src=s.source||{};
-var res=src.resolution||{};
-var _modeNow=(window._kvmindStream&&window._kvmindStream.getMode)||"";
-if(typeof _modeNow==="function")_modeNow=_modeNow();
-var _modeTag={"webrtc":" [WebRTC]","media":" [H.264]","mjpeg":" [MJPEG]"};
-codecEl.textContent="H.264 "+res.width+"x"+res.height+" @ "+s.h264.fps+" fps"+(s.h264.online?" \u2714":"")+(_modeTag[_modeNow]||"");
-}
-}).catch(function(e){console.warn("[kvmind]",e);});
+  fetch("/api/streamer",{credentials:"same-origin"}).then(function(r){return r.json();}).then(function(d){
+    var p=d.result.params;var s=d.result.streamer;
+    var brEl=document.getElementById("kvs-h264-bitrate");
+    var gopEl=document.getElementById("kvs-h264-gop");
+    var codecEl=document.getElementById("kvs-codec-display");
+    if(brEl){brEl.value=p.h264_bitrate;document.getElementById("kvs-br-val").textContent=p.h264_bitrate+" kbps";}
+    if(gopEl){gopEl.value=p.h264_gop;document.getElementById("kvs-gop-val").textContent=p.h264_gop;}
+    if(codecEl&&s){
+      var res=(s.source||{}).resolution||{};
+      var _modeNow=(window._kvmindStream&&window._kvmindStream.getMode)||"";
+      if(typeof _modeNow==="function")_modeNow=_modeNow();
+      var _modeTag={"webrtc":" [WebRTC]","media":" [H.264]","mjpeg":" [MJPEG]"};
+      codecEl.textContent="H.264 "+res.width+"x"+res.height+" @ "+s.h264.fps+" fps"+(s.h264.online?" ✔":"")+(_modeTag[_modeNow]||"");
+    }
+  }).catch(function(e){console.warn("[kvmind]",e);});
 }
 }
-function _kvSettT(key){var lang=kvmindGetLang();var d=KVMIND_KVM_I18N[lang]||{};return d[key]||key;}
+function _kvSettT(key){if(window.KVMindI18n&&window.KVMindI18n.translateKvmdSetting){var r=window.KVMindI18n.translateKvmdSetting(key);if(r!=null)return r;}return key;}
 
 // User avatar dropdown (with theme/lang selectors)
 (function(){
@@ -617,11 +945,9 @@ var badge=document.getElementById("kvmind-plan-badge");
 fetch(KVMIND_API+"/api/device/uid").then(function(r){return r.json();}).then(function(d){if(d.uid&&uidEl)uidEl.textContent=d.uid;}).catch(function(e){console.warn("[kvmind]",e);});
 fetch(KVMIND_API+"/api/subscription").then(function(r){return r.json();}).then(function(sub){
 if(!badge)return;
-var plan=sub.plan||"community";
-var labels={community:"Community",standard:"Standard",pro:"Pro"};
-var colors={community:"#6b7280",standard:"#3ecf8e",pro:"#8f77b5"};
-badge.textContent=labels[plan]||plan;
-badge.style.background=colors[plan]||"#6b7280";
+var paid=sub.entitlement_state==="paid";
+badge.textContent=paid?"Paid":"Free";
+badge.style.background=paid?"#3ecf8e":"#6b7280";
 badge.style.color="#fff";
 }).catch(function(e){console.warn("[kvmind]",e);});
 }
@@ -649,7 +975,7 @@ var _umLang=document.getElementById("kvmind-um-lang");
 if(_umLang){
 _umLang.value=kvmindGetLang();
 ["keydown","keyup","keypress","mousedown","click","mouseup","touchstart"].forEach(function(evt){_umLang.addEventListener(evt,function(e){e.stopPropagation();});});
-_umLang.addEventListener("change",function(){localStorage.setItem("kvmind_lang",this.value);kvmindApplyLang();});
+_umLang.addEventListener("change",function(){if(window.KVMindI18n&&window.KVMindI18n.setLang){window.KVMindI18n.setLang(this.value);}else{localStorage.setItem("kvmind_lang",this.value);}kvmindApplyLang();});
 }
 })();
 
@@ -692,11 +1018,12 @@ if(text&&text.trim())kvmindAppendMsg("ai",text+" [aborted]");
 };
 window._kvGw.onChatError=function(err){
 _endChat();
-var text=err,logText=err;
-if(err&&typeof err==="object"){
-if(err.code==="ws_not_open"){text=kvmindT("wsReconnecting")||"Reconnecting — please try again in a moment.";logText="ws_not_open";}
-else{text=err.message||err.code||"unknown error";logText=text;}}
-kvmindAppendMsg("system","\u26a0 "+text);kvmindAddLog("error",logText);
+// V6 PR#3: dispatch the error payload to a CTA-aware bubble. See
+// dev/kdcms/api-spec/error-codes.md for the full contract. String-shape
+// errors are legacy paths that still flow through here — wrap them into
+// the struct shape so the downstream logic has one branch to worry about.
+if(typeof err==="string") err={code:null,message:err};
+kvmindAppendChatError(err||{});
 };
 window._kvGw.onToolStart=function(name,id,input){
 var inputStr="";
@@ -733,16 +1060,18 @@ var _old=document.querySelector(".kvmind-chat-msg.ai.streaming");if(_old)_old.cl
 window._kvmindStreaming=false;
 };
 window._kvGw.onThinkingEnd=function(){};
+window._kvGw.onNotice=function(notice){kvmindAppendNotice(notice);};
 window._kvGw.onLog=function(level,msg){kvmindAddLog(level,msg);};
-window._kvGw.onConfirmRequired=function(action,args,runId){
-var ctext=action==="dangerous_instruction"?(args.instruction||action):(action+": "+JSON.stringify(args));
-kvmindShowConfirm(ctext,action,runId);
-};
 window._kvGw.connect();
 }
 
 // Load version
 fetch("/kdkvm/version.json?t="+Date.now()).then(function(r){return r.json()}).then(function(d){var el=document.getElementById("kvmind-ver");if(el)el.textContent="v"+d.version;}).catch(function(e){console.warn("[kvmind]",e);});
+
+// Cache supports_tools flag for proactive auto-mode warning.
+// Sidebar also mirrors this value when the user runs Test Connection.
+window._kvmindSupportsTools=true;
+fetch(KVMIND_API+"/api/ai/config").then(function(r){return r.json();}).then(function(d){window._kvmindSupportsTools=d&&d.supports_tools!==false;}).catch(function(e){console.warn("[kvmind] supports_tools:",e);});
 
 // Check OTA update status
 fetch("/kdkvm/api/update/status").then(function(r){return r.json()}).then(function(d){
@@ -760,20 +1089,119 @@ kvmindCheckStatus();
 var _statusCheckTimer=setInterval(kvmindCheckStatus,30000);
 kvmindAddLog("ok","KVMind initialized");
 
+// V15: banner 只在"账户主动发起 ACCOUNT_TO_DEVICE 待审请求"时显示。设计原则：
+//   * **不挡 KVM 控制台主操作** — 右上角浮动小卡片，不全宽顶部条
+//   * **可关闭** — × 按钮 dismiss 进 sessionStorage，本会话不再弹；下次有**新**
+//                 pending（不同 request_id）或换浏览器会话才会重新出现
+//   * **不强制** — 用户可以"晾着"这个 pending 继续做别的，跳到 activate 处理或忽略
+var _DISMISS_KEY="kvmind:bind_banner_dismissed_ids";
+function _bannerDismissedIds(){
+    try { return JSON.parse(sessionStorage.getItem(_DISMISS_KEY) || "[]") || []; }
+    catch(e){ return []; }
+}
+function _bannerDismissAdd(id){
+    try {
+        var arr=_bannerDismissedIds();
+        if(arr.indexOf(String(id))<0) arr.push(String(id));
+        sessionStorage.setItem(_DISMISS_KEY, JSON.stringify(arr));
+    } catch(e){}
+}
+function kvmindRenderBindBanner(visible, requestId){
+    var ID="kvmind-bind-banner";
+    var existing=document.getElementById(ID);
+    if(!visible){ if(existing) existing.remove(); return; }
+    var banner=existing||document.createElement("div");
+    banner.id=ID;
+    banner.dataset.requestId=String(requestId || "");
+    banner.style.cssText="position:fixed;top:16px;right:16px;z-index:99999;"+
+        "max-width:320px;padding:10px 12px 10px 14px;border-radius:10px;"+
+        "font:13px/1.4 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;"+
+        "background:#fef3c7;color:#92400e;border:1px solid #fde68a;"+
+        "box-shadow:0 4px 16px rgba(0,0,0,0.12);"+
+        "display:flex;align-items:center;gap:10px";
+    banner.innerHTML=
+        '<span style="flex:1;cursor:pointer;font-weight:500" data-role="open">⚠ '+kvmindT("bindBannerPending")+' →</span>'+
+        '<button type="button" data-role="dismiss" aria-label="'+kvmindT("bindBannerDismiss")+'" '+
+        'title="'+kvmindT("bindBannerDismiss")+'" '+
+        'style="border:0;background:transparent;color:#92400e;cursor:pointer;'+
+        'font-size:18px;line-height:1;padding:2px 6px;border-radius:4px;opacity:0.7">×</button>';
+    var openEl=banner.querySelector('[data-role="open"]');
+    if(openEl) openEl.onclick=function(){ window.location.href="/activate.html"; };
+    var dismissEl=banner.querySelector('[data-role="dismiss"]');
+    if(dismissEl) dismissEl.onclick=function(ev){
+        ev.stopPropagation();
+        if(requestId) _bannerDismissAdd(requestId);
+        banner.remove();
+    };
+    if(!existing) document.body.appendChild(banner);
+}
+// 只在有账户主动发起的 pending 且未被本会话 dismiss 时显示。轮询 active=1s, idle=15s。
+var _kvmindBindActive=false;
+var _kvmindBindTimer=null;
+function _scheduleBindBanner(){
+    if(_kvmindBindTimer) clearTimeout(_kvmindBindTimer);
+    _kvmindBindTimer=setTimeout(kvmindCheckBindBanner, _kvmindBindActive ? 1000 : 15000);
+}
+function kvmindCheckBindBanner(){
+    fetch(KVMIND_API+"/api/binding/state",{cache:"no-store"}).then(function(r){return r.json();}).then(function(st){
+        var pending=(st.pending||[]).filter(function(p){
+            return p && (p.direction==="ACCOUNT_TO_DEVICE" || p.initiator==="account");
+        });
+        if(pending.length===0){
+            kvmindRenderBindBanner(false);
+            _kvmindBindActive=false;
+            _scheduleBindBanner();
+            return;
+        }
+        var dismissed=_bannerDismissedIds();
+        var firstUndismissed=null;
+        for(var i=0;i<pending.length;i++){
+            var pid=String(pending[i].id || "");
+            if(dismissed.indexOf(pid)<0){ firstUndismissed=pending[i]; break; }
+        }
+        if(firstUndismissed){
+            kvmindRenderBindBanner(true, firstUndismissed.id);
+            _kvmindBindActive=true;
+        } else {
+            // 全部已 dismiss — 隐藏 banner，但保持 1s 轮询：用户主动 accept/cancel
+            // 后让 banner 立即消失（避免 stale）；新 pending（不同 id）也能秒弹。
+            kvmindRenderBindBanner(false);
+            _kvmindBindActive=true;
+        }
+        _scheduleBindBanner();
+    }).catch(function(){
+        kvmindRenderBindBanner(false);
+        _kvmindBindActive=false;
+        _scheduleBindBanner();
+    });
+}
+kvmindCheckBindBanner();
+
 // Update toolbar & menu buttons based on subscription
 fetch(KVMIND_API+"/api/subscription").then(function(r){return r.json()}).then(function(sub){
-    currentSubscription={plan:sub.plan||"community",messaging:!!sub.messaging};
-    kvmindUpdatePlanUI(currentSubscription.plan);
+    var claimed=sub.claim_state==="claimed";
+    currentSubscription={paid:sub.entitlement_state==="paid",messaging:!!sub.messaging,claimed:claimed};
+    kvmindUpdatePlanUI(currentSubscription.paid);
+    // 升级订阅按钮一律跳 kvmind.com/pricing，不再走 /activate.html。
+    // 设备未 claim 的引导走顶栏 bind banner / 用户菜单的"激活"入口，与"升级订阅"语义解耦。
+    var url = "https://kvmind.com/pricing";
+    function _wireUpgrade(el){
+        if(!el||currentSubscription.paid) return;
+        el.href = url;
+        el.setAttribute("target","_blank");
+        el.setAttribute("rel","noopener");
+        // 兜底：直接绑 click，绕开 <a> 默认行为可能被吞的边界场景
+        if(!el._kvUpgradeBound){
+            el.addEventListener("click", function(e){
+                e.preventDefault(); e.stopPropagation();
+                window.open(url, "_blank", "noopener");
+            });
+            el._kvUpgradeBound = true;
+        }
+    }
+    _wireUpgrade(document.getElementById("kvmind-btn-upgrade"));
+    _wireUpgrade(document.getElementById("kvmind-um-upgrade"));
 }).catch(function(e){console.warn("[kvmind]",e);});
-
-function kvmindUpdatePlanUI(plan){
-    var badge=document.getElementById("kvmind-plan-badge");
-    var planLabels={community:"Community",standard:"Standard",pro:"Pro"};
-    var planColors={community:"#6b7280",standard:"#3ecf8e",pro:"#8f77b5"};
-    var label=planLabels[plan]||plan;
-    var color=planColors[plan]||"#6b7280";
-    if(badge){badge.textContent=label;badge.style.background=color;}
-}
 
 // Expose functions used by inline onclick handlers
 window.kvmindLoadSettings=kvmindLoadSettings;

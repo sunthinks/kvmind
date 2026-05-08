@@ -36,10 +36,12 @@
 
   var CSS = [
     // Layout overrides
-    "#kvmind-chat-panel:not(.collapsed) { width: " + PANEL_WIDTH + "px !important }",
-    "#stream-window { right: " + PANEL_WIDTH + "px !important }",
-    "#kvmind-log-bar { right: " + PANEL_WIDTH + "px !important }",
+    "#kvmind-chat-panel:not(.collapsed) { width: var(--kvmind-panel-width, " + PANEL_WIDTH + "px) !important }",
+    "body:not(.kvmind-panel-collapsed) #stream-window { right: var(--kvmind-panel-width, " + PANEL_WIDTH + "px) !important }",
+    "body:not(.kvmind-panel-collapsed) #kvmind-stream-area { right: var(--kvmind-panel-width, " + PANEL_WIDTH + "px) !important }",
+    "body:not(.kvmind-panel-collapsed) #kvmind-log-bar { right: var(--kvmind-panel-width, " + PANEL_WIDTH + "px) !important }",
     "body.kvmind-panel-collapsed #stream-window { right: 0 !important }",
+    "body.kvmind-panel-collapsed #kvmind-stream-area { right: 0 !important }",
     "body.kvmind-panel-collapsed #kvmind-log-bar { right: 0 !important }",
 
     // Sidebar
@@ -416,46 +418,68 @@
     }
 
     function applyPanelWidth(w) {
-      panel.style.width = w + "px";
-      // Update stream area and related elements
-      var streamArea = document.getElementById("kvmind-stream-area");
-      if (streamArea) streamArea.style.right = w + "px";
-      var logBar = document.getElementById("kvmind-log-bar");
-      if (logBar) logBar.style.right = w + "px";
-      var webterm = document.getElementById("webterm-window");
-      if (webterm && !webterm.classList.contains("kvmind-hidden")) webterm.style.right = w + "px";
+      document.documentElement.style.setProperty("--kvmind-panel-width", w + "px");
     }
 
     var dragging = false;
-    resizeHandle.addEventListener("mousedown", function (e) {
+    var dragPointerId = null;
+
+    function clampPanelWidth(w) {
+      if (w < PANEL_MIN) return PANEL_MIN;
+      if (w > PANEL_MAX) return PANEL_MAX;
+      return w;
+    }
+
+    function savePanelWidth() {
+      var finalW = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--kvmind-panel-width"), 10);
+      if (finalW >= PANEL_MIN && finalW <= PANEL_MAX) {
+        localStorage.setItem("kvmind_panel_width", String(finalW));
+      }
+    }
+
+    function onDragMove(ev) {
+      if (!dragging) return;
+      if (dragPointerId !== null && ev.pointerId !== undefined && ev.pointerId !== dragPointerId) return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      applyPanelWidth(clampPanelWidth(window.innerWidth - ev.clientX));
+    }
+
+    function endDrag(ev) {
+      if (!dragging) return;
+      if (ev && dragPointerId !== null && ev.pointerId !== undefined && ev.pointerId !== dragPointerId) return;
+      dragging = false;
+      var pointerId = dragPointerId;
+      dragPointerId = null;
+      resizeHandle.classList.remove("dragging");
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      try {
+        if (resizeHandle.releasePointerCapture && pointerId !== null) resizeHandle.releasePointerCapture(pointerId);
+      } catch (_) {}
+      window.removeEventListener("pointermove", onDragMove, true);
+      window.removeEventListener("pointerup", endDrag, true);
+      window.removeEventListener("pointercancel", endDrag, true);
+      window.removeEventListener("blur", endDrag, true);
+      savePanelWidth();
+    }
+
+    resizeHandle.addEventListener("pointerdown", function (e) {
+      if (e.button !== undefined && e.button !== 0) return;
       e.preventDefault();
       e.stopImmediatePropagation();
       dragging = true;
+      dragPointerId = e.pointerId;
       resizeHandle.classList.add("dragging");
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
-
-      function onMove(ev) {
-        if (!dragging) return;
-        var newW = window.innerWidth - ev.clientX;
-        if (newW < PANEL_MIN) newW = PANEL_MIN;
-        if (newW > PANEL_MAX) newW = PANEL_MAX;
-        applyPanelWidth(newW);
-      }
-      function onUp() {
-        dragging = false;
-        resizeHandle.classList.remove("dragging");
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-        document.removeEventListener("mousemove", onMove);
-        document.removeEventListener("mouseup", onUp);
-        var finalW = parseInt(panel.style.width, 10);
-        if (finalW >= PANEL_MIN && finalW <= PANEL_MAX) {
-          localStorage.setItem("kvmind_panel_width", String(finalW));
-        }
-      }
-      document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup", onUp);
+      try {
+        if (resizeHandle.setPointerCapture && e.pointerId !== undefined) resizeHandle.setPointerCapture(e.pointerId);
+      } catch (_) {}
+      window.addEventListener("pointermove", onDragMove, true);
+      window.addEventListener("pointerup", endDrag, true);
+      window.addEventListener("pointercancel", endDrag, true);
+      window.addEventListener("blur", endDrag, true);
     });
 
     // -- C3-3: Hide empty guide when messages are added --
@@ -501,7 +525,7 @@
       hd: "\u2699\uFE0F MyClaw \u8BBE\u7F6E",
       g_ai: "\uD83E\uDD16 AI \u670D\u52A1", g_ch: "\uD83D\uDCF1 \u6D88\u606F\u901A\u9053", g_pref: "\uD83C\uDF10 \u8BED\u8A00\u4E0E\u6A21\u5F0F",
       provider: "AI \u670D\u52A1\u5546", model: "\u6A21\u578B", test: "\uD83D\uDD17 \u6D4B\u8BD5\u8FDE\u63A5",
-      testing: "\u6D4B\u8BD5\u4E2D...", test_ok: "\u2705 \u8FDE\u63A5\u6210\u529F", test_ok_tools: "\u2705 \u8FDE\u63A5\u6210\u529F \u2014 \u652F\u6301\u81EA\u52A8\u6267\u884C", test_ok_suggest: "\u26A0 \u8FDE\u63A5\u6210\u529F \u2014 \u4EC5\u5EFA\u8BAE\u6A21\u5F0F\uFF08\u6A21\u578B\u4E0D\u652F\u6301\u5DE5\u5177\u8C03\u7528\uFF09", test_fail: "\u274C \u8FDE\u63A5\u5931\u8D25",
+      testing: "\u6D4B\u8BD5\u4E2D...", test_ok: "\u2705 \u8FDE\u63A5\u6210\u529F", test_ok_tools: "\u2705 \u8FDE\u63A5\u6210\u529F \u2014 \u652F\u6301\u81EA\u52A8\u6267\u884C", test_ok_suggest: "\u26A0 \u8FDE\u63A5\u6210\u529F \u2014 \u4EC5\u5EFA\u8BAE\u6A21\u5F0F\uFF08\u5F53\u524D\u6A21\u578B\u4E0D\u652F\u6301\u5DE5\u5177\u8C03\u7528\uFF09\u3002\u8BF7\u66F4\u6362\u4E3A\u652F\u6301 Function Calling \u7684\u6A21\u578B\u3002", test_fail: "\u274C \u8FDE\u63A5\u5931\u8D25", no_model: "\u8BF7\u5148\u9009\u62E9\u6A21\u578B", free_input_hint: "\u65E0\u6CD5\u62C9\u53D6\u6A21\u578B\u5217\u8868\uFF0C\u8BF7\u624B\u52A8\u8F93\u5165\u6A21\u578B\u540D\u3002", other_option: "\u5176\u4ED6\u2026 (\u624B\u52A8\u8F93\u5165)",
       tg_token: "Telegram Bot Token", tg_hint: "\u4ECE @BotFather \u521B\u5EFA Bot \u83B7\u53D6",
       more_channels: "\u66F4\u591A\u6E20\u9053\u5373\u5C06\u652F\u6301\uFF08WeChat\u3001LINE \u7B49\uFF09",
       task_toggle: "\u5207\u6362", task_delete: "\u5220\u9664", task_runs: "\u5DF2\u6267\u884C {n} \u6B21", task_last: "\u4E0A\u6B21: ",
@@ -514,13 +538,12 @@
       mem_empty: "\u6682\u65E0\u8BB0\u5FC6",
       save: "\u4FDD\u5B58", saved: "\u2705 \u5DF2\u4FDD\u5B58", save_fail: "\u274C \u4FDD\u5B58\u5931\u8D25",
       no_key: "\u8BF7\u8F93\u5165 API Key",
-      learn_cloud: "\u4E86\u89E3\u4E91\u7AEF\u7248 \u2192",
     },
     ja: {
       hd: "\u2699\uFE0F MyClaw \u8A2D\u5B9A",
       g_ai: "\uD83E\uDD16 AI \u30B5\u30FC\u30D3\u30B9", g_ch: "\uD83D\uDCF1 \u30E1\u30C3\u30BB\u30FC\u30B8\u30C1\u30E3\u30CD\u30EB", g_pref: "\uD83C\uDF10 \u8A00\u8A9E\u30FB\u30E2\u30FC\u30C9",
       provider: "AI \u30D7\u30ED\u30D0\u30A4\u30C0", model: "\u30E2\u30C7\u30EB", test: "\uD83D\uDD17 \u63A5\u7D9A\u30C6\u30B9\u30C8",
-      testing: "\u30C6\u30B9\u30C8\u4E2D...", test_ok: "\u2705 \u63A5\u7D9A\u6210\u529F", test_ok_tools: "\u2705 \u63A5\u7D9A\u6210\u529F \u2014 \u81EA\u52D5\u5B9F\u884C\u5BFE\u5FDC", test_ok_suggest: "\u26A0 \u63A5\u7D9A\u6210\u529F \u2014 \u63D0\u6848\u30E2\u30FC\u30C9\u306E\u307F\uFF08\u30C4\u30FC\u30EB\u547C\u3073\u51FA\u3057\u975E\u5BFE\u5FDC\uFF09", test_fail: "\u274C \u63A5\u7D9A\u5931\u6557",
+      testing: "\u30C6\u30B9\u30C8\u4E2D...", test_ok: "\u2705 \u63A5\u7D9A\u6210\u529F", test_ok_tools: "\u2705 \u63A5\u7D9A\u6210\u529F \u2014 \u81EA\u52D5\u5B9F\u884C\u5BFE\u5FDC", test_ok_suggest: "\u26A0 \u63A5\u7D9A\u6210\u529F \u2014 \u63D0\u6848\u30E2\u30FC\u30C9\u306E\u307F\uFF08\u73FE\u5728\u306E\u30E2\u30C7\u30EB\u306F\u30C4\u30FC\u30EB\u547C\u3073\u51FA\u3057\u975E\u5BFE\u5FDC\uFF09\u3002Function Calling \u5BFE\u5FDC\u30E2\u30C7\u30EB\u3078\u306E\u5909\u66F4\u3092\u3054\u691C\u8A0E\u304F\u3060\u3055\u3044\u3002", test_fail: "\u274C \u63A5\u7D9A\u5931\u6557", no_model: "\u5148\u306B\u30E2\u30C7\u30EB\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044", free_input_hint: "\u30E2\u30C7\u30EB\u4E00\u89A7\u3092\u53D6\u5F97\u3067\u304D\u307E\u305B\u3093\u3002\u30E2\u30C7\u30EB\u540D\u3092\u624B\u52D5\u3067\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002", other_option: "\u305D\u306E\u4ED6\u2026 (\u624B\u52D5\u5165\u529B)",
       tg_token: "Telegram Bot Token", tg_hint: "@BotFather \u3067 Bot \u3092\u4F5C\u6210\u3057\u3066\u53D6\u5F97",
       more_channels: "\u4ED6\u306E\u30C1\u30E3\u30CD\u30EB\u306F\u8FD1\u65E5\u5BFE\u5FDC\u4E88\u5B9A\uFF08WeChat\u3001LINE\u7B49\uFF09",
       task_toggle: "\u5207\u66FF", task_delete: "\u524A\u9664", task_runs: "{n} \u56DE\u5B9F\u884C\u6E08", task_last: "\u524D\u56DE: ",
@@ -533,13 +556,12 @@
       mem_empty: "\u30E1\u30E2\u30EA\u306A\u3057",
       save: "\u4FDD\u5B58", saved: "\u2705 \u4FDD\u5B58\u3057\u307E\u3057\u305F", save_fail: "\u274C \u4FDD\u5B58\u5931\u6557",
       no_key: "API Key \u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044",
-      learn_cloud: "\u30AF\u30E9\u30A6\u30C9\u7248\u3092\u898B\u308B \u2192",
     },
     en: {
       hd: "\u2699\uFE0F MyClaw Settings",
       g_ai: "\uD83E\uDD16 AI Service", g_ch: "\uD83D\uDCF1 Channels", g_pref: "\uD83C\uDF10 Language & Mode",
       provider: "AI Provider", model: "Model", test: "\uD83D\uDD17 Test Connection",
-      testing: "Testing...", test_ok: "\u2705 Connected", test_ok_tools: "\u2705 Connected \u2014 auto-execution supported", test_ok_suggest: "\u26A0 Connected \u2014 suggest mode only (no tool calling)", test_fail: "\u274C Failed",
+      testing: "Testing...", test_ok: "\u2705 Connected", test_ok_tools: "\u2705 Connected \u2014 auto-execution supported", test_ok_suggest: "\u26A0 Connected \u2014 suggest mode only (model does not support tool calls). For auto mode, pick a model that supports Function Calling.", test_fail: "\u274C Failed", no_model: "Please select a model first", free_input_hint: "Couldn't load model list \u2014 enter the model name manually.", other_option: "Other\u2026 (type manually)",
       tg_token: "Telegram Bot Token", tg_hint: "Create a Bot via @BotFather",
       more_channels: "More channels coming soon (WeChat, LINE, etc.)",
       task_toggle: "Toggle", task_delete: "Delete", task_runs: "{n} runs", task_last: "Last: ",
@@ -552,18 +574,20 @@
       mem_empty: "No memories",
       save: "Save", saved: "\u2705 Saved", save_fail: "\u274C Save failed",
       no_key: "Please enter API Key",
-      learn_cloud: "Learn about Cloud \u2192",
     }
   };
 
   var _setL = _SET_I18N[_sbLang] || _SET_I18N.en;
   var _lastSupportsTools = true;
 
+  // Client-side display hints. Do NOT list models here — model discovery is
+  // done at runtime by hitting the provider's own list-models endpoint.
+  // See config.py AI Model Catalog Principle.
   var _PROVIDER_HINTS = {
-    ollama:    { ph: "API Key (optional)", label: "Local Ollama", noKey: true },
-    gemini:    { ph: "AIza...",    link: "https://aistudio.google.com/apikey",              label: "Google AI Studio" },
-    anthropic: { ph: "sk-ant-...", link: "https://console.anthropic.com/settings/keys",     label: "Anthropic Console" },
-    openai:    { ph: "sk-...",     link: "https://platform.openai.com/api-keys",            label: "OpenAI Platform" },
+    ollama:    { ph: "API Key (optional)", label: "Ollama Library",       noKey: true,  needsBase: true },
+    gemini:    { ph: "AIza...",             label: "Google AI Studio",    needsBase: false },
+    anthropic: { ph: "sk-ant-...",          label: "Anthropic Console",   needsBase: false },
+    openai:    { ph: "sk-...",              label: "OpenAI Platform",     needsBase: false },
   };
 
   // =========================================================================
@@ -576,11 +600,11 @@
     '<div id="kvmind-settings-view-header">' + L.hd + '</div>' +
     '<div id="kvmind-settings-view-body">' +
 
-    // ── Plan status (read-only, community edition) ──
+    // ── Subscription status (read-only) ──
     '<div id="kv-set-sub-card" class="kv-subscription-card" style="margin:0 12px 12px;padding:10px 14px;border-radius:10px;border:1px solid var(--kvborder);background:var(--kvbg-card)">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
-        '<span id="kv-sub-plan-label" style="font-weight:600;font-size:13px">Community</span>' +
-        '<a href="https://kvmind.com" target="_blank" rel="noopener" style="font-size:11px;color:var(--kvtext-sub);text-decoration:none;white-space:nowrap">' + L.learn_cloud + '</a>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center">' +
+        '<span id="kv-sub-plan-label" style="font-weight:600;font-size:13px">Free</span>' +
+        '<a id="kv-sub-action-link" href="https://kvmind.com/pricing" target="_blank" style="font-size:12px;color:var(--kvaccent);text-decoration:none">Upgrade \u2192</a>' +
       '</div>' +
       '<div id="kv-sub-features" style="font-size:11px;color:var(--kvtext-sub);margin-top:4px">\u2716 Tunnel &nbsp; \u2716 Messaging &nbsp; \u2716 OTA</div>' +
     '</div>' +
@@ -596,7 +620,6 @@
               '<option value="gemini">Gemini</option>' +
               '<option value="anthropic">Claude</option>' +
               '<option value="openai">ChatGPT</option>' +
-              '<option value="other">Other (OpenAI Compatible)</option>' +
             '</select>' +
           '</div>' +
           '<div class="kv-set-row" id="kv-set-baseurl-row" style="display:none">' +
@@ -614,7 +637,8 @@
           '<div class="kv-set-row">' +
             '<label class="kv-set-label">' + L.model + '</label>' +
             '<select class="kv-set-select" id="kv-set-model"></select>' +
-            '<input type="text" class="kv-set-input" id="kv-set-model-text" placeholder="gpt-4o / llama3 / ..." style="display:none">' +
+            '<input type="text" class="kv-set-input" id="kv-set-model-text" placeholder="" style="display:none;margin-top:6px">' +
+            '<div class="kv-set-hint" id="kv-set-model-hint" style="margin-top:4px"></div>' +
           '</div>' +
           '<button class="kv-set-btn" id="kv-set-test-btn">' + L.test + '</button>' +
           '<div class="kv-set-status" id="kv-set-test-status" style="margin-top:6px"></div>' +
@@ -628,7 +652,8 @@
         '<div id="kv-set-tg-section">' +
           '<div class="kv-set-row" id="kv-set-tg-locked" style="display:none">' +
             '<div style="text-align:center;padding:8px 0;color:var(--kvtext-sub);font-size:12px">' +
-              '\uD83D\uDD12 Telegram Bot feature disabled' +
+              '\uD83D\uDD12 Telegram Bot requires subscription' +
+              '<br><a href="https://kvmind.com/pricing" target="_blank" style="color:var(--kvaccent);text-decoration:none;font-size:12px">Upgrade to enable \u2192</a>' +
             '</div>' +
           '</div>' +
           '<div class="kv-set-row" id="kv-set-tg-unlocked">' +
@@ -705,7 +730,17 @@
   // Settings: provider change handler
   // =========================================================================
 
-  async function _onProviderChange(root) {
+  // Unified provider handler. For every provider:
+  //   1. Set placeholder and console_url link for the API key.
+  //   2. Show base_url row for providers that need it (ollama).
+  //   3. Fetch the live model list with current key + base_url.
+  //   4. Populate dropdown with fetched models + "Other..." tail option.
+  //   5. If fetch fails, fall back to free text input.
+  // Device code never ships a hardcoded model list; see config.py AI Model
+  // Catalog Principle.
+  async function _onProviderChange(root, opts) {
+    opts = opts || {};
+    var L = _setL;
     var prov = root.querySelector("#kv-set-provider").value;
     var urlRow = root.querySelector("#kv-set-baseurl-row");
     var urlInput = root.querySelector("#kv-set-baseurl");
@@ -713,36 +748,119 @@
     var hintEl = root.querySelector("#kv-set-key-hint");
     var modelSel = root.querySelector("#kv-set-model");
     var modelText = root.querySelector("#kv-set-model-text");
+    var modelHint = root.querySelector("#kv-set-model-hint");
 
-    if (prov === "other") {
-      urlRow.style.display = "";
-      urlInput.value = "";
-      keyInput.placeholder = "API Key";
-      hintEl.innerHTML = "";
-      modelSel.style.display = "none";
+    var h = _PROVIDER_HINTS[prov] || {};
+    // Ollama is user-hosted — always show Base URL. Cloud providers hide it.
+    urlRow.style.display = h.needsBase ? "" : "none";
+    keyInput.placeholder = h.ph || "API Key";
+
+    // Always show console_url (picked up from backend metadata below).
+    hintEl.innerHTML = "";
+
+    // Default to showing the dropdown; we'll hide it only if fetch fails hard.
+    modelSel.style.display = "";
+    modelText.style.display = "none";
+    modelSel.innerHTML = '<option value="">\u2014</option>';
+    if (modelHint) modelHint.textContent = "";
+
+    var currentKey = keyInput.value.trim();
+    var currentBase = urlInput.value.trim();
+    var payload = { provider: prov };
+    if (currentKey) payload.api_key = currentKey;
+    if (currentBase) payload.base_url = currentBase;
+
+    var d = null;
+    try {
+      var r = await fetch("/kdkvm/api/ai/models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        credentials: "same-origin",
+      });
+      d = await r.json();
+    } catch (e) {
+      d = { models: [], free_input_only: true, error: String(e) };
+    }
+
+    // console_url hint is always useful — link to provider's own catalog.
+    if (d && d.console_url) {
+      var label = h.label || prov;
+      hintEl.innerHTML = '<a href="' + d.console_url + '" target="_blank">' + label + ' \u2197</a>';
+    }
+
+    // Reflect returned canonical base_url if the row is visible and empty.
+    if (h.needsBase && !urlInput.value && d && d.base_url) {
+      urlInput.value = d.base_url;
+    }
+
+    var models = (d && d.models) || [];
+    var freeOnly = !!(d && d.free_input_only);
+    var preselect = opts.preselect || "";
+
+    if (freeOnly || models.length === 0) {
+      // Provider unreachable or no key yet — collapse to free input.
+      modelSel.innerHTML = "";
+      var only = document.createElement("option");
+      only.value = "__other__";
+      only.textContent = L.other_option;
+      modelSel.appendChild(only);
+      modelSel.value = "__other__";
       modelText.style.display = "";
+      modelText.placeholder = preselect || "";
+      modelText.value = preselect;
+      if (modelHint) modelHint.textContent = L.free_input_hint;
     } else {
-      var h = _PROVIDER_HINTS[prov] || {};
-      urlRow.style.display = prov === "ollama" ? "" : "none";
-      keyInput.placeholder = h.ph || "API Key";
-      hintEl.innerHTML = h.link ? '<a href="' + h.link + '" target="_blank">' + h.label + '</a>' : "";
-      modelSel.style.display = "";
-      modelText.style.display = "none";
-      try {
-        var r = await fetch("/kdkvm/api/ai/models?provider=" + prov);
-        var d = await r.json();
-        if (prov === "ollama") urlInput.value = d.base_url || urlInput.value;
-        modelSel.innerHTML = "";
-        (d.models || []).forEach(function(m) {
-          var opt = document.createElement("option");
-          opt.value = m; opt.textContent = m;
-          if (m === d.default) opt.selected = true;
-          modelSel.appendChild(opt);
-        });
-      } catch (e) {
-        modelSel.innerHTML = "<option>\u2014</option>";
+      modelSel.innerHTML = "";
+      models.forEach(function(m) {
+        var opt = document.createElement("option");
+        opt.value = m; opt.textContent = m;
+        modelSel.appendChild(opt);
+      });
+      var otherOpt = document.createElement("option");
+      otherOpt.value = "__other__";
+      otherOpt.textContent = L.other_option;
+      modelSel.appendChild(otherOpt);
+
+      if (preselect && models.indexOf(preselect) !== -1) {
+        modelSel.value = preselect;
+        modelText.style.display = "none";
+      } else if (preselect) {
+        modelSel.value = "__other__";
+        modelText.style.display = "";
+        modelText.value = preselect;
+      } else {
+        modelSel.selectedIndex = 0;
+        modelText.style.display = "none";
+        modelText.value = "";
       }
     }
+
+    // Toggle text input when user picks "Other..."
+    if (!modelSel._kvOtherBound) {
+      modelSel.addEventListener("change", function() {
+        if (modelSel.value === "__other__") {
+          modelText.style.display = "";
+          modelText.focus();
+        } else {
+          modelText.style.display = "none";
+        }
+      });
+      modelSel._kvOtherBound = true;
+    }
+  }
+
+  // Read whichever of the two model inputs is currently active.
+  function _readSelectedModel(root) {
+    var modelSel = root.querySelector("#kv-set-model");
+    var modelText = root.querySelector("#kv-set-model-text");
+    if (!modelSel) return "";
+    if (modelSel.value === "__other__" || modelText.style.display !== "none") {
+      return (modelText.value || "").trim();
+    }
+    var v = modelSel.value || "";
+    if (v === "" || v === "__other__") return "";
+    return v;
   }
 
   // =========================================================================
@@ -755,18 +873,25 @@
     var key = root.querySelector("#kv-set-apikey").value.trim();
     var statusEl = root.querySelector("#kv-set-test-status");
     var btn = root.querySelector("#kv-set-test-btn");
-    var keyOptional = prov === "ollama" || prov === "other";
+    var h = _PROVIDER_HINTS[prov] || {};
+    var keyOptional = !!h.noKey;
     if (!key && !keyOptional) { statusEl.className = "kv-set-status err"; statusEl.textContent = L.no_key; return; }
-    var model = prov === "other"
-      ? root.querySelector("#kv-set-model-text").value.trim()
-      : root.querySelector("#kv-set-model").value;
-    if (prov === "other" && !root.querySelector("#kv-set-baseurl").value.trim()) {
+    var model = _readSelectedModel(root);
+    // Provider API is the sole model-name validator. Device-side we only
+    // require the user to pick/type *something* before calling /api/ai/test.
+    if (!model) {
+      statusEl.className = "kv-set-status err";
+      statusEl.textContent = L.no_model;
+      return;
+    }
+    var baseUrl = root.querySelector("#kv-set-baseurl").value.trim();
+    if (h.needsBase && !baseUrl) {
       statusEl.className = "kv-set-status err"; statusEl.textContent = "Base URL is required"; return;
     }
     btn.textContent = L.testing; btn.disabled = true;
     try {
-      var payload = { provider: prov === "other" ? "custom" : prov, api_key: key || "none", model: model };
-      if (prov === "other" || prov === "ollama") payload.base_url = root.querySelector("#kv-set-baseurl").value.trim();
+      var payload = { provider: prov, api_key: key || "none", model: model };
+      if (baseUrl) payload.base_url = baseUrl;
       var r = await fetch("/kdkvm/api/ai/test", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -774,6 +899,7 @@
       var d = await r.json();
       if (d.success) {
         _lastSupportsTools = d.supports_tools !== false;
+        window._kvmindSupportsTools = _lastSupportsTools;
         if (d.supports_tools === false) {
           statusEl.className = "kv-set-status warn";
           statusEl.textContent = L.test_ok_suggest;
@@ -803,16 +929,16 @@
       if (!root) return;
 
       // ── 1. Load subscription status ──
-      var sub = { plan: "community", tunnel: false, messaging: false, ota: false };
+      var sub = { entitlement_state: "local_free", tunnel: false, messaging: false, ota: false };
       try {
         var sr = await fetch("/kdkvm/api/subscription");
         sub = await sr.json();
       } catch (e) { console.warn("[Settings] subscription fetch failed:", e); }
 
-      // Update subscription card
-      var planLabels = { community: "Community (Free)", standard: "Standard", pro: "Pro" };
+      var paid = sub.entitlement_state === "paid";
+
       var planLabel = root.querySelector("#kv-sub-plan-label");
-      if (planLabel) planLabel.textContent = planLabels[sub.plan] || sub.plan;
+      if (planLabel) planLabel.textContent = paid ? "Paid" : "Free";
 
       var featEl = root.querySelector("#kv-sub-features");
       if (featEl) {
@@ -821,6 +947,17 @@
         f.push((sub.messaging ? "\u2714" : "\u2716") + " Messaging");
         f.push((sub.ota ? "\u2714" : "\u2716") + " OTA");
         featEl.textContent = f.join("  \u00B7  ");
+      }
+
+      var actionLink = root.querySelector("#kv-sub-action-link");
+      if (actionLink) {
+        if (!paid) {
+          actionLink.textContent = "Upgrade \u2192";
+          actionLink.href = "https://kvmind.com/pricing";
+        } else {
+          actionLink.textContent = "Manage \u2192";
+          actionLink.href = "https://kvmind.com/account";
+        }
       }
 
       // Telegram gate: show locked or unlocked section
@@ -840,24 +977,23 @@
       var r = await fetch("/kdkvm/api/ai/config");
       var d = await r.json();
       _lastSupportsTools = d.supports_tools !== false;
+      window._kvmindSupportsTools = _lastSupportsTools;
 
-      // Provider details — always load if providers exist
+      // Provider details — always load if providers exist.
+      // Unknown provider names are skipped (no more "other" fallback — the
+      // custom/other concept is dead; every provider uses the same UI path).
       if (d.providers && d.providers.length > 0) {
         var p = d.providers[0];
-        var provName = p.name || "other";
+        var provName = p.name || "";
         var provSel = root.querySelector("#kv-set-provider");
         var hasOpt = Array.from(provSel.options).some(function(o) { return o.value === provName; });
-        provSel.value = hasOpt ? provName : "other";
-        await _onProviderChange(root);
+        if (hasOpt) provSel.value = provName;
         if (p.api_key_preview) root.querySelector("#kv-set-apikey").placeholder = p.api_key_preview;
-        if (p.base_url && (provName === "ollama" || !hasOpt)) root.querySelector("#kv-set-baseurl").value = p.base_url;
-        if (p.default_model) {
-          var ms = root.querySelector("#kv-set-model");
-          if (ms.style.display !== "none") ms.value = p.default_model;
-          else root.querySelector("#kv-set-model-text").value = p.default_model;
-        }
+        if (p.base_url && provName === "ollama") root.querySelector("#kv-set-baseurl").value = p.base_url;
+        // Kick off runtime model discovery with the saved model preselected.
+        await _onProviderChange(root, { preselect: p.default_model || "" });
       } else {
-        // No provider configured yet — initialize provider dropdown
+        // No provider configured yet — initialize provider dropdown.
         await _onProviderChange(root);
       }
 
@@ -959,23 +1095,22 @@
 
     var body = {};
 
-    // AI provider config
+    // AI provider config — unified for all known providers. No more
+    // "other"/"custom" branch: every provider uses the same save payload.
+    // Model validation is deferred to the provider API itself.
     var prov = root.querySelector("#kv-set-provider").value;
     var key = root.querySelector("#kv-set-apikey").value.trim();
-    var model = prov === "other"
-      ? root.querySelector("#kv-set-model-text").value.trim()
-      : root.querySelector("#kv-set-model").value;
-    if (prov === "other") {
-      var customUrl = root.querySelector("#kv-set-baseurl").value.trim();
-      if (customUrl && model) body.custom_provider = { base_url: customUrl, api_key: key, model: model };
-    } else if (key || prov === "ollama") {
+    var model = _readSelectedModel(root);
+    var h = _PROVIDER_HINTS[prov] || {};
+    if (key || h.noKey) {
       var keyMap = { ollama: "ollama_key", gemini: "gemini_key", anthropic: "claude_key", openai: "openai_key" };
       if (key) body[keyMap[prov]] = key;
-      if (prov === "ollama") {
-        body.ollama_enabled = true;
-        body.ollama_url = root.querySelector("#kv-set-baseurl").value.trim();
+      if (h.noKey) {
+        body[prov + "_enabled"] = true;
+        var baseVal = root.querySelector("#kv-set-baseurl").value.trim();
+        if (baseVal) body[prov + "_url"] = baseVal;
       }
-      body[prov + "_model"] = model;
+      if (model) body[prov + "_model"] = model;
     }
 
     // Tool support flag from last test

@@ -1,8 +1,8 @@
 """
 Configuration Loader — multi-source config resolution.
 
-Reads from YAML, environment variables, and legacy formats.
-Handles provider key priority, env overrides, and backward compatibility.
+Reads from YAML and environment variables.
+Handles provider key priority and env overrides.
 
 Extracted from config.py to separate loading concerns from dataclass definitions.
 """
@@ -61,10 +61,13 @@ def load_config(path: str) -> "Config":
     if tg_token_env:
         cfg.telegram.bot_token = tg_token_env
 
-    # ── Subscription (read-only, synced by heartbeat) ──
+    # ── Subscription (V1 Seat 模型 · read-only, synced by heartbeat) ──
     if "subscription" in raw:
         sub = raw["subscription"]
-        cfg.subscription.plan = sub.get("plan", "community")
+        cfg.subscription.claim_state = sub.get("claim_state", "unclaimed")
+        cfg.subscription.entitlement_state = sub.get("entitlement_state", "local_free")
+        asid = sub.get("assigned_subscription_id")
+        cfg.subscription.assigned_subscription_id = int(asid) if asid is not None else None
         cfg.subscription.tunnel = bool(sub.get("tunnel", False))
         cfg.subscription.messaging = bool(sub.get("messaging", False))
         cfg.subscription.ota = bool(sub.get("ota", False))
@@ -73,13 +76,6 @@ def load_config(path: str) -> "Config":
         cfg.subscription.myclaw_daily_limit = int(sub.get("myclaw_daily_limit", 20))
         cfg.subscription.myclaw_max_action_level = int(sub.get("myclaw_max_action_level", 1))
         cfg.subscription.scheduled_tasks = bool(sub.get("scheduled_tasks", False))
-    elif "ai" in raw and "plan_type" in raw["ai"]:
-        old_pt = (raw["ai"].get("plan_type", "") or "").strip()
-        if old_pt == "subscribed":
-            cfg.subscription.plan = "standard"
-            cfg.subscription.tunnel = True
-            cfg.subscription.messaging = True
-            cfg.subscription.ota = True
 
     # ── Simple env var overrides ──
     _apply_env_overrides(cfg)
@@ -119,8 +115,6 @@ def _load_ai_config(ai: "AIConfig", raw: dict) -> None:
       1. Environment variables (GEMINI_API_KEY, ANTHROPIC_API_KEY, etc.)
       2. config.yaml shorthand (ai.gemini_key, ai.claude_key)
       3. config.yaml advanced (ai.providers list)
-      4. config.yaml legacy (kvmind: section)
-      5. Legacy env var (AI_API_KEY + AI_BASE_URL)
     """
     ai_raw = raw.get("ai", {})
     seen_providers: set = set()
@@ -151,7 +145,11 @@ def _load_ai_config(ai: "AIConfig", raw: dict) -> None:
             custom_url = (ai_raw.get(f"{name}_url", "") or "").strip()
             if custom_url:
                 base_url = custom_url
-            model = (ai_raw.get(f"{name}_model", "") or "").strip() or info["default_model"]
+            # No fallback to a built-in default model — device code no longer
+            # maintains a model catalog (see config.py AI Model Catalog Principle).
+            # An empty default_model means the user hasn't picked one yet;
+            # ai_config._build_providers skips such entries with a warning.
+            model = (ai_raw.get(f"{name}_model", "") or "").strip()
             ai.providers.append(ProviderConfig(
                 name=name,
                 base_url=base_url,
@@ -160,8 +158,9 @@ def _load_ai_config(ai: "AIConfig", raw: dict) -> None:
                 source=key_source,
             ))
             seen_providers.add(name)
-            log.info("[Config] Provider '%s' loaded%s", name,
-                     f" (key: {key[:8]}***)" if key and key != "no-key-required" else " (no key required)")
+            log.info("[Config] Provider '%s' loaded%s model=%s", name,
+                     f" (key: {key[:8]}***)" if key and key != "no-key-required" else " (no key required)",
+                     model or "<unset>")
 
     # ── Source 3: advanced ai.providers list ──
     if "providers" in ai_raw:
@@ -181,71 +180,11 @@ def _load_ai_config(ai: "AIConfig", raw: dict) -> None:
             ))
             seen_providers.add(pname)
 
-    # ── Source 4: legacy kvmind: section ──
-    if not ai.providers and "kvmind" in raw:
-        kv = raw["kvmind"]
-        legacy_key = (kv.get("api_key", "") or "").strip()
-        if legacy_key:
-            host = kv.get("host", "localhost")
-            port = kv.get("port", 8080)
-            scheme = "https" if port == 443 else "http"
-            port_suffix = "" if port in (80, 443) else f":{port}"
-            base_url = f"{scheme}://{host}{port_suffix}"
-            name = "gemini"
-            if "anthropic" in base_url:
-                name = "anthropic"
-            elif "openai.com" in base_url:
-                name = "openai"
-            if "googleapis" in base_url and "/v1beta" not in base_url:
-                base_url += "/v1beta/openai"
-            ai.providers.append(ProviderConfig(
-                name=name, base_url=base_url,
-                api_key=legacy_key, default_model=kv.get("model", "default"),
-            ))
-            log.info("[Config] Provider '%s' loaded from legacy kvmind config", name)
-
-    # ── Source 5: legacy AI_API_KEY env var (from ai.env) ──
-    if not ai.providers:
-        legacy_key = os.environ.get("AI_API_KEY", "").strip()
-        if legacy_key:
-            legacy_url = os.environ.get("AI_BASE_URL", "").strip()
-            legacy_model = os.environ.get("AI_MODEL", "").strip()
-            name = "gemini"
-            base_url = KNOWN_PROVIDERS["gemini"]["base_url"]
-            default_model = legacy_model or KNOWN_PROVIDERS["gemini"]["default_model"]
-            if legacy_url:
-                if "anthropic" in legacy_url:
-                    name = "anthropic"
-                    base_url = legacy_url
-                    default_model = legacy_model or KNOWN_PROVIDERS["anthropic"]["default_model"]
-                elif "openai.com" in legacy_url:
-                    name = "openai"
-                    base_url = legacy_url
-                    default_model = legacy_model or KNOWN_PROVIDERS["openai"]["default_model"]
-                elif "googleapis" in legacy_url:
-                    base_url = legacy_url
-                    if "/v1beta" not in base_url:
-                        base_url += "/v1beta/openai"
-                else:
-                    name = "openai"
-                    base_url = legacy_url
-            ai.providers.append(ProviderConfig(
-                name=name, base_url=base_url,
-                api_key=legacy_key, default_model=default_model,
-                source="env",
-            ))
-            log.info("[Config] Provider '%s' loaded from AI_API_KEY env var", name)
-
     # ── AI timeout/max_tokens ──
     if ai_raw:
         ai.timeout = ai_raw.get("timeout", ai.timeout)
         ai.max_tokens = ai_raw.get("max_tokens", ai.max_tokens)
         ai.supports_tools = ai_raw.get("supports_tools", ai.supports_tools)
-        ai.allow_local_execution = ai_raw.get("allow_local_execution", ai.allow_local_execution)
-    elif "kvmind" in raw:
-        kv = raw["kvmind"]
-        ai.timeout = kv.get("timeout", ai.timeout)
-        ai.max_tokens = kv.get("max_tokens", ai.max_tokens)
 
     if not ai.providers:
         log.warning("[Config] No AI providers configured! Set GEMINI_API_KEY or ai.gemini_key in config.yaml")

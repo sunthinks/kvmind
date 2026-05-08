@@ -16,76 +16,80 @@
 /* === Base Layout & Components (from inject.js) === */
 
 *,*::before,*::after{transition:background-color .3s,color .3s,border-color .3s}
+/* Neutral light — 温暖纸本，与印章青瓷/宣纸呼应 */
 :root,[data-theme="light"]{
---kvbg:#f5f6f8;--kvsurface:#fff;--kvsurface2:#f0f1f3;--kvsurface3:#e8eaed;
---kvborder:#d1d5db;--kvborder-lt:#e5e7eb;
---kvaccent:#0077b6;--kvaccent-dim:rgba(0,119,182,.08);--kvaccent-hover:#005f8a;
---kvgreen:#16a34a;--kvgreen-dim:rgba(22,163,74,.08);
---kvred:#dc2626;--kvred-dim:rgba(220,38,38,.08);
---kvyellow:#ca8a04;--kvyellow-dim:rgba(202,138,4,.08);
---kvpurple:#7c3aed;--kvpurple-dim:rgba(124,58,237,.06);
---kvtext:#1f2937;--kvtext-muted:#6b7280;--kvtext-sub:#9ca3af;
---kvai-bar-bg:rgba(255,255,255,.92);--kvai-bar-border:rgba(0,119,182,.3);
---kvkb-bg:rgba(255,255,255,.92);--kvlog-bg:#f8f9fa;--kvlog-info:#2563eb;
---kvuser-msg:#0077b6;--kvscroll:#d1d5db;
---toolbar-bg:rgba(247,245,240,0.92);--sidebar-bg:#F7F5F0;--qc-bg:#fff;--qc-hover-bg:#eff6eb;
---send-btn-bg:#0077b6;
+--kvbg:#f7f3e9;--kvsurface:#fefbf2;--kvsurface2:#f1e6cf;--kvsurface3:#e8dfc5;
+--kvborder:#d4c9a8;--kvborder-lt:#e4dccb;
+--kvaccent:#5c7768;--kvaccent-dim:rgba(92,119,104,.12);--kvaccent-hover:#486056;
+--kvgreen:#16a34a;--kvgreen-dim:rgba(22,163,74,.1);
+--kvred:#b23a2a;--kvred-dim:rgba(178,58,42,.1);
+--kvyellow:#b69259;--kvyellow-dim:rgba(182,146,89,.12);
+--kvpurple:#7c3aed;--kvpurple-dim:rgba(124,58,237,.08);
+--kvtext:#1a1a1a;--kvtext-muted:#6b5a46;--kvtext-sub:#8a7860;
+--kvai-bar-bg:rgba(254,251,242,.92);--kvai-bar-border:rgba(127,157,140,.35);
+--kvkb-bg:rgba(254,251,242,.92);--kvlog-bg:#f1e6cf;--kvlog-info:#5c7768;
+--kvuser-msg:#7f9d8c;--kvscroll:#d4c9a8;
+--toolbar-bg:rgba(247,243,233,0.94);--sidebar-bg:#f7f3e9;--qc-bg:#fefbf2;--qc-hover-bg:#f1e6cf;
+--send-btn-bg:#7f9d8c;--kvmind-panel-width:400px;
 }
+/* Neutral dark — 比原来亮一档，柔和不刺眼 */
 [data-theme="dark"]{
---kvbg:#0d1117;--kvsurface:#161b22;--kvsurface2:#1c2128;--kvsurface3:#21262d;
---kvborder:#30363d;--kvborder-lt:#3d444d;
---kvaccent:#00b4d8;--kvaccent-dim:rgba(0,180,216,.15);--kvaccent-hover:#0096c7;
+--kvbg:#1f242c;--kvsurface:#262b33;--kvsurface2:#2d333c;--kvsurface3:#353b44;
+--kvborder:#3d444d;--kvborder-lt:#4a5058;
+--kvaccent:#9ab5a5;--kvaccent-dim:rgba(154,181,165,.15);--kvaccent-hover:#b0c8b9;
 --kvgreen:#3fb950;--kvgreen-dim:rgba(63,185,80,.15);
---kvred:#f85149;--kvred-dim:rgba(248,81,73,.15);
---kvyellow:#d29922;--kvyellow-dim:rgba(210,153,34,.15);
+--kvred:#e06b5d;--kvred-dim:rgba(224,107,93,.15);
+--kvyellow:#d2a862;--kvyellow-dim:rgba(210,168,98,.15);
 --kvpurple:#a371f7;--kvpurple-dim:rgba(163,113,247,.12);
 --kvtext:#e6edf3;--kvtext-muted:#8b949e;--kvtext-sub:#6e7681;
---kvai-bar-bg:rgba(13,17,23,.88);--kvai-bar-border:rgba(0,180,216,.35);
---kvkb-bg:rgba(13,17,23,.92);--kvlog-bg:#0a0a0a;--kvlog-info:#58a6ff;
---kvuser-msg:#0096c7;--kvscroll:#3d444d;
---toolbar-bg:rgba(30,33,40,0.95);--sidebar-bg:#1e2128;--qc-bg:#2a2d35;--qc-hover-bg:#33363e;
---send-btn-bg:#00b4d8;
+--kvai-bar-bg:rgba(31,36,44,.9);--kvai-bar-border:rgba(154,181,165,.35);
+--kvkb-bg:rgba(31,36,44,.92);--kvlog-bg:#16191f;--kvlog-info:#9ab5a5;
+--kvuser-msg:#7f9d8c;--kvscroll:#4a5058;
+--toolbar-bg:rgba(38,43,51,0.95);--sidebar-bg:#262b33;--qc-bg:#2d333c;--qc-hover-bg:#353b44;
+--send-btn-bg:#7f9d8c;
 }
+/* KVMind Light — 宣纸印章正主题 */
 [data-theme="kvmind-light"]{
---kvbg:#f0f8f4;--kvsurface:#fff;--kvsurface2:#f8fcfa;--kvsurface3:#e0f0e8;
---kvborder:#c8e0d0;--kvborder-lt:#d8ece0;
---kvaccent:#2bb77a;--kvaccent-dim:rgba(62,207,142,.08);--kvaccent-hover:#22a06b;
---kvgreen:#16a34a;--kvgreen-dim:rgba(22,163,74,.08);
---kvred:#dc2626;--kvred-dim:rgba(220,38,38,.08);
---kvyellow:#ca8a04;--kvyellow-dim:rgba(202,138,4,.08);
---kvpurple:#7c3aed;--kvpurple-dim:rgba(124,58,237,.06);
---kvtext:#2a3a30;--kvtext-muted:#5a7a6a;--kvtext-sub:#7a9a8a;
---kvai-bar-bg:rgba(240,248,244,.92);--kvai-bar-border:rgba(62,207,142,.35);
---kvkb-bg:rgba(240,248,244,.92);--kvlog-bg:#f0f8f4;--kvlog-info:#2bb77a;
---kvuser-msg:#2bb77a;--kvscroll:#c8e0d0;
---toolbar-bg:rgba(232,245,238,0.95);--sidebar-bg:#f0f8f4;--qc-bg:#f8fcfa;--qc-hover-bg:#e0f0e8;
---send-btn-bg:#3ecf8e;
+--kvbg:#f1e6cf;--kvsurface:#fbf5e6;--kvsurface2:#f6efe0;--kvsurface3:#efe1c0;
+--kvborder:#c8b89a;--kvborder-lt:#d6c9a9;
+--kvaccent:#5c7768;--kvaccent-dim:rgba(92,119,104,.12);--kvaccent-hover:#486056;
+--kvgreen:#5c7768;--kvgreen-dim:rgba(92,119,104,.1);
+--kvred:#b23a2a;--kvred-dim:rgba(178,58,42,.1);
+--kvyellow:#b69259;--kvyellow-dim:rgba(182,146,89,.12);
+--kvpurple:#7c3aed;--kvpurple-dim:rgba(124,58,237,.08);
+--kvtext:#1a1a1a;--kvtext-muted:#6b5a46;--kvtext-sub:#8a7860;
+--kvai-bar-bg:rgba(251,245,230,.92);--kvai-bar-border:rgba(127,157,140,.35);
+--kvkb-bg:rgba(251,245,230,.92);--kvlog-bg:#f6efe0;--kvlog-info:#5c7768;
+--kvuser-msg:#7f9d8c;--kvscroll:#c8b89a;
+--toolbar-bg:rgba(241,230,207,0.94);--sidebar-bg:#f1e6cf;--qc-bg:#fbf5e6;--qc-hover-bg:#f1e6cf;
+--send-btn-bg:#7f9d8c;
 }
+/* KVMind Dark — 温暖墨底，比原来亮一档 */
 [data-theme="kvmind-dark"]{
---kvbg:#0a1628;--kvsurface:#0f1923;--kvsurface2:#1a2332;--kvsurface3:#1a2a3a;
---kvborder:#1e3040;--kvborder-lt:#2a3a4a;
---kvaccent:#3ecf8e;--kvaccent-dim:rgba(62,207,142,.12);--kvaccent-hover:#2bb77a;
---kvgreen:#3ecf8e;--kvgreen-dim:rgba(62,207,142,.15);
---kvred:#f85149;--kvred-dim:rgba(248,81,73,.15);
---kvyellow:#d29922;--kvyellow-dim:rgba(210,153,34,.15);
+--kvbg:#252018;--kvsurface:#302a20;--kvsurface2:#3a3428;--kvsurface3:#453d2e;
+--kvborder:#4d4432;--kvborder-lt:#5c5240;
+--kvaccent:#9ab5a5;--kvaccent-dim:rgba(154,181,165,.15);--kvaccent-hover:#b0c8b9;
+--kvgreen:#9ab5a5;--kvgreen-dim:rgba(154,181,165,.15);
+--kvred:#e06b5d;--kvred-dim:rgba(224,107,93,.15);
+--kvyellow:#d2a862;--kvyellow-dim:rgba(210,168,98,.15);
 --kvpurple:#a371f7;--kvpurple-dim:rgba(163,113,247,.12);
---kvtext:#c0c8d0;--kvtext-muted:#6e7681;--kvtext-sub:#8b949e;
---kvai-bar-bg:rgba(15,25,35,.92);--kvai-bar-border:rgba(62,207,142,.35);
---kvkb-bg:rgba(15,25,35,.92);--kvlog-bg:#0a1020;--kvlog-info:#3ecf8e;
---kvuser-msg:#2bb77a;--kvscroll:#1e3040;
---toolbar-bg:rgba(15,25,35,0.95);--sidebar-bg:#0f1923;--qc-bg:#0f1923;--qc-hover-bg:#1a2a3a;
---send-btn-bg:#3ecf8e;
+--kvtext:#ebe5d5;--kvtext-muted:#9c928a;--kvtext-sub:#786f60;
+--kvai-bar-bg:rgba(37,32,24,.9);--kvai-bar-border:rgba(154,181,165,.35);
+--kvkb-bg:rgba(37,32,24,.92);--kvlog-bg:#1a1612;--kvlog-info:#9ab5a5;
+--kvuser-msg:#7f9d8c;--kvscroll:#5c5240;
+--toolbar-bg:rgba(48,42,32,0.95);--sidebar-bg:#302a20;--qc-bg:#3a3428;--qc-hover-bg:#453d2e;
+--send-btn-bg:#7f9d8c;
 }
 
 /* === Standalone Stream Area (replaces PiKVM element overrides) === */
 html,body{margin:0;padding:0;overflow:hidden;background:var(--kvbg);color:var(--kvtext)}
 #webterm-window.kvmind-hidden{display:none}
 #webterm-window:not(.kvmind-hidden){visibility:visible!important;z-index:100!important;position:fixed!important;top:48px!important;left:0!important;bottom:22px!important;width:auto!important;height:auto!important;display:flex!important}
-body:not(.kvmind-panel-collapsed) #webterm-window:not(.kvmind-hidden){right:400px!important}
+body:not(.kvmind-panel-collapsed) #webterm-window:not(.kvmind-hidden){right:var(--kvmind-panel-width)!important}
 body.kvmind-panel-collapsed #webterm-window:not(.kvmind-hidden){right:0!important}
 #kvmind-stream-area{position:fixed;top:48px;left:0;bottom:22px;background:#000;z-index:1;overflow:hidden}
-body:not(.kvmind-panel-collapsed) #kvmind-stream-area{right:400px}
-body.kvmind-panel-collapsed #kvmind-stream-area{right:0}
+body:not(.kvmind-panel-collapsed) #kvmind-stream-area{right:var(--kvmind-panel-width)}
+body.kvmind-panel-collapsed #kvmind-stream-area{right:0!important}
 #kvmind-stream-box{width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center}
 #kvmind-stream-canvas{max-width:100%;max-height:100%;object-fit:contain;display:block}
 #kvmind-stream-img{max-width:100%;max-height:100%;object-fit:contain;display:none}
@@ -95,11 +99,20 @@ body.kvmind-panel-collapsed #kvmind-stream-area{right:0}
 #kvmind-no-signal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#666;font-size:18px;z-index:5;display:flex;align-items:center;gap:8px;pointer-events:none}
 #kvmind-toolbar{position:fixed;top:0;left:0;right:0;height:48px;display:flex;align-items:center;gap:6px;padding:0 14px;z-index:1100;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:13px}
 .kvmind-tb-logo{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:700;color:var(--kvaccent);margin-right:8px;user-select:none}
+.kvmind-tb-mark{display:inline-flex;width:28px;height:28px;flex-shrink:0}
+.kvmind-tb-mark svg{display:block;width:100%;height:100%}
 .kvmind-tb-sep{width:1px;height:20px;background:var(--kvborder);margin:0 4px;flex-shrink:0}
+.kvmind-tb-group{display:flex;align-items:center;gap:2px;padding:2px;background:var(--kvsurface2);border:1px solid var(--kvborder);border-radius:10px}
+.kvmind-tb-group .kvmind-tb-btn{border:1px solid transparent;background:transparent;padding:4px 9px}
+.kvmind-tb-group .kvmind-tb-btn:hover{background:var(--kvsurface3);border-color:transparent}
 .kvmind-tb-btn{display:flex;align-items:center;gap:5px;padding:5px 11px;border:1px solid var(--kvborder);border-radius:8px;background:transparent;color:var(--kvtext-muted);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .12s}
 .kvmind-tb-btn:hover{border-color:var(--kvborder-lt);color:var(--kvtext);background:var(--kvsurface2)}
 .kvmind-tb-btn.active{background:var(--kvaccent-dim);border-color:var(--kvaccent);color:var(--kvaccent)}
 .kvmind-tb-btn.danger:hover{border-color:var(--kvred);color:var(--kvred);background:var(--kvred-dim)}
+.kvmind-tb-btn.loading{pointer-events:none;opacity:.75;border-color:var(--kvaccent);color:var(--kvaccent);animation:kvmind-btn-loading 1.2s ease-in-out infinite}
+.kvmind-tb-btn.loading::after{content:"";display:inline-block;width:10px;height:10px;margin-left:4px;border:1.5px solid var(--kvaccent);border-right-color:transparent;border-radius:50%;animation:kvmind-btn-spin .7s linear infinite;vertical-align:middle}
+@keyframes kvmind-btn-loading{0%,100%{background:transparent}50%{background:var(--kvaccent-dim)}}
+@keyframes kvmind-btn-spin{to{transform:rotate(360deg)}}
 #kvmind-mode-toggle{display:flex;align-items:center;background:var(--kvsurface3);border:1px solid var(--kvborder);border-radius:20px;padding:2px;gap:2px}
 .kvmind-mode-pill{padding:3px 12px;border-radius:16px;border:none;background:transparent;color:var(--kvtext-muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
 .kvmind-mode-pill.active{background:var(--kvaccent);color:#fff;box-shadow:0 1px 4px rgba(0,119,182,.3)}
@@ -109,9 +122,11 @@ body.kvmind-panel-collapsed #kvmind-stream-area{right:0}
 #kvmind-toolbar-right{display:flex;align-items:center;gap:6px;margin-left:auto}
 #kvmind-conn-status{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;border:1px solid var(--kvborder);font-size:12px;color:var(--kvtext-muted);background:var(--kvsurface2)}
 #kvmind-conn-status.online{border-color:var(--kvgreen);color:var(--kvgreen);background:var(--kvgreen-dim)}
+#kvmind-conn-status.no-signal{border-color:var(--kvyellow);color:var(--kvyellow);background:var(--kvyellow-dim)}
 #kvmind-conn-status.offline{border-color:var(--kvred);color:var(--kvred);background:var(--kvred-dim)}
 .kvmind-conn-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
 #kvmind-conn-status.online .kvmind-conn-dot{animation:kvmind-blink 2s ease-in-out infinite}
+#kvmind-conn-status.no-signal .kvmind-conn-dot{animation:kvmind-blink 1.2s ease-in-out infinite}
 @keyframes kvmind-blink{0%,100%{opacity:1}50%{opacity:.4}}
 #kvmind-power-wrap{position:relative}
 #kvmind-power-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;width:180px;background:var(--kvsurface);border:1px solid var(--kvborder-lt);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:1500;padding:4px}
@@ -139,8 +154,8 @@ body.kvmind-panel-collapsed #kvmind-stream-area{right:0}
 .kvmind-user-setting select{padding:3px 6px;border:1px solid var(--kvborder);border-radius:5px;background:var(--kvsurface2);color:var(--kvtext);font-size:12px;cursor:pointer;outline:none}
 .kvmind-user-setting select:focus{border-color:var(--kvaccent)}
 .kvmind-user-divider{height:1px;background:var(--kvborder);margin:4px 0}
-#kvmind-chat-panel{position:fixed;top:48px;right:0;bottom:0;width:400px;display:flex;flex-direction:column;z-index:1000;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:13px;transition:width .2s;overflow:hidden}
-#kvmind-chat-panel.collapsed{width:0;border-left:none}
+#kvmind-chat-panel{position:fixed;top:48px;right:0;bottom:0;width:var(--kvmind-panel-width);display:flex;flex-direction:column;z-index:1000;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:13px;transition:width .2s;overflow:hidden}
+#kvmind-chat-panel.collapsed{width:0!important;border-left:none}
 #kvmind-chat-header{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--kvborder);flex-shrink:0}
 .kvmind-myclaw-badge{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700}
 .kvmind-myclaw-dot{width:8px;height:8px;border-radius:50%;background:var(--kvpurple);animation:kvmind-blink 2.5s ease-in-out infinite}
@@ -150,6 +165,7 @@ body.kvmind-panel-collapsed #kvmind-stream-area{right:0}
 .kvmind-panel-mode-btn{padding:3px 12px;border-radius:14px;border:none;background:transparent;color:var(--kvtext-muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
 .kvmind-panel-mode-btn.active{background:var(--kvaccent);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15)}
 .kvmind-panel-mode-btn:hover:not(.active){color:var(--kvtext)}
+.kvmind-panel-mode-btn.kv-pm-locked::before{content:"🔒 ";font-size:10px;opacity:.7}
 #kvmind-collapse-btn{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:1px solid var(--kvborder);border-radius:4px;background:none;color:var(--kvtext-muted);font-size:12px;cursor:pointer}
 #kvmind-chat-messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
 .kvmind-msg-row{display:flex;flex-direction:column;gap:2px;animation:kvmind-fadeUp .18s ease}
@@ -172,6 +188,27 @@ body.kvmind-panel-collapsed #kvmind-stream-area{right:0}
 .kvmind-tool-content{margin:0;padding:6px 12px;font-size:11px;line-height:1.45;white-space:pre-wrap;word-break:break-all;border-top:1px solid rgba(124,58,237,.15);color:var(--kvtext-sub);max-height:300px;overflow-y:auto}
 .kvmind-tool-result{color:var(--kvgreen);border-top-color:rgba(22,163,74,.2)}
 .kvmind-chat-msg.warn-confirm{background:var(--kvyellow-dim);border:1px solid rgba(202,138,4,.3);color:var(--kvyellow)}
+.kvmind-chat-msg.notice{background:var(--kvyellow-dim);border:1px solid rgba(202,138,4,.35);color:var(--kvyellow);display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.5}
+.kvmind-chat-msg.notice .kvmind-notice-icon{flex:0 0 auto;font-size:14px;line-height:1.5}
+.kvmind-chat-msg.notice .kvmind-notice-body{flex:1 1 auto;white-space:pre-wrap;word-break:break-word}
+/* PR#3: V6 gateway error bubble with CTA. Reuses the red/dim surface so the
+   visual weight matches the stakes (action required), but the CTA button is
+   kept subdued — we don't want the UI screaming the user into a wrong click. */
+.kvmind-chat-msg.err{background:var(--kvred-dim);border:1px solid rgba(220,38,38,.35);color:var(--kvred);display:flex;flex-direction:column;gap:8px;font-size:12.5px;line-height:1.5}
+.kvmind-chat-msg.err .kvmind-err-head{display:flex;gap:6px;align-items:flex-start}
+.kvmind-chat-msg.err .kvmind-err-icon{flex:0 0 auto;font-size:14px;line-height:1.5}
+.kvmind-chat-msg.err .kvmind-err-title{flex:1 1 auto;white-space:pre-wrap;word-break:break-word}
+.kvmind-err-cta{align-self:flex-start;padding:5px 12px;border-radius:6px;border:1px solid rgba(220,38,38,.5);background:rgba(255,255,255,.06);color:var(--kvred);font-size:12px;font-weight:600;cursor:pointer;transition:background .12s,border-color .12s}
+.kvmind-err-cta:hover:not(.disabled){background:rgba(220,38,38,.18);border-color:var(--kvred)}
+.kvmind-err-cta.disabled{opacity:.55;cursor:default}
+.kvmind-toast{pointer-events:auto;max-width:480px;padding:10px 14px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.18);font-size:13px;line-height:1.5;animation:kvmind-fadeUp .18s ease-out;background:var(--kvsurface);border:1px solid var(--kvborder);color:var(--kvtext);display:flex;align-items:flex-start;gap:10px}
+.kvmind-toast-msg{flex:1 1 auto;min-width:0;word-break:break-word}
+.kvmind-toast-close{flex:0 0 auto;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:none;color:var(--kvtext-muted);cursor:pointer;font-size:18px;line-height:1;padding:0;border-radius:6px;transition:background .12s,color .12s;margin:-2px -6px 0 0}
+.kvmind-toast-close:hover{background:rgba(0,0,0,.1);color:var(--kvtext)}
+/* warn/error: 不透明 surface 底 + 主题警告色边 + 主文本色，确保盖在背景上可读。
+   旧版用 ...-dim 透明色 (~12%) 直接做 background，背景页面会透过来。 */
+.kvmind-toast-warn{background:var(--kvsurface);border-color:var(--kvyellow);color:var(--kvtext);box-shadow:0 6px 24px rgba(0,0,0,.28),0 0 0 1px var(--kvyellow) inset}
+.kvmind-toast-error{background:var(--kvsurface);border-color:var(--kvred);color:var(--kvtext);box-shadow:0 6px 24px rgba(0,0,0,.28),0 0 0 1px var(--kvred) inset}
 .kvmind-chat-msg.snap{padding:0;overflow:hidden;border:1px solid var(--kvborder);background:var(--kvsurface2);max-width:100%;cursor:default}
 .kvmind-snap-cap{font-size:9px;color:var(--kvtext-sub);padding:4px 8px;background:var(--kvsurface3);display:flex;justify-content:space-between}
 .kvmind-confirm-btns{display:flex;gap:8px;margin-top:10px}
@@ -221,7 +258,7 @@ body.kvmind-panel-collapsed #kvmind-stream-area{right:0}
 #kvmind-kb-input{flex:1;background:var(--kvsurface2);border:1px solid var(--kvaccent);border-radius:5px;color:var(--kvtext);padding:6px 10px;font-size:13px;outline:none}
 #kvmind-kb-send{padding:6px 14px;background:var(--kvaccent);border:none;border-radius:5px;color:#fff;font-size:13px;cursor:pointer}
 #kvmind-log-bar{position:fixed!important;bottom:0!important;left:0!important;height:22px!important;display:flex!important;flex-direction:column!important;z-index:1000!important;font-family:-apple-system,sans-serif;font-size:10px;overflow:hidden!important}
-body:not(.kvmind-panel-collapsed) #kvmind-log-bar{right:400px!important}
+body:not(.kvmind-panel-collapsed) #kvmind-log-bar{right:var(--kvmind-panel-width)!important}
 body.kvmind-panel-collapsed #kvmind-log-bar{right:0!important}
 #kvmind-log-tab{height:22px;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--kvsurface);border-top:1px solid var(--kvborder);cursor:pointer;flex-shrink:0}
 #kvmind-log-tab span{font-size:10px;color:var(--kvtext-muted)}
@@ -272,155 +309,155 @@ body.kvmind-panel-collapsed #kvmind-log-bar{right:0!important}
 
 
 
-/* ===== 宋韻·和風 Light Theme Variables ===== */
+/* ===== Neutral Light — 温暖纸本 + 青瓷印章 ===== */
 [data-theme="light"], :root {
-  --glass-bg: rgba(247,245,240,0.92);
-  --glass-border: #E0D8CC;
-  --text-primary: #2C3640;
-  --text-secondary: #6A8372;
-  --accent: #68B0AB;
-  --accent-hover: #48929B;
-  --accent-light: #E4F0EE;
-  --surface: rgba(255,255,255,0.85);
-  --surface-hover: rgba(255,255,255,0.95);
-  --chat-bg: #F7F5F0;
-  --msg-user-bg: #3E5055;
-  --msg-user-color: #EAECEF;
-  --msg-ai-bg: #FFFFFF;
-  --msg-ai-color: #424C50;
-  --msg-ai-border: #E0D8CC;
-  --toolbar-bg: rgba(247,245,240,0.92);
-  --sidebar-bg: #F7F5F0;
-  --log-bg: #1C2127;
-  --log-ts: #6C848D;
-  --log-ok: #88B892;
-  --log-warn: #E0A458;
-  --log-error: #C45A65;
-  --log-info: #8DA7A0;
-  --qc-bg: #FFFFFF;
-  --qc-border: #C8DBBE;
-  --qc-text: #6A8372;
-  --qc-hover-bg: #EFF6EB;
-  --qc-hover-border: #68BE8D;
-  --send-btn-bg: #68B0AB;
-  --send-btn-color: #FFFFFF;
-  --success: #68BE8D;
-  --warning: #E0A458;
-  --error: #C45A65;
+  --glass-bg: rgba(247,243,233,0.92);
+  --glass-border: #d4c9a8;
+  --text-primary: #1a1a1a;
+  --text-secondary: #6b5a46;
+  --accent: #5c7768;
+  --accent-hover: #486056;
+  --accent-light: rgba(127,157,140,0.15);
+  --surface: rgba(254,251,242,0.9);
+  --surface-hover: rgba(254,251,242,0.98);
+  --chat-bg: #f7f3e9;
+  --msg-user-bg: #7f9d8c;
+  --msg-user-color: #1a1a1a;
+  --msg-ai-bg: #fefbf2;
+  --msg-ai-color: #1a1a1a;
+  --msg-ai-border: #d4c9a8;
+  --toolbar-bg: rgba(247,243,233,0.94);
+  --sidebar-bg: #f7f3e9;
+  --log-bg: #1a1612;
+  --log-ts: #8a7860;
+  --log-ok: #9ab5a5;
+  --log-warn: #d2a862;
+  --log-error: #e06b5d;
+  --log-info: #9ab5a5;
+  --qc-bg: #fefbf2;
+  --qc-border: #c8b89a;
+  --qc-text: #6b5a46;
+  --qc-hover-bg: #f1e6cf;
+  --qc-hover-border: #7f9d8c;
+  --send-btn-bg: #7f9d8c;
+  --send-btn-color: #1a1a1a;
+  --success: #5c7768;
+  --warning: #b69259;
+  --error: #b23a2a;
   --fuji: #8F77B5;
 }
 
-/* ===== Classic Dark Theme Variables ===== */
+/* ===== Neutral Dark — 比原来亮一档，柔和不刺眼 ===== */
 [data-theme="dark"] {
-  --glass-bg: rgba(30,33,40,0.95);
-  --glass-border: #3a3d45;
+  --glass-bg: rgba(38,43,51,0.95);
+  --glass-border: #4a5058;
   --text-primary: #e6edf3;
   --text-secondary: #8b949e;
-  --accent: #00b4d8;
-  --accent-hover: #0096c7;
-  --accent-light: rgba(0,180,216,0.15);
-  --surface: rgba(42,45,53,0.85);
-  --surface-hover: rgba(42,45,53,0.95);
-  --chat-bg: #1e2128;
-  --msg-user-bg: #0096c7;
-  --msg-user-color: #fff;
-  --msg-ai-bg: #2a2d35;
-  --msg-ai-color: #c0c8d0;
-  --msg-ai-border: #3a3d45;
-  --toolbar-bg: rgba(30,33,40,0.95);
-  --sidebar-bg: #1e2128;
-  --log-bg: #0a0a0a;
-  --log-ts: #6e7681;
+  --accent: #9ab5a5;
+  --accent-hover: #b0c8b9;
+  --accent-light: rgba(154,181,165,0.15);
+  --surface: rgba(45,51,60,0.85);
+  --surface-hover: rgba(45,51,60,0.95);
+  --chat-bg: #262b33;
+  --msg-user-bg: #7f9d8c;
+  --msg-user-color: #1a1a1a;
+  --msg-ai-bg: #2d333c;
+  --msg-ai-color: #e6edf3;
+  --msg-ai-border: #4a5058;
+  --toolbar-bg: rgba(38,43,51,0.95);
+  --sidebar-bg: #262b33;
+  --log-bg: #16191f;
+  --log-ts: #8b949e;
   --log-ok: #3fb950;
-  --log-warn: #d29922;
-  --log-error: #f85149;
-  --log-info: #58a6ff;
-  --qc-bg: #2a2d35;
-  --qc-border: #3a3d45;
+  --log-warn: #d2a862;
+  --log-error: #e06b5d;
+  --log-info: #9ab5a5;
+  --qc-bg: #2d333c;
+  --qc-border: #4a5058;
   --qc-text: #b0b8c0;
-  --qc-hover-bg: #33363e;
-  --qc-hover-border: #00b4d8;
-  --send-btn-bg: #00b4d8;
-  --send-btn-color: #FFFFFF;
-  --success: #3fb950;
-  --warning: #d29922;
-  --error: #f85149;
+  --qc-hover-bg: #353b44;
+  --qc-hover-border: #9ab5a5;
+  --send-btn-bg: #7f9d8c;
+  --send-btn-color: #1a1a1a;
+  --success: #9ab5a5;
+  --warning: #d2a862;
+  --error: #e06b5d;
   --fuji: #a371f7;
 }
 
-/* ===== KVMind Light Theme Variables ===== */
+/* ===== KVMind Light — 宣纸印章正主题 ===== */
 [data-theme="kvmind-light"] {
-  --glass-bg: rgba(232,245,238,0.95);
-  --glass-border: #c8e0d0;
-  --text-primary: #2a3a30;
-  --text-secondary: #5a7a6a;
-  --accent: #2bb77a;
-  --accent-hover: #22a06b;
-  --accent-light: rgba(62,207,142,0.08);
-  --surface: rgba(255,255,255,0.9);
-  --surface-hover: rgba(255,255,255,0.95);
-  --chat-bg: #f0f8f4;
-  --msg-user-bg: #2bb77a;
-  --msg-user-color: #fff;
-  --msg-ai-bg: #fff;
-  --msg-ai-color: #3a5a4a;
-  --msg-ai-border: #c8e0d0;
-  --toolbar-bg: rgba(232,245,238,0.95);
-  --sidebar-bg: #f0f8f4;
-  --log-bg: #e8f4ee;
-  --log-ts: #7a9a8a;
-  --log-ok: #16a34a;
-  --log-warn: #ca8a04;
-  --log-error: #dc2626;
-  --log-info: #2bb77a;
-  --qc-bg: rgba(62,207,142,0.08);
-  --qc-border: #c8e0d0;
-  --qc-text: #3a5a4a;
-  --qc-hover-bg: #e0f0e8;
-  --qc-hover-border: #3ecf8e;
-  --send-btn-bg: #3ecf8e;
-  --send-btn-color: #FFFFFF;
-  --success: #16a34a;
-  --warning: #ca8a04;
-  --error: #dc2626;
+  --glass-bg: rgba(241,230,207,0.94);
+  --glass-border: #c8b89a;
+  --text-primary: #1a1a1a;
+  --text-secondary: #6b5a46;
+  --accent: #5c7768;
+  --accent-hover: #486056;
+  --accent-light: rgba(127,157,140,0.15);
+  --surface: rgba(251,245,230,0.92);
+  --surface-hover: rgba(251,245,230,0.98);
+  --chat-bg: #f1e6cf;
+  --msg-user-bg: #7f9d8c;
+  --msg-user-color: #1a1a1a;
+  --msg-ai-bg: #fbf5e6;
+  --msg-ai-color: #1a1a1a;
+  --msg-ai-border: #c8b89a;
+  --toolbar-bg: rgba(241,230,207,0.94);
+  --sidebar-bg: #f1e6cf;
+  --log-bg: #1a1612;
+  --log-ts: #8a7860;
+  --log-ok: #9ab5a5;
+  --log-warn: #d2a862;
+  --log-error: #e06b5d;
+  --log-info: #9ab5a5;
+  --qc-bg: #fbf5e6;
+  --qc-border: #c8b89a;
+  --qc-text: #6b5a46;
+  --qc-hover-bg: #f1e6cf;
+  --qc-hover-border: #7f9d8c;
+  --send-btn-bg: #7f9d8c;
+  --send-btn-color: #1a1a1a;
+  --success: #5c7768;
+  --warning: #b69259;
+  --error: #b23a2a;
   --fuji: #7c3aed;
 }
 
-/* ===== KVMind Dark Theme Variables (matches login page) ===== */
+/* ===== KVMind Dark — 温暖墨底，比原来亮一档 ===== */
 [data-theme="kvmind-dark"] {
-  --glass-bg: rgba(15,25,35,0.95);
-  --glass-border: #1e3040;
-  --text-primary: #c0c8d0;
-  --text-secondary: #8b949e;
-  --accent: #3ecf8e;
-  --accent-hover: #2bb77a;
-  --accent-light: rgba(62,207,142,0.12);
-  --surface: rgba(15,25,35,0.85);
-  --surface-hover: rgba(15,25,35,0.95);
-  --chat-bg: #0f1923;
-  --msg-user-bg: #3ecf8e;
-  --msg-user-color: #0a1628;
-  --msg-ai-bg: #1a2332;
-  --msg-ai-color: #c0c8d0;
-  --msg-ai-border: #2a3a4a;
-  --toolbar-bg: rgba(15,25,35,0.95);
-  --sidebar-bg: #0f1923;
-  --log-bg: #0a1020;
-  --log-ts: #6e7681;
-  --log-ok: #3ecf8e;
-  --log-warn: #d29922;
-  --log-error: #f85149;
-  --log-info: #3ecf8e;
-  --qc-bg: rgba(62,207,142,0.06);
-  --qc-border: #2a3a4a;
-  --qc-text: #8b949e;
-  --qc-hover-bg: #1a2a3a;
-  --qc-hover-border: #3ecf8e;
-  --send-btn-bg: #3ecf8e;
-  --send-btn-color: #0a1628;
-  --success: #3ecf8e;
-  --warning: #d29922;
-  --error: #f85149;
+  --glass-bg: rgba(48,42,32,0.95);
+  --glass-border: #5c5240;
+  --text-primary: #ebe5d5;
+  --text-secondary: #9c928a;
+  --accent: #9ab5a5;
+  --accent-hover: #b0c8b9;
+  --accent-light: rgba(154,181,165,0.15);
+  --surface: rgba(58,52,40,0.88);
+  --surface-hover: rgba(58,52,40,0.95);
+  --chat-bg: #302a20;
+  --msg-user-bg: #7f9d8c;
+  --msg-user-color: #1a1612;
+  --msg-ai-bg: #3a3428;
+  --msg-ai-color: #ebe5d5;
+  --msg-ai-border: #5c5240;
+  --toolbar-bg: rgba(48,42,32,0.95);
+  --sidebar-bg: #302a20;
+  --log-bg: #1a1612;
+  --log-ts: #9c928a;
+  --log-ok: #9ab5a5;
+  --log-warn: #d2a862;
+  --log-error: #e06b5d;
+  --log-info: #9ab5a5;
+  --qc-bg: #3a3428;
+  --qc-border: #5c5240;
+  --qc-text: #9c928a;
+  --qc-hover-bg: #453d2e;
+  --qc-hover-border: #9ab5a5;
+  --send-btn-bg: #7f9d8c;
+  --send-btn-color: #1a1612;
+  --success: #9ab5a5;
+  --warning: #d2a862;
+  --error: #e06b5d;
   --fuji: #a371f7;
 }
 
@@ -474,37 +511,37 @@ html, body {
 
 /* ===== MyClaw Chat Panel (per-theme) ===== */
 
-/* Classic Light */
+/* Classic Light — 温暖纸本 */
 [data-theme="light"] #kvmind-chat-panel,
 :root #kvmind-chat-panel {
-  background: #F7F5F0;
-  border-left: 1px solid #E0D8CC;
-  color: #2C3640;
+  background: #f7f3e9;
+  border-left: 1px solid #d4c9a8;
+  color: #1a1a1a;
   box-shadow: -1px 0 4px rgba(0,0,0,0.04);
 }
 
-/* Classic Dark */
+/* Classic Dark — 柔和墨青 */
 [data-theme="dark"] #kvmind-chat-panel {
-  background: #1e2128;
-  border-left: 1px solid #3a3d45;
+  background: #262b33;
+  border-left: 1px solid #4a5058;
   color: #e6edf3;
-  box-shadow: -1px 0 4px rgba(0,0,0,0.1);
+  box-shadow: -1px 0 4px rgba(0,0,0,0.12);
 }
 
-/* KVMind Light — 玻璃效果 */
+/* KVMind Light — 宣纸玻璃 */
 [data-theme="kvmind-light"] #kvmind-chat-panel {
-  background: linear-gradient(90deg, #f8fdf9 0%, #f2f9f5 20%, #f0f8f4 100%);
-  border-left: 1px solid #b8d4c0;
-  color: #3a5a4a;
-  box-shadow: -2px 0 8px rgba(62,207,142,0.06);
+  background: linear-gradient(90deg, #fbf5e6 0%, #f6efe0 20%, #f1e6cf 100%);
+  border-left: 1px solid #c8b89a;
+  color: #1a1a1a;
+  box-shadow: -2px 0 8px rgba(127,157,140,0.08);
 }
 
-/* KVMind Dark — 玻璃效果 */
+/* KVMind Dark — 温墨玻璃 */
 [data-theme="kvmind-dark"] #kvmind-chat-panel {
-  background: linear-gradient(90deg, #1a2a3a 0%, #132230 20%, #0f1923 100%);
-  border-left: 1px solid #2a4050;
-  color: #c0c8d0;
-  box-shadow: -2px 0 12px rgba(0,0,0,0.25);
+  background: linear-gradient(90deg, #3a3428 0%, #302a20 20%, #252018 100%);
+  border-left: 1px solid #5c5240;
+  color: #ebe5d5;
+  box-shadow: -2px 0 12px rgba(0,0,0,0.3);
 }
 #kvmind-chat-view {
   background: var(--chat-bg);
@@ -602,39 +639,39 @@ html, body {
 
 /* ===== Toolbar (per-theme) ===== */
 
-/* Classic Light */
+/* Classic Light — 温暖纸本 */
 [data-theme="light"] #kvmind-toolbar,
 :root #kvmind-toolbar {
-  background: rgba(247,245,240,0.92);
-  border-bottom: 1px solid #E0D8CC;
-  color: #2C3640;
+  background: rgba(247,243,233,0.94);
+  border-bottom: 1px solid #d4c9a8;
+  color: #1a1a1a;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
-/* Classic Dark */
+/* Classic Dark — 柔和墨青 */
 [data-theme="dark"] #kvmind-toolbar {
-  background: rgba(30,33,40,0.95);
-  border-bottom: 1px solid #3a3d45;
+  background: rgba(38,43,51,0.95);
+  border-bottom: 1px solid #4a5058;
   color: #e6edf3;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.14);
 }
 
-/* KVMind Light — 玻璃效果 */
+/* KVMind Light — 宣纸玻璃 */
 [data-theme="kvmind-light"] #kvmind-toolbar {
-  background: linear-gradient(180deg, #f8fdf9 0%, #eef7f2 40%, #e8f5ee 100%);
-  border-top: 1px solid #ffffff;
-  border-bottom: 1px solid #b8d4c0;
-  color: #3a5a4a;
-  box-shadow: 0 1px 8px rgba(62,207,142,0.08);
+  background: linear-gradient(180deg, #fbf5e6 0%, #f6efe0 40%, #f1e6cf 100%);
+  border-top: 1px solid #fefbf2;
+  border-bottom: 1px solid #c8b89a;
+  color: #1a1a1a;
+  box-shadow: 0 1px 8px rgba(127,157,140,0.1);
 }
 
-/* KVMind Dark — 玻璃效果 */
+/* KVMind Dark — 温墨玻璃 */
 [data-theme="kvmind-dark"] #kvmind-toolbar {
-  background: linear-gradient(180deg, #1a2a3a 0%, #132230 40%, #0f1923 100%);
-  border-top: 1px solid #2a4050;
-  border-bottom: 1px solid #1e3040;
-  color: #8b949e;
-  box-shadow: 0 1px 12px rgba(0,0,0,0.3);
+  background: linear-gradient(180deg, #3a3428 0%, #302a20 40%, #252018 100%);
+  border-top: 1px solid #5c5240;
+  border-bottom: 1px solid #4d4432;
+  color: #ebe5d5;
+  box-shadow: 0 1px 12px rgba(0,0,0,0.35);
 }
 .kvmind-tb-btn {
   color: var(--text-secondary);
@@ -746,8 +783,8 @@ html, body {
 
 /* ===== Panel Collapse Fix ===== */
 #kvmind-chat-panel.collapsed {
-  width: 0;
-  min-width: 0;
+  width: 0 !important;
+  min-width: 0 !important;
   border-left: none;
   overflow: hidden;
 }
@@ -790,12 +827,21 @@ html, body {
   transition: transform 0.2s;
 }
 .kvmind-toggle input:checked + .kvmind-toggle-slider {
-  background: var(--accent, #3ecf8e);
+  background: var(--accent, #7f9d8c);
 }
 .kvmind-toggle input:checked + .kvmind-toggle-slider::before {
   transform: translateX(16px);
 }
-/* ===== Settings Panel Components ===== */
+/* ===== Settings Panel — Modern Layout ===== */
+#kvmind-settings-menu .kvs-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;min-height:32px}
+#kvmind-settings-menu .kvs-row + .kvs-row{border-top:1px solid var(--kvborder)}
+#kvmind-settings-menu .kvs-ctrl-inline{display:flex;align-items:center;gap:8px}
+#kvmind-settings-menu .kvs-display{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;color:var(--kvtext);font-size:12px}
+#kvmind-settings-menu .kvs-hint{font-size:11px;color:var(--kvtext-muted);margin-top:6px;line-height:1.4;padding:4px 8px;background:var(--kvsurface2);border-radius:6px}
+#kvmind-settings-menu .kvs-action-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+#kvmind-settings-menu .kvs-action-btn{flex:1;min-width:100px;padding:7px 12px;border:1px solid var(--kvborder);border-radius:8px;background:var(--kvsurface2);color:var(--kvtext);font-size:13px;font-weight:500;cursor:pointer;transition:all .12s;white-space:nowrap}
+#kvmind-settings-menu .kvs-action-btn:hover{border-color:var(--kvaccent);color:var(--kvaccent);background:var(--kvaccent-dim)}
+#kvmind-settings-menu .kvs-action-btn.danger:hover{border-color:var(--kvred);color:var(--kvred);background:var(--kvred-dim)}
 .kvmind-settings-table {
   width: 100%;
   font-size: 13px;
@@ -923,6 +969,7 @@ html, body {
   bottom: 0;
   width: 4px;
   cursor: col-resize;
+  touch-action: none;
   z-index: 1200;
   background: transparent;
   transition: background .15s;

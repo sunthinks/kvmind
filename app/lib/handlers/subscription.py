@@ -1,13 +1,13 @@
-"""Subscription status and sync handlers."""
+"""Subscription status and sync handlers (V1 Seat 模型)."""
 from __future__ import annotations
 
-import asyncio
 import logging
 
 from aiohttp import web
 
 from ..middleware import is_trusted_proxy
 from ..config import save_config
+from ..telegram_bot import start_bot, stop_bot
 from .helpers import json_response
 
 log = logging.getLogger("kvmind.handlers.subscription")
@@ -28,13 +28,13 @@ def register(app: dict) -> None:
     """Register subscription-related routes on the aiohttp app."""
 
     cfg = app["cfg"]
-    kvm = app["kvm"]
-    audit = app["audit"]
 
     async def h_subscription(req: web.Request) -> web.Response:
-        """GET /api/subscription -- read subscription status."""
+        """GET /api/subscription — read current entitlement snapshot (V1 Seat 模型)."""
         return json_response({
-            "plan": cfg.subscription.plan,
+            "claim_state": cfg.subscription.claim_state,
+            "entitlement_state": cfg.subscription.entitlement_state,
+            "assigned_subscription_id": cfg.subscription.assigned_subscription_id,
             "tunnel": cfg.subscription.tunnel,
             "messaging": cfg.subscription.messaging,
             "ota": cfg.subscription.ota,
@@ -46,15 +46,23 @@ def register(app: dict) -> None:
         })
 
     async def h_subscription_sync(req: web.Request) -> web.Response:
-        """POST /api/subscription/sync -- heartbeat sync."""
+        """POST /api/subscription/sync — trusted-proxy heartbeat passthrough.
+
+        V1 Seat 模型：payload 字段为 claim_state / entitlement_state / assigned_subscription_id
+        外加 feature flags。老 plan / linked 字段彻底废弃。
+        """
         if not is_trusted_proxy(req):
             return web.Response(status=403, text="Forbidden")
         body = await req.json()
 
         old_messaging = cfg.subscription.messaging
+        old_scheduled = cfg.subscription.scheduled_tasks
 
-        # Compute new values
-        new_plan = body.get("plan", cfg.subscription.plan)
+        new_claim_state = body.get("claim_state", cfg.subscription.claim_state)
+        new_entitlement_state = body.get("entitlement_state", cfg.subscription.entitlement_state)
+        asid = body.get("assigned_subscription_id", cfg.subscription.assigned_subscription_id)
+        new_assigned_sub = int(asid) if asid is not None else None
+
         new_tunnel = _bool_from_body(body.get("tunnel"), cfg.subscription.tunnel)
         new_messaging = _bool_from_body(body.get("messaging"), cfg.subscription.messaging)
         new_ota = _bool_from_body(body.get("ota"), cfg.subscription.ota)
@@ -65,9 +73,10 @@ def register(app: dict) -> None:
             body.get("scheduled_tasks"), cfg.subscription.scheduled_tasks,
         )
 
-        # Check if anything actually changed (skip synced_at — it changes every call)
         changed = (
-            new_plan != cfg.subscription.plan
+            new_claim_state != cfg.subscription.claim_state
+            or new_entitlement_state != cfg.subscription.entitlement_state
+            or new_assigned_sub != cfg.subscription.assigned_subscription_id
             or new_tunnel != cfg.subscription.tunnel
             or new_messaging != cfg.subscription.messaging
             or new_ota != cfg.subscription.ota
@@ -77,8 +86,9 @@ def register(app: dict) -> None:
             or new_scheduled_tasks != cfg.subscription.scheduled_tasks
         )
 
-        # Always update in-memory (including synced_at)
-        cfg.subscription.plan = new_plan
+        cfg.subscription.claim_state = new_claim_state
+        cfg.subscription.entitlement_state = new_entitlement_state
+        cfg.subscription.assigned_subscription_id = new_assigned_sub
         cfg.subscription.tunnel = new_tunnel
         cfg.subscription.messaging = new_messaging
         cfg.subscription.ota = new_ota
@@ -88,84 +98,44 @@ def register(app: dict) -> None:
         cfg.subscription.myclaw_max_action_level = new_myclaw_max_action_level
         cfg.subscription.scheduled_tasks = new_scheduled_tasks
 
-        # Only write to disk (remount rw/ro) when values actually changed
         if changed:
             try:
                 save_config(cfg)
             except Exception as e:
                 log.warning("[Subscription] Failed to save config: %s", e)
 
-        new_messaging = cfg.subscription.messaging
-
-        # Telegram dynamic start/stop
         if old_messaging and not new_messaging:
-            # Subscription expired -> stop Bot
-            task = req.app.get("telegram_task")
-            if task:
-                task.cancel()
-                req.app.pop("telegram_task", None)
+            if stop_bot(req.app):
                 log.info("[Subscription] Telegram stopped (messaging disabled)")
-        elif not old_messaging and new_messaging and cfg.telegram.bot_token:
-            # Subscription activated -> auto-start Bot (if token configured)
-            kvmind = app["kvmind"]
-            from ..telegram_bot import TelegramBot
-            gateway = app.get("gateway")
-            tg_bot = TelegramBot(
-                token=cfg.telegram.bot_token, kvm=kvm, kvmind=kvmind,
-                audit=audit, allowed_chats=cfg.telegram.allowed_chats or None,
-                gateway=gateway,
-            )
-            req.app["telegram_task"] = asyncio.create_task(tg_bot.start())
-            log.info("[Subscription] Telegram auto-started (messaging enabled)")
+        elif not old_messaging and new_messaging:
+            if start_bot(req.app, cfg):
+                log.info("[Subscription] Telegram auto-started (messaging enabled)")
 
-        log.info("[Subscription] Synced: plan=%s tunnel=%s messaging=%s ota=%s",
-                 cfg.subscription.plan, cfg.subscription.tunnel,
-                 cfg.subscription.messaging, cfg.subscription.ota)
+        # scheduled_tasks 翻 True/False 时同步开停 TaskScheduler，否则已运行的任务
+        # 会一直跑到下次重启，等同 entitlement 被吊销但设备还在执行付费功能。
+        if old_scheduled and not new_scheduled:
+            sched = req.app.get("task_scheduler")
+            if sched is not None:
+                stopped = sched.stop_all()
+                if stopped:
+                    log.info("[Subscription] Stopped %d scheduled tasks (entitlement off)", stopped)
+        elif not old_scheduled and new_scheduled:
+            sched = req.app.get("task_scheduler")
+            if sched is not None:
+                started = await sched.start_all_if_entitled()
+                if started:
+                    log.info("[Subscription] Started %d scheduled tasks (entitlement on)", started)
+
+        log.info(
+            "[Subscription] Synced: claim=%s ent=%s sub_id=%s tunnel=%s messaging=%s ota=%s",
+            cfg.subscription.claim_state,
+            cfg.subscription.entitlement_state,
+            cfg.subscription.assigned_subscription_id,
+            cfg.subscription.tunnel,
+            cfg.subscription.messaging,
+            cfg.subscription.ota,
+        )
         return json_response({"ok": True})
-
-    # ── R4-C2: GDPR chat wipe (pull model) ────────────────────────────────────
-    #
-    # 由 kvmind-heartbeat.sh 在收到云端心跳的 customerCleared=true 后调用。
-    # 只接受 trusted proxy (127.0.0.1) 来源，防止租户侧 Web 恶意调用。
-    #
-    # 返回体: {"ok": true, "deleted": <int>}  — 成功，擦除了多少条消息
-    #         {"ok": false, "error": "..."}   — 失败，由 shell 转报给云端 ACK
-    # ────────────────────────────────────────────────────────────────────────
-    async def h_internal_chat_wipe(req: web.Request) -> web.Response:
-        if not is_trusted_proxy(req):
-            return web.Response(status=403, text="Forbidden")
-
-        try:
-            body = await req.json()
-        except Exception:
-            return json_response({"ok": False, "error": "invalid json body"}, status=400)
-
-        deletion_request_id = body.get("deletionRequestId")
-        if deletion_request_id is None:
-            return json_response({"ok": False, "error": "deletionRequestId is required"}, status=400)
-
-        chat_store = req.app.get("chat_store")
-        if chat_store is None:
-            return json_response({"ok": False, "error": "chat_store not initialized"}, status=500)
-
-        try:
-            # 只用 deletion_request_id 作审计 tag — chat_store 按整机全量擦除。
-            deleted = await chat_store.wipe_for_uid(
-                customer_uid=f"deletion_request_{deletion_request_id}"
-            )
-        except Exception as e:
-            log.error("[ChatWipe] wipe_for_uid failed: %s", e, exc_info=True)
-            return json_response(
-                {"ok": False, "error": f"chat_store wipe failed: {e!s}"[:300]},
-                status=500,
-            )
-
-        log.info("[ChatWipe] Wiped %d messages (deletion_request_id=%s)",
-                 deleted, deletion_request_id)
-        return json_response({"ok": True, "deleted": deleted})
-
-    # ── Route registration ──────────────────────────────────────────────────
 
     app.router.add_get("/api/subscription", h_subscription)
     app.router.add_post("/api/subscription/sync", h_subscription_sync)
-    app.router.add_post("/api/internal/chat-wipe", h_internal_chat_wipe)

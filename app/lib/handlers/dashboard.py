@@ -158,3 +158,4 @@ def register(app):
     app.router.add_get("/setup.html", _serve_page("setup.html"))
     app.router.add_get("/change-password.html", _serve_page("change-password.html"))
     app.router.add_get("/dashboard.html", _serve_page("dashboard.html"))
+    app.router.add_get("/activate.html", _serve_page("activate.html"))

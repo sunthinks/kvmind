@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KVMind — 激活设备</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%272%27 y=%272%27 width=%2760%27 height=%2760%27 rx=%272.5%27 ry=%272.5%27 fill=%27%237f9d8c%27/%3E%3Cg fill=%27%23f1e9d8%27%3E%3Crect x=%2714%27 y=%2720%27 width=%2736%27 height=%2724%27 fill=%27none%27 stroke=%27%23f1e9d8%27 stroke-width=%273%27/%3E%3Crect x=%2744%27 y=%2728%27 width=%2710%27 height=%278%27 fill=%27%237f9d8c%27/%3E%3Crect x=%2748%27 y=%2728%27 width=%276%27 height=%278%27/%3E%3Crect x=%2750%27 y=%2730%27 width=%272%27 height=%274%27 fill=%27%237f9d8c%27/%3E%3Crect x=%276%27 y=%2730%27 width=%2734%27 height=%274%27/%3E%3Crect x=%2726%27 y=%2750%27 width=%2712%27 height=%274%27/%3E%3C/g%3E%3C/svg%3E">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --kvbg:#f1e6cf;--kvsurface:#fbf5e6;--kvsurface2:#f6efe0;--kvborder:#c8b89a;
+  --kvtext:#1a1a1a;--kvtext-sub:#3a2f24;--kvtext-muted:#6b5a46;
+  --kvaccent:#7f9d8c;--kvaccent-hover:#6b8979;--kvaccent-dim:rgba(127,157,140,.15);
+  --kvaccent-ink:#5c7768;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;min-height:100vh;background:var(--kvbg);color:var(--kvtext);padding:24px;line-height:1.5}
+
+.page{max-width:720px;margin:0 auto}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.brand{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700;color:#1a1a1a;text-decoration:none}
+.back-link{font-size:13px;color:var(--kvtext-sub);text-decoration:none;padding:8px 14px;border-radius:8px;border:1px solid var(--kvborder);background:var(--kvsurface2)}
+.back-link:hover{color:var(--kvaccent);border-color:var(--kvaccent)}
+
+.lang-group{display:flex;gap:4px}
+.lang-btn{padding:6px 12px;border:1px solid var(--kvborder);border-radius:6px;background:var(--kvsurface2);color:var(--kvtext-muted);font-size:12px;cursor:pointer;font-family:inherit}
+.lang-btn:hover{border-color:var(--kvaccent);color:var(--kvaccent)}
+.lang-btn.active{background:var(--kvaccent);color:#1a1a1a;border-color:var(--kvaccent);font-weight:600}
+
+.card{background:var(--kvsurface);border:1px solid var(--kvborder);border-radius:16px;padding:28px;margin-bottom:20px}
+.card h1{font-size:22px;font-weight:700;margin-bottom:8px}
+.card .subtitle{font-size:13px;color:var(--kvtext-sub);margin-bottom:20px}
+
+.uid-badge{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--kvaccent-dim);border:1px solid rgba(127,157,140,0.25);border-radius:12px;font-size:13px;color:var(--kvtext-sub);margin-bottom:20px;flex-wrap:wrap}
+.uid-badge .uid-label{color:var(--kvtext-muted)}
+.uid-badge .uid-value{color:var(--kvaccent-ink);font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:0.5px}
+
+/* Entitlement snapshot */
+/* 顶部订阅汇总卡（突出显示当前 entitlement） */
+.ent-summary{display:flex;align-items:center;gap:14px;padding:14px 18px;background:linear-gradient(135deg,var(--kvaccent-dim),transparent);border:1px solid var(--kvaccent);border-radius:12px;margin-bottom:14px;flex-wrap:wrap}
+.ent-summary.free{background:linear-gradient(135deg,var(--kvsurface2),transparent);border-color:var(--kvborder)}
+.ent-summary-icon{width:40px;height:40px;border-radius:10px;background:var(--kvaccent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.ent-summary.free .ent-summary-icon{background:var(--kvtext-muted)}
+.ent-summary-text{display:flex;flex-direction:column;gap:2px}
+.ent-summary-label{font-size:11px;color:var(--kvtext-muted);text-transform:uppercase;letter-spacing:0.5px}
+.ent-summary-value{font-size:16px;font-weight:700;color:var(--kvaccent-ink)}
+.ent-summary.free .ent-summary-value{color:var(--kvtext-sub)}
+/* 权益功能格子 */
+.ent-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:20px}
+.ent-item{padding:12px 10px;background:var(--kvsurface2);border:1px solid var(--kvborder);border-radius:10px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px}
+.ent-icon{font-size:16px;line-height:1;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ent-icon.on{background:var(--kvaccent-dim);color:var(--kvaccent-ink)}
+.ent-icon.off{background:var(--kvsurface);color:var(--kvtext-muted)}
+.ent-label{font-size:11px;color:var(--kvtext-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0}
+.ent-value{font-size:13px;font-weight:600;color:var(--kvtext)}
+.ent-value.paid{color:var(--kvaccent-ink)}
+.ent-value.free{color:var(--kvtext-sub)}
+.ent-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;letter-spacing:0.3px}
+.ent-badge.claimed{background:var(--kvaccent-dim);color:var(--kvaccent-ink)}
+.ent-badge.unclaimed{background:rgba(250,200,80,0.15);color:#fac850}
+
+/* Status messages */
+.status-msg{display:none;padding:10px 14px;margin-bottom:16px;border-radius:10px;font-size:13px}
+.status-msg.show{display:block}
+.status-msg.success{background:rgba(127,157,140,0.12);border:1px solid rgba(127,157,140,0.35);color:var(--kvaccent-ink)}
+.status-msg.error{background:rgba(178,58,42,0.1);border:1px solid rgba(178,58,42,0.25);color:#b23a2a}
+.status-msg.warn{background:rgba(250,200,80,0.1);border:1px solid rgba(250,200,80,0.25);color:#fac850}
+.status-msg.info{background:rgba(62,160,207,0.1);border:1px solid rgba(62,160,207,0.25);color:#3ea0cf}
+
+/* Footer row */
+.footer-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:24px;padding-top:20px;border-top:1px solid var(--kvborder);font-size:12px;color:var(--kvtext-muted)}
+.skip-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;border:1px solid var(--kvborder);background:var(--kvsurface2);color:var(--kvtext-sub);font-size:13px;font-weight:500;text-decoration:none;cursor:pointer;transition:border-color .15s, color .15s, background .15s, transform .15s}
+.skip-btn:hover{border-color:var(--kvaccent);color:var(--kvaccent);background:var(--kvsurface)}
+.skip-btn::before{content:"←";font-weight:700;font-size:14px;line-height:1;transition:transform .2s}
+.skip-btn:hover::before{transform:translateX(-3px)}
+/* Bound 视图下 skip 按钮升级为 primary CTA（"进入 KVM 控制台"）。
+   箭头从 ← 切换到 → 强化"向前进"语义。 */
+.skip-btn.primary{background:var(--kvaccent);color:#1a1a1a;border-color:var(--kvaccent);font-weight:600}
+.skip-btn.primary:hover{background:var(--kvaccent-hover);color:#1a1a1a;border-color:var(--kvaccent-hover)}
+.skip-btn.primary::before{content:""}
+.skip-btn.primary::after{content:"→";font-weight:700;font-size:14px;line-height:1;transition:transform .2s}
+.skip-btn.primary:hover::after{transform:translateX(3px)}
+.footer-row .meta{color:var(--kvtext-muted);font-size:12px}
+
+/* Widget injects DOM using --kv* vars so host matches automatically */
+
+@media(max-width:640px){
+  body{padding:16px}
+  .card{padding:20px}
+  .topbar{flex-wrap:wrap;gap:12px}
+  .ent-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="topbar">
+    <a href="/kvm/" class="brand"><span aria-hidden="true" style="display:inline-flex;width:22px;height:22px;flex-shrink:0"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%"><rect x="2" y="2" width="60" height="60" rx="2.5" ry="2.5" fill="#7f9d8c"/><g fill="#f1e9d8"><rect x="14" y="20" width="36" height="24" fill="none" stroke="#f1e9d8" stroke-width="3"/><rect x="44" y="28" width="10" height="8" fill="#7f9d8c"/><rect x="48" y="28" width="6" height="8"/><rect x="50" y="30" width="2" height="4" fill="#7f9d8c"/><rect x="6" y="30" width="34" height="4"/><rect x="26" y="50" width="12" height="4"/></g></svg></span>KVMind</a>
+    <div class="lang-group">
+      <button class="lang-btn active" onclick="setLang('zh')">中文</button>
+      <button class="lang-btn" onclick="setLang('ja')">日本語</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h1 data-i18n="page_title">激活设备 · 绑定订阅</h1>
+    <p class="subtitle" data-i18n="page_subtitle">在浏览器打开下方链接并登录 KVMind 账号，输入 claim code 完成设备绑定；已有 Standard / Pro 订阅的账号会自动分配 seat 并启用 paid 功能。</p>
+
+    <div class="uid-badge">
+      <span class="uid-label" data-i18n="label_uid">设备 UID:</span>
+      <span class="uid-value" id="device-uid">---</span>
+      <span style="flex:1"></span>
+      <span class="uid-label" data-i18n="label_plan">当前权益:</span>
+      <span class="ent-badge" id="claim-badge" data-i18n="loading">更新中</span>
+    </div>
+
+    <!-- 订阅汇总卡：突出显示当前 entitlement -->
+    <div class="ent-summary" id="ent-summary">
+      <div class="ent-summary-icon" id="ent-summary-icon">⚡</div>
+      <div class="ent-summary-text">
+        <div class="ent-summary-label" data-i18n="ent_state">Entitlement</div>
+        <div class="ent-summary-value" id="ent-entitlement">---</div>
+      </div>
+    </div>
+
+    <!-- 权益功能格子（5 项，4 个 on/off + 1 个限额数值） -->
+    <div class="ent-grid" id="ent-grid">
+      <div class="ent-item"><div class="ent-icon" id="ent-icon-tunnel">·</div><div class="ent-label" data-i18n="ent_tunnel">Tunnel</div><div class="ent-value" id="ent-tunnel">---</div></div>
+      <div class="ent-item"><div class="ent-icon" id="ent-icon-messaging">·</div><div class="ent-label" data-i18n="ent_messaging">Messaging</div><div class="ent-value" id="ent-messaging">---</div></div>
+      <div class="ent-item"><div class="ent-icon" id="ent-icon-ota">·</div><div class="ent-label" data-i18n="ent_ota">OTA</div><div class="ent-value" id="ent-ota">---</div></div>
+      <div class="ent-item"><div class="ent-icon" id="ent-icon-tasks">·</div><div class="ent-label" data-i18n="ent_tasks">Scheduled Tasks</div><div class="ent-value" id="ent-tasks">---</div></div>
+      <div class="ent-item"><div class="ent-icon on">∞</div><div class="ent-label" data-i18n="ent_myclaw">MyClaw / day</div><div class="ent-value" id="ent-myclaw">---</div></div>
+    </div>
+
+    <div class="status-msg" id="msg"></div>
+
+    <!-- V15 · 双向绑定：设备端发起 → 显示 6 位 OOB 码；接收账户端请求后对端本地确认 -->
+    <div id="binding-ui"></div>
+
+    <div class="footer-row">
+      <a href="javascript:skipActivate()" class="skip-btn" data-i18n="skip_later">稍后再说 · 回到 KVM</a>
+      <span class="meta" id="kvmind-version">v—</span>
+    </div>
+  </div>
+</div>
+
+<script src="/kdkvm/kvmind-i18n.js?v=202604230230"></script>
+<script>
+// ── i18n（字典来自 /kdkvm/kvmind-i18n.js：activate + widget 命名空间）────
+KVMindI18n.init('activate');
+var t = function (k, vars) { return KVMindI18n.t(k, vars); };
+var setLang = function (v) { KVMindI18n.setLang(v); };
+var _entFetched = false;
+KVMindI18n.onLangChange(function () {
+  if (window.KVMindActivation && window.KVMindActivation._applyI18n) {
+    window.KVMindActivation._applyI18n();
+  }
+  if (_entFetched) refreshEntitlement();
+});
+
+// ── UI helpers ─────────────────────────────────────────────────
+function showMsg(type,text){
+  var el=document.getElementById('msg');
+  el.className='status-msg show '+type;
+  el.textContent=text;
+}
+
+// ── 订阅快照 ──────────────────────────────────────────────────
+async function refreshEntitlement(){
+  try{
+    var r=await fetch('/kdkvm/api/subscription',{cache:'no-store'});
+    if(!r.ok) return;
+    var d=await r.json();
+
+    var claimed = d.claim_state==='claimed';
+    var badge=document.getElementById('claim-badge');
+    badge.removeAttribute('data-i18n');
+    badge.textContent=claimed ? t('badge_claimed') : t('badge_unclaimed');
+    badge.className='ent-badge '+(claimed?'claimed':'unclaimed');
+
+    var summary=document.getElementById('ent-summary');
+    var ent=document.getElementById('ent-entitlement');
+    var entKey = d.entitlement_state==='paid' ? 'ent_paid'
+               : d.entitlement_state==='claimed_free' ? 'ent_claimed_free'
+               : 'ent_local_free';
+    ent.textContent=t(entKey);
+    summary.className='ent-summary '+(d.entitlement_state==='paid'?'':'free');
+
+    function flag(id,val){
+      var el=document.getElementById(id);
+      el.textContent = val ? t('val_on') : t('val_off');
+      el.className='ent-value '+(val?'paid':'free');
+      var icon=document.getElementById('ent-icon-'+id.replace('ent-',''));
+      if(icon){
+        icon.textContent = val ? '✓' : '✕';
+        icon.className='ent-icon '+(val?'on':'off');
+      }
+    }
+    flag('ent-tunnel', d.tunnel);
+    flag('ent-messaging', d.messaging);
+    flag('ent-ota', d.ota);
+    flag('ent-tasks', d.scheduled_tasks);
+
+    var mc=document.getElementById('ent-myclaw');
+    mc.textContent = (d.myclaw_daily_limit||0);
+    mc.className='ent-value '+(d.entitlement_state==='paid'?'paid':'free');
+
+    _entFetched = true;
+
+    // 把权威 claim_state 直接喂给绑定视图 state.claimed。老逻辑靠从 DOM badge
+    // 文字匹配 /claim/ 推断，但 i18n 本地化后 zh/ja/en 的 badge 文字都不含
+    // "claim" 字样（"已绑定"/"紐付け済み"/"Linked"），正则永远 false，UI
+    // 永远停在 'form/mine/sent'，账户端 accept 后设备看不到 bound 视图。
+    if (typeof window.__kvmindBindingSetClaimed === 'function') {
+      window.__kvmindBindingSetClaimed(claimed);
+    }
+  }catch(e){ console.warn('[activate] subscription fetch failed:', e); }
+}
+
+// ── 稍后再说 ──────────────────────────────────────────────────
+function skipActivate(){
+  try{ localStorage.setItem('kvmind_skip_activate_redirect','1'); }catch(e){}
+  window.location.href='/kvm/';
+}
+
+// ── Boot ──────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function(){
+  // Language — handled by KVMindI18n.init('activate') above (DOMContentLoaded-safe).
+
+  // UID
+  fetch('/kdkvm/api/device/uid').then(function(r){return r.json()}).then(function(d){
+    var el=document.getElementById('device-uid');
+    if(el&&d.uid) el.textContent=d.uid;
+  }).catch(function(){});
+
+  // Version
+  fetch('/kdkvm/version.json?t='+Date.now()).then(function(r){return r.json()}).then(function(d){
+    var el=document.getElementById('kvmind-version');
+    if(el) el.textContent='v'+d.version;
+  }).catch(function(){});
+
+  // 0.5.22: 进入 activate.html 后固定 1s 轮询（不论视图）；离开页面 setTimeout 链
+  // 自然中断 → 自动恢复正常（PiKVM 控制台仅由 kvmind-core.js 自己决定节奏）。
+  // 短时高频可接受，因为 activate 页只在用户主动绑定/解绑时打开，停留时间短。
+  function scheduleNextTick(){
+    return setTimeout(function(){
+      refreshEntitlement();
+      if (typeof window.__kvmindBindingTick === 'function') window.__kvmindBindingTick();
+      window._kvmindEntTimer = scheduleNextTick();
+    }, 1000);
+  }
+  refreshEntitlement();
+  window._kvmindEntTimer = scheduleNextTick();
+});
+</script>
+
+<!-- V15 双向绑定 UI — 设备发起：显示 6 位 OOB 码 + account_url；账户主动：显示 incoming 卡片 -->
+<script>
+(function(){
+  var host = document.getElementById('binding-ui');
+  if (!host) return;
+
+  // ── minimal i18n fallback（kvmind-i18n.js 已提供主字典；这里定义 V15 binding-ui 局部键）──
+  var T_ZH = {
+    binding_form_title: '绑定到账户',
+    binding_form_desc: '点击下方按钮发起绑定请求 — 设备会显示一次性 6 位码，请到 kvmind.com 输入此码完成绑定。',
+    binding_send: '发起绑定请求',
+    binding_sending: '生成中…',
+    binding_sent_title: '在账户端输入此 6 位码',
+    binding_sent_desc: '请打开 kvmind.com/account（链接见下方），找到本设备的绑定请求卡片并输入下面这串 6 位码。10 分钟内有效。',
+    binding_code_label: '一次性确认码',
+    binding_copy: '复制',
+    binding_copied: '已复制',
+    binding_open_account: '打开账户页',
+    binding_pending_mine_cancel: '取消请求',
+    binding_pending_incoming_title: '账户请求绑定本设备',
+    binding_pending_incoming_desc: '账户 {email} 请求把本设备绑定到其 KVMind 账户。',
+    binding_accept: '同意绑定',
+    binding_decline: '拒绝',
+    binding_postpone: '稍后处理',
+    binding_bound_title: '✓ 已绑定',
+    binding_bound_desc: '本设备已绑定到账户。可在 kvmind.com 查看订阅状态。',
+    binding_bound_account_label: '已绑定账户',
+    binding_unbind: '解除绑定',
+    binding_unbinding: '解除中…',
+    binding_unbind_confirm: '确认解除本设备与该账户的绑定？解除后失去远程访问能力，本地仍可用。可以随时重新发起绑定。',
+    binding_unbind_done: '✓ 已解除绑定',
+    err_generic: '操作失败',
+    err_cooldown: '该设备因多次被拒绝，暂时无法发起绑定请求。请稍后再试。',
+    result_request_sent: '请求已发送，请输入屏幕上的 6 位码',
+    result_accepted: '已同意，绑定生效',
+    result_declined: '账户已拒绝本次绑定请求',
+    result_expired: '请求已过期，请重新发起',
+  };
+  var T_EN = {
+    binding_form_title: 'Bind to account',
+    binding_form_desc: 'Tap the button below to start a binding request. The device will show a one-time 6-digit code — enter it at kvmind.com to finish.',
+    binding_send: 'Start binding request',
+    binding_sending: 'Generating…',
+    binding_sent_title: 'Enter this 6-digit code on the account side',
+    binding_sent_desc: 'Open kvmind.com/account (link below), find this device\'s binding request card, and type in the 6-digit code shown here. Valid for 10 minutes.',
+    binding_code_label: 'One-time confirmation code',
+    binding_copy: 'Copy',
+    binding_copied: 'Copied',
+    binding_open_account: 'Open account',
+    binding_pending_mine_cancel: 'Cancel request',
+    binding_pending_incoming_title: 'Account requested to bind this device',
+    binding_pending_incoming_desc: 'Account {email} is requesting to bind this device to their KVMind account.',
+    binding_accept: 'Accept binding',
+    binding_decline: 'Decline',
+    binding_postpone: 'Later',
+    binding_bound_title: '✓ Bound',
+    binding_bound_desc: 'Device is bound to account. Manage subscription on kvmind.com.',
+    binding_bound_account_label: 'Bound to',
+    binding_unbind: 'Unbind',
+    binding_unbinding: 'Unbinding…',
+    binding_unbind_confirm: 'Unbind this device from the account? You\'ll lose remote access until you re-bind. Local KVM still works.',
+    binding_unbind_done: '✓ Unbound',
+    err_generic: 'Operation failed',
+    err_cooldown: 'This device was declined repeatedly and is temporarily blocked from new binding requests. Please try again later.',
+    result_request_sent: 'Request sent — enter the 6-digit code shown on screen',
+    result_accepted: 'Accepted — binding active',
+    result_declined: 'Account declined the binding request',
+    result_expired: 'Request expired — please start over',
+  };
+  var T_JA = {
+    binding_form_title: 'アカウントに紐付け',
+    binding_form_desc: '下のボタンで紐付けリクエストを開始します。デバイスが 6 桁のワンタイムコードを表示しますので、kvmind.com で入力して完了してください。',
+    binding_send: '紐付けリクエストを開始',
+    binding_sending: '生成中…',
+    binding_sent_title: 'アカウント側でこの 6 桁コードを入力',
+    binding_sent_desc: 'kvmind.com/account（下のリンク）を開き、このデバイスの紐付けリクエストカードで画面に表示されている 6 桁コードを入力してください。10 分以内に有効です。',
+    binding_code_label: 'ワンタイム確認コード',
+    binding_copy: 'コピー',
+    binding_copied: 'コピーしました',
+    binding_open_account: 'アカウントを開く',
+    binding_pending_mine_cancel: 'リクエストをキャンセル',
+    binding_pending_incoming_title: 'アカウントからの紐付けリクエスト',
+    binding_pending_incoming_desc: 'アカウント {email} がこのデバイスの紐付けを要求しています。',
+    binding_accept: '紐付けを承認',
+    binding_decline: '拒否',
+    binding_postpone: 'あとで',
+    binding_bound_title: '✓ 紐付け済み',
+    binding_bound_desc: 'デバイスはアカウントに紐付けられました。kvmind.com で購読状態を確認できます。',
+    binding_bound_account_label: '紐付けアカウント',
+    binding_unbind: '紐付け解除',
+    binding_unbinding: '解除中…',
+    binding_unbind_confirm: 'このデバイスとアカウントの紐付けを解除しますか？リモートアクセスは失われますが、ローカル KVM は引き続き使用できます。後で再度紐付け可能です。',
+    binding_unbind_done: '✓ 紐付け解除済み',
+    err_generic: '操作に失敗しました',
+    err_cooldown: 'このデバイスは繰り返し拒否されたため、一時的に紐付けリクエストを受け付けられません。しばらくしてから再度お試しください。',
+    result_request_sent: 'リクエストを送信しました — 画面の 6 桁コードを入力してください',
+    result_accepted: '承認されました',
+    result_declined: 'アカウントが紐付けリクエストを拒否しました',
+    result_expired: 'リクエストの有効期限が切れました — もう一度お試しください',
+  };
+  function lang(){ try{ return KVMindI18n.getLang(); }catch(e){ return 'zh'; } }
+  // TD-23 (2026-04-26): every variable that lands in card()'s innerHTML must be
+  // HTML-escaped at the boundary. CustomerAuthService.validateEmail rejects '<'
+  // and '"' in the regex, but defense-in-depth: a future format relaxation,
+  // an anonymized-email leak, or any other untrusted source must not be able
+  // to inject markup. tt() applies htmlEscape to every interpolation arg.
+  function htmlEscape(s){
+    if (s === null || s === undefined) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+  function tt(k, vars){
+    var tbl = lang()==='ja' ? T_JA : lang()==='en' ? T_EN : T_ZH;
+    var s = tbl[k] || k;
+    if (vars) for (var v in vars) s = s.replace('{'+v+'}', htmlEscape(vars[v]));
+    return s;
+  }
+
+  // ── state ───────────────────────────────────────────────────────
+  // V15 视图态：
+  //   form     — 还没发起请求
+  //   sent     — 已发起，显示 6 位 OOB 码 + account_url + cancel；DEVICE_TO_ACCOUNT
+  //              pending 不出现在 heartbeat pending list（心跳只下发 ACCOUNT_TO_DEVICE），
+  //              这条由 state.pendingMine 维持（10 分钟 TTL，对齐 kdcms binding）。
+  //   incoming — heartbeat 带回 ACCOUNT_TO_DEVICE pending 时本地 accept/decline。
+  //   bound    — claimState=claimed 时定型。
+  var state = { claimed: false, pending: [], pendingMine: null, lastResult: null, busy: false };
+  var pollTimer = null;
+  var currentView = null;   // 'form' | 'sent' | 'incoming' | 'bound' — for render diffing
+  var currentPendingId = null;  // 用于 incoming 切换时识别是"同一条" vs "新请求"
+
+  // ── view-driven page chrome ─────────────────────────────────────
+  // h1 / subtitle / skip-btn 文案随视图切换——把 activate 页当一个整体产品，
+  // 不再出现"已绑定了还显示'稍后再说'"这种自相矛盾的 UX。i18n key 统一落在
+  // kvmind-i18n.js 的 activate namespace，applyViewChrome 负责重绑 data-i18n
+  // 属性 + 立即重刷 textContent，语言切换时 render() 重建时自然会再跑一次。
+  var VIEW_CHROME = {
+    form:     { title: 'view_form_title',     sub: 'view_form_subtitle',     skip: 'skip_later', primary: false },
+    sent:     { title: 'view_awaiting_title', sub: 'view_awaiting_subtitle', skip: 'skip_later', primary: false },
+    mine:     { title: 'view_awaiting_title', sub: 'view_awaiting_subtitle', skip: 'skip_later', primary: false },
+    incoming: { title: 'view_incoming_title', sub: 'view_incoming_subtitle', skip: 'skip_later', primary: false },
+    bound:    { title: 'view_bound_title',    sub: 'view_bound_subtitle',    skip: 'skip_done',  primary: true  }
+  };
+  function applyViewChrome(view){
+    var c = VIEW_CHROME[view] || VIEW_CHROME.form;
+    var h1   = document.querySelector('.card h1');
+    var sub  = document.querySelector('.card .subtitle');
+    var skip = document.querySelector('.skip-btn');
+    if (h1)   { h1.setAttribute('data-i18n', c.title);   h1.textContent   = t(c.title); }
+    if (sub)  { sub.setAttribute('data-i18n', c.sub);    sub.textContent  = t(c.sub); }
+    if (skip) {
+      skip.setAttribute('data-i18n', c.skip);
+      skip.textContent = t(c.skip);
+      skip.classList.toggle('primary', !!c.primary);
+    }
+  }
+
+  // ── render ──────────────────────────────────────────────────────
+  function detectView(){
+    if (state.claimed) return { view: 'bound', id: null };
+    // V15 心跳 pending 仅承载 ACCOUNT_TO_DEVICE — 用 direction 判定，兼容旧 initiator 字段
+    var incoming = (state.pending || []).filter(function(r){
+      return (r.direction === 'ACCOUNT_TO_DEVICE' || r.initiator === 'account')
+          && (r.status === 'PENDING_ACCOUNT_REQUEST' || r.status === 'pending');
+    });
+    if (incoming.length) return { view: 'incoming', id: incoming[0].id, req: incoming[0] };
+    // 设备自己发起的 pending：从 pendingMine（10 分钟 TTL，独立于 30s lastResult）读 6 位码
+    var pm = state.pendingMine;
+    if (pm && pm.code) {
+      return { view: 'sent', id: pm.id || null };
+    }
+    return { view: 'form', id: null };
+  }
+
+  function render(){
+    var det = detectView();
+    // form→form 跳过重建（无表单字段，但避免无谓 DOM 抖动）
+    if (det.view === 'form' && currentView === 'form') return;
+    // sent→sent 也跳过（6 位码与 accountUrl 来自 lastResult，刷新时未变）
+    if (det.view === 'sent' && currentView === 'sent' && currentPendingId === det.id) return;
+    // incoming 同一条 pending 也跳过
+    if (det.view === 'incoming'
+        && currentView === det.view && currentPendingId === det.id) {
+      return;
+    }
+    currentView = det.view;
+    currentPendingId = det.id;
+    // 视图切换时同步页面 chrome（h1 / subtitle / skip-btn 文案与样式）。
+    applyViewChrome(det.view);
+    if (det.view === 'bound') renderBound();
+    else if (det.view === 'incoming') renderIncoming(det.req);
+    else if (det.view === 'sent') renderSent();
+    else renderForm();
+  }
+
+  function card(inner){
+    host.innerHTML =
+      '<div style="border:1px solid var(--kvborder);border-radius:12px;padding:20px;margin-top:14px;background:var(--kvsurface2)">'
+      + inner + '</div>';
+  }
+
+  function renderForm(){
+    card(
+      '<div style="font-size:15px;font-weight:600;margin-bottom:4px">'+tt('binding_form_title')+'</div>' +
+      '<div style="font-size:13px;color:var(--kvtext-muted);margin-bottom:14px;line-height:1.55">'+tt('binding_form_desc')+'</div>' +
+      '<button id="binding-send" style="width:100%;padding:11px;border:0;border-radius:8px;background:var(--kvaccent);color:#1a1a1a;font-size:14px;font-weight:600;cursor:pointer">'+tt('binding_send')+'</button>'
+    );
+    document.getElementById('binding-send').onclick = function(){ sendRequest(); };
+  }
+
+  function renderIncoming(req){
+    var email = req.requesterEmail || '—';
+    card(
+      '<div style="font-size:15px;font-weight:600;margin-bottom:4px">'+tt('binding_pending_incoming_title')+'</div>' +
+      '<div style="font-size:13px;color:var(--kvtext-muted);margin-bottom:14px;line-height:1.55">'+tt('binding_pending_incoming_desc',{email:email})+'</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
+      '<button id="binding-accept" style="flex:1 1 140px;padding:11px;border:0;border-radius:8px;background:var(--kvaccent);color:#1a1a1a;font-size:14px;font-weight:600;cursor:pointer">'+tt('binding_accept')+'</button>' +
+      '<button id="binding-decline" style="padding:11px 16px;border:1px solid var(--kvborder);border-radius:8px;background:transparent;color:var(--kvtext);font-size:13px;cursor:pointer">'+tt('binding_decline')+'</button>' +
+      '<button id="binding-postpone" style="padding:11px 16px;border:1px solid var(--kvborder);border-radius:8px;background:transparent;color:var(--kvtext-muted);font-size:13px;cursor:pointer">'+tt('binding_postpone')+'</button>' +
+      '</div>'
+    );
+    document.getElementById('binding-accept').onclick = function(){ decide(req.id, true); };
+    document.getElementById('binding-decline').onclick = function(){ decide(req.id, false); };
+    // 稍后处理：回 PiKVM 控制台，pending 不变（DB 里 PENDING_ACCOUNT_REQUEST，10min TTL），
+    // 用户可以稍后在 user menu 或 banner 重新进 activate.html 接受/拒绝。
+    document.getElementById('binding-postpone').onclick = function(){ window.location.href = '/'; };
+  }
+
+  function renderBound(){
+    var email = state.boundCustomerEmail || '';
+    // TD-23: state.boundCustomerEmail comes from kdcms heartbeat response;
+    // escape before splicing into the innerHTML template, since this is the
+    // only path where the device shows an email it didn't validate locally.
+    var emailRow = email
+      ? '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;margin-bottom:14px;background:var(--kvsurface);border:1px solid var(--kvborder);border-radius:8px">' +
+          '<span style="font-size:11px;color:var(--kvtext-muted);text-transform:uppercase;letter-spacing:0.5px">'+tt('binding_bound_account_label')+'</span>' +
+          '<span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:var(--kvtext);font-weight:600;word-break:break-all">'+htmlEscape(email)+'</span>' +
+        '</div>'
+      : '';
+    card(
+      '<div style="font-size:15px;font-weight:600;margin-bottom:6px;color:var(--kvaccent)">'+tt('binding_bound_title')+'</div>' +
+      '<div style="font-size:13px;color:var(--kvtext-muted);margin-bottom:14px;line-height:1.55">'+tt('binding_bound_desc')+'</div>' +
+      emailRow +
+      '<button id="binding-unbind" type="button"' +
+      '   style="padding:9px 18px;border:1px solid var(--kvborder);border-radius:8px;background:transparent;color:#b23a2a;font-size:13px;cursor:pointer">'+tt('binding_unbind')+'</button>'
+    );
+    var btn = document.getElementById('binding-unbind');
+    if (btn) btn.onclick = function(){ unbindDevice(btn); };
+  }
+
+  async function unbindDevice(btn){
+    if (state.busy) return;
+    if (!confirm(tt('binding_unbind_confirm'))) return;
+    state.busy = true;
+    if (btn) { btn.disabled = true; btn.textContent = tt('binding_unbinding'); }
+    var ok = false;
+    try {
+      var r = await fetch('/kdkvm/api/binding/release', {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
+      });
+      var b = await r.json();
+      if (r.ok && b.status === 'ok') {
+        ok = true;
+        // 立即本地翻 unclaimed —— 不等下次心跳，UI 立即切到 form 视图
+        state.claimed = false;
+        state.boundCustomerEmail = null;
+        state.pendingMine = null;
+        state.pending = [];
+        var msgEl = document.getElementById('msg');
+        if (msgEl) { msgEl.className='status-msg show success'; msgEl.textContent = tt('binding_unbind_done'); }
+      } else {
+        showBindErr(b.code || 'err_generic');
+      }
+    } catch(e){ showBindErr('err_generic'); }
+    state.busy = false;
+    if (ok) {
+      currentView = null;
+      currentPendingId = null;
+      render();
+      refreshEntitlement();
+      fetchState();
+    } else if (btn) {
+      btn.disabled = false;
+      btn.textContent = tt('binding_unbind');
+    }
+  }
+
+  // V15 sent 视图：超大字号显示 6 位 OOB 码 + account_url + 取消按钮。
+  // 6 位码来自 state.pendingMine（10 分钟 TTL，跟随 kdcms binding 请求生命周期，
+  // 不像 30s lastResult 会半路自己消失）。用户必须把这串码输入到 kvmind.com/account
+  // 的对应卡片上才能完成绑定（防 UID 偷窥劫持）。
+  function renderSent(){
+    var pm = state.pendingMine || {};
+    var accountUrl = pm.accountUrl || 'https://kvmind.com/account';
+    var code = pm.code || '------';
+    var requestId = pm.id || null;
+    var formattedCode = String(code).replace(/(\d{3})(\d{3})/, '$1 $2');
+    card(
+      '<div style="font-size:15px;font-weight:600;margin-bottom:6px;color:var(--kvaccent-ink)">'+tt('binding_sent_title')+'</div>' +
+      '<div style="font-size:13px;color:var(--kvtext-muted);margin-bottom:14px;line-height:1.55">'+tt('binding_sent_desc')+'</div>' +
+      '<div style="font-size:11px;color:var(--kvtext-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">'+tt('binding_code_label')+'</div>' +
+      '<div style="display:flex;align-items:stretch;gap:8px;margin-bottom:16px">' +
+        '<div id="binding-code" style="flex:1;min-width:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:36px;font-weight:700;letter-spacing:6px;text-align:center;padding:18px;border:1px solid var(--kvborder);border-radius:12px;background:var(--kvsurface);color:var(--kvtext)">'+formattedCode+'</div>' +
+        '<button id="binding-copy" type="button" title="'+tt('binding_copy')+'" aria-label="'+tt('binding_copy')+'"' +
+        '   style="flex:0 0 60px;border:1px solid var(--kvborder);border-radius:12px;background:var(--kvsurface);color:var(--kvtext-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;padding:0;transition:background .15s,color .15s">' +
+          '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block">' +
+          '<rect x="9" y="9" width="11" height="11" rx="2"/>' +
+          '<path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>' +
+        '</button>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">' +
+        '<a id="binding-account-link" href="'+accountUrl+'" target="_blank" rel="noopener"' +
+        '   style="flex:1 1 220px;min-width:0;padding:10px 12px;border:1px solid var(--kvborder);border-radius:8px;background:var(--kvsurface);color:var(--kvaccent-ink);font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+accountUrl+'</a>' +
+        '<button id="binding-open-account" type="button"' +
+        '   style="padding:10px 14px;border:0;border-radius:8px;background:var(--kvaccent);color:#1a1a1a;font-size:13px;font-weight:600;cursor:pointer">'+tt('binding_open_account')+'</button>' +
+      '</div>' +
+      (requestId
+        ? '<button id="binding-cancel" style="padding:9px 18px;border:1px solid var(--kvborder);border-radius:8px;background:transparent;color:var(--kvtext);font-size:13px;cursor:pointer">'+tt('binding_pending_mine_cancel')+'</button>'
+        : '')
+    );
+    document.getElementById('binding-open-account').onclick = function(){
+      window.open(accountUrl, '_blank', 'noopener');
+    };
+    var cancelBtn = document.getElementById('binding-cancel');
+    if (cancelBtn) cancelBtn.onclick = function(){ cancelRequest(requestId); };
+    var copyBtn = document.getElementById('binding-copy');
+    if (copyBtn) copyBtn.onclick = function(){
+      var raw = String(code).replace(/\s+/g, '');  // 复制无空格的纯 6 位数字
+      var done = function(){
+        copyBtn.style.background = 'var(--kvaccent)';
+        copyBtn.style.color = '#1a1a1a';
+        copyBtn.innerHTML = '<span style="font-size:11px;font-weight:600;line-height:1.1;text-align:center;padding:0 4px">'+tt('binding_copied')+'</span>';
+        setTimeout(function(){
+          // 1.5s 后还原图标
+          copyBtn.style.background = 'var(--kvsurface)';
+          copyBtn.style.color = 'var(--kvtext-muted)';
+          copyBtn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
+        }, 1500);
+      };
+      // navigator.clipboard 在自签证书 / 旧浏览器下可能不可用，回落到 textarea + execCommand
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(raw).then(done).catch(function(){
+          fallbackCopy(raw); done();
+        });
+      } else {
+        fallbackCopy(raw); done();
+      }
+    };
+  }
+  function fallbackCopy(text){
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch(e){ console.warn('[binding] fallback copy failed', e); }
+  }
+
+  // ── API ─────────────────────────────────────────────────────────
+  async function fetchState(){
+    try {
+      var r = await fetch('/kdkvm/api/binding/state', {cache:'no-store'});
+      if (!r.ok) return;
+      var b = await r.json();
+      state.pending = b.pending || [];
+      state.pendingMine = b.pendingMine || null;
+      state.boundCustomerEmail = b.boundCustomerEmail || null;
+      state.lastResult = b.lastResult;
+      // state.claimed 由 refreshEntitlement() 经 __kvmindBindingSetClaimed 写入——
+      // /kdkvm/api/subscription 的 claim_state 字段是权威源（心跳维护）。
+      if (!state.busy) render();
+      // lastResult 的 toast 渲染：有值渲，没值就把 msg DOM 清掉——否则后端
+      // TTL / 一致性校验清掉了 lastResult，DOM 上仍然会残留上次的成功文字，
+      // 形成 "已同意，绑定生效" 挂在 incoming 卡片上方的自相矛盾 UI。
+      if (state.lastResult && state.lastResult.code) {
+        surfaceResult(state.lastResult.code);
+      } else {
+        var _msg = document.getElementById('msg');
+        if (_msg) { _msg.className = 'status-msg'; _msg.textContent = ''; }
+      }
+    } catch(e){ /* network hiccup; next tick retries */ }
+  }
+
+  // refreshEntitlement() 调用此入口写 state.claimed。变化时清 pending 快照
+  // 并强制重建，让视图立即切到 'bound'（否则要等下一次 fetchState tick）。
+  window.__kvmindBindingSetClaimed = function(claimed){
+    if (state.claimed === !!claimed) return;
+    state.claimed = !!claimed;
+    if (state.claimed) {
+      state.lastResult = null;         // 已绑定后清 sent 视图残留（lastResult 维持 6 位码视图）
+      state.pending = [];              // incoming 也不再渲染
+    }
+    currentView = null;
+    currentPendingId = null;
+    if (!state.busy) render();
+  };
+
+  function surfaceResult(code){
+    var msg = document.getElementById('msg');
+    if (!msg) return;
+    var map = {
+      'binding.request.sent': { cls: 'success', txt: tt('result_request_sent') },
+      'binding.accepted':     { cls: 'success', txt: tt('result_accepted') },
+      'binding.declined':     { cls: 'error',   txt: tt('result_declined') },
+      'binding.expired':      { cls: 'warn',    txt: tt('result_expired') },
+    };
+    var hit = map[code];
+    if (hit) { msg.className='status-msg show '+hit.cls; msg.textContent = hit.txt; }
+  }
+
+  async function sendRequest(){
+    if (state.busy) return;
+    state.busy = true;
+    var btn = document.getElementById('binding-send');
+    var sentOk = false;
+    if (btn) { btn.disabled = true; btn.textContent = tt('binding_sending'); }
+    try {
+      // V15: 设备发起绑定不需要 body 字段。服务端会生成 6 位 OOB 码 + account_url 返回。
+      var r = await fetch('/kdkvm/api/binding/request', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({})
+      });
+      var b = await r.json();
+      if (r.ok && b.status === 'ok') {
+        var d = b.data || {};
+        state.lastResult = {
+          code: 'binding.request.sent',
+          id: d.request_id || d.id,
+          accountUrl: d.account_url,
+          deviceUid: d.device_uid,
+          expiresAt: d.expires_at,
+          confirmationCode: d.confirmation_code
+        };
+        sentOk = true;
+      } else {
+        showBindErr(b.code || 'err_generic');
+      }
+    } catch(e){ showBindErr('err_generic'); }
+    state.busy = false;
+    if (sentOk) {
+      // 切到 sent 视图（大字号 6 位码 + accountUrl）。设备端 firmware 不再轮询单条
+      // pending（DEVICE_TO_ACCOUNT 不在 heartbeat pending list）— 等账户输入码 accept
+      // 后心跳 claim_state='claimed' 同步回来，__kvmindBindingSetClaimed 切到 bound。
+      currentView = null;
+      currentPendingId = null;
+      render();
+      fetchState();
+      return;
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = tt('binding_send');
+    }
+  }
+
+  async function cancelRequest(rawId){
+    if (state.busy) return;
+    if (!rawId) return;
+    var id = String(rawId).replace(/^br_/, '');
+    state.busy = true;
+    try {
+      await fetch('/kdkvm/api/binding/cancel', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id: Number(id) })
+      });
+    } catch(e){}
+    state.busy = false;
+    // cancel 后 lastResult 也清掉，detectView 会回到 form 视图。
+    state.lastResult = null;
+    currentView = null;
+    currentPendingId = null;
+    render();
+    fetchState();
+  }
+
+  async function decide(id, accept){
+    if (state.busy) return;
+    state.busy = true;
+    var ok = false;
+    try {
+      var r = await fetch('/kdkvm/api/binding/decide', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({id:id, decision: accept ? 'accept' : 'decline'})
+      });
+      var b = await r.json();
+      if (r.ok && b.status==='ok') {
+        ok = true;
+      } else {
+        showBindErr(b.code || 'err_generic');
+      }
+    } catch(e){ showBindErr('err_generic'); }
+    state.busy = false;
+    // 失败时（如 not_found_or_expired / cooldown）强制重建视图：清掉 incoming 卡片，
+    // 让 detectView 根据 fresh state 切到 form / bound / 新 incoming，避免用户卡在
+    // 已废 incoming 卡片重复点击死循环。同时强制刷新一次 binding state + 权益。
+    if (!ok) {
+      currentView = null;
+      currentPendingId = null;
+      // 主动清掉本地 pending snapshot — 让下次 fetchState 拉真相，避免 UI 仍显示
+      // 已废 PENDING 卡片直到下一次心跳到。
+      state.pending = [];
+    }
+    await fetchState();
+    refreshEntitlement();
+    if (!ok) render();
+  }
+
+  function showBindErr(code){
+    var msg = document.getElementById('msg');
+    if (!msg) return;
+    var map = {
+      'binding.uid.not_found':              lang()==='zh'?'找不到该 UID':'Unknown UID',
+      'binding.device.already_bound':       lang()==='zh'?'设备已绑定其他账户（需先 factory reset）':'Device already bound to another account',
+      'binding.already_bound_self':         lang()==='zh'?'设备已绑定到该账户':'Already bound to your account',
+      'binding.pending.exists':             lang()==='zh'?'已有 pending 请求':'A pending request already exists',
+      'binding.not_found_or_expired':       lang()==='zh'?'请求不存在或已过期':'Request expired or not found',
+      'binding.confirmation_code.mismatch': lang()==='zh'?'6 位码不匹配':'Confirmation code mismatch',
+      'binding.cooldown.active':            tt('err_cooldown'),
+    };
+    msg.className='status-msg show error';
+    msg.textContent = map[code] || tt('err_generic');
+  }
+
+  // 外层 script 的 scheduleNextTick 依赖这两个钩子：
+  //   __kvmindBindingActive()  → 当前是否处于"绑定进行中"（sent/incoming 且未 claimed）
+  //                              为 true 时外层用 5s 轮询，与后端心跳 fast-poll 对齐
+  //   __kvmindBindingTick()    → 让外层每次 tick 顺便刷 binding state（pending/lastResult）
+  window.__kvmindBindingActive = function(){
+    if (state.claimed) return false;
+    if (state.lastResult && state.lastResult.code === 'binding.request.sent') return true;
+    return !!(state.pending && state.pending.length);
+  };
+  window.__kvmindBindingTick = fetchState;
+
+  // ── boot ────────────────────────────────────────────────────────
+  // fetch 的触发点：
+  //   1. 页面加载
+  //   2. 用户动作后（sendRequest / decide / cancel 内部调 fetchState）
+  //   3. 标签页切回前台（用户离开再回来时看一眼最新状态）
+  //   4. 外层 scheduleNextTick 定时（5s 绑定进行中 / 30s 空闲）
+  window.addEventListener('DOMContentLoaded', function(){
+    render();
+    fetchState();
+  });
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) fetchState();
+  });
+  // 切语言时强制重建所有视图（applyViewChrome 会随 render 重跑，chrome 文案跟着换）
+  try { KVMindI18n.onLangChange(function(){ currentView = null; currentPendingId = null; render(); }); } catch(e){}
+})();
+</script>
+
+</body>
+</html>

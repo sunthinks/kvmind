@@ -3,11 +3,13 @@
 from . import (
     auth, device, dashboard, system,
     subscription, ai_config, websocket, tasks,
+    binding,
 )
 
 _MODULES = [
     auth, device, dashboard, system,
     subscription, ai_config, websocket, tasks,
+    binding,
 ]
 
 

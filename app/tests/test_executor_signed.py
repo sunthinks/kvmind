@@ -22,12 +22,13 @@ def _make_executor(verify_return=True, gateway=None, abort_event=None):
     return Executor(kvm, guardrails, gateway=gateway, abort_event=abort_event), kvm
 
 
-def _signed(actions, sig="ed25519:abc", ts=None, nonce="n1"):
+def _signed(actions, sig="ed25519:abc", ts=None, nonce="n1", customer_id=123):
     return SignedActions(
         actions=actions,
         signature=sig,
         timestamp=ts or int(time.time()),
         nonce=nonce,
+        customer_id=customer_id,
     )
 
 
@@ -118,15 +119,20 @@ class TestExecuteSignedBatchInvalid:
 class TestExecuteSignedBatchExpired:
     @pytest.mark.asyncio
     async def test_expired_timestamp_blocked(self):
-        exe, kvm = _make_executor(verify_return=True)
+        # Freshness enforcement lives inside gateway.verify_signature
+        # (SIGNATURE_MAX_AGE_SECONDS = 300s). We simulate the gateway
+        # rejecting a stale timestamp and assert the executor surfaces a
+        # block with "Invalid signature" — the executor no longer carries
+        # its own expiration check (see executor.py docstring).
+        exe, kvm = _make_executor(verify_return=False)
         actions = [{"name": "mouse_click", "args": {"x": 50, "y": 50}}]
-        # Timestamp 120 seconds ago — beyond the 60s window
-        signed = _signed(actions, ts=int(time.time()) - 120)
+        # Timestamp 10 minutes ago — well past the gateway's 300s window
+        signed = _signed(actions, ts=int(time.time()) - 600)
 
         results = await exe.execute_signed_batch(signed, "KVM-001", "sess-1")
 
         assert results[0]["blocked"] is True
-        assert "Expired" in results[0]["reason"]
+        assert "Invalid signature" in results[0]["reason"]
         kvm.mouse_click.assert_not_awaited()
 
     @pytest.mark.asyncio

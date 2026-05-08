@@ -97,13 +97,6 @@ class TelegramAdapter(BaseAdapter):
             error = event.get("error", "Unknown error")
             await self._send_text(f"❌ {error}")
 
-        elif event_type == "confirm_required":
-            action = event.get("action", "")
-            await self._send_text(
-                f"⚠️ 危险操作 [{action}] 需要确认\n"
-                f"回复 yes 执行，no 取消"
-            )
-
     async def receive_message(self) -> str | None:
         """Not used — message routing handled by TelegramBot."""
         return None

@@ -97,6 +97,9 @@ class TestFallbackLogic:
     def test_single_embedded_tool_json_triggers_no_tool_support(self):
         # Local models may emit a single shorthand JSON tool as text.
         # It must be rejected, not displayed or executed.
+        # Router contract (v4): on failure, response.stop_reason is the generic
+        # "error" sentinel and meta.error_code carries the canonical reason.
+        # Handler layer maps the code to an i18n-aware user message.
         json_resp = ProviderResponse(text='{"text":"clear"}', tool_calls=[], stop_reason="end_turn")
         p1 = make_mock_provider("primary", response=json_resp)
         router = ModelRouter(providers={"primary": p1})
@@ -105,8 +108,10 @@ class TestFallbackLogic:
         result = run(router.send("system", [{"role": "user", "content": "clear terminal"}], tools=tools))
 
         assert result.meta.provider_name == "none"
-        assert result.response.stop_reason == "no_tool_support"
+        assert result.meta.error_code == "ai_no_tools"
+        assert result.response.stop_reason == "error"
         assert result.response.text == ""
+        assert result.ok is False
 
     def test_nested_embedded_tool_json_is_detected(self):
         resp = ProviderResponse(
@@ -131,6 +136,11 @@ class TestFallbackLogic:
 
 class TestDegradedResponse:
     def test_all_providers_fail_returns_degraded(self):
+        # Router contract (v4): never injects user-facing text into the
+        # response. On total failure it returns an empty text + error stop
+        # reason + meta.error_code; the handler layer is responsible for
+        # turning the code into an i18n-aware message. This keeps the router
+        # i18n-agnostic and avoids duplicate text across locales.
         p1 = make_mock_provider("primary", error=RuntimeError("fail1"))
         p2 = make_mock_provider("fallback", error=RuntimeError("fail2"))
         router = ModelRouter(providers={"primary": p1, "fallback": p2})
@@ -144,7 +154,9 @@ class TestDegradedResponse:
         assert result.meta.fallback_used is True
         assert result.meta.attempts == 2
         assert result.response.stop_reason == "error"
-        assert len(result.response.text) > 0  # Should have a user-facing message
+        assert result.response.text == ""            # router never injects text
+        assert result.meta.error_code == "ai_failed"  # handler maps code → message
+        assert result.ok is False
 
     def test_single_provider_fails_returns_degraded(self):
         p1 = make_mock_provider("only", error=ConnectionError("offline"))

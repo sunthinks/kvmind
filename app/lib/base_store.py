@@ -88,6 +88,7 @@ import hmac
 import logging
 import shutil
 import sqlite3
+import threading
 from pathlib import Path
 from typing import Optional
 
@@ -193,6 +194,12 @@ class BaseSQLiteStore:
     def __init__(self, db_path: str = "/var/lib/kvmd/msd/.kdkvm/memory.db") -> None:
         self._db_path = db_path
         self._schema_ready = False
+        # R4-CQ-07: _do_open_conn is called from asyncio.to_thread workers
+        # (vacuum) AND the aiohttp main loop via synchronous handlers. Without
+        # this lock two concurrent first-calls can both see _schema_ready=False
+        # and race to executescript() — harmless for CREATE ... IF NOT EXISTS
+        # but wasteful and fragile if a future schema adds INSERTs or ALTERs.
+        self._schema_lock = threading.Lock()
 
     def _ensure_dir(self) -> None:
         Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -238,8 +245,10 @@ class BaseSQLiteStore:
             conn = sqlite3.connect(self._db_path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         if not self._schema_ready:
-            conn.executescript(self._SCHEMA)
-            self._schema_ready = True
+            with self._schema_lock:
+                if not self._schema_ready:
+                    conn.executescript(self._SCHEMA)
+                    self._schema_ready = True
         return conn
 
     def _disk_ok(self) -> bool:

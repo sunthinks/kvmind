@@ -1,0 +1,37 @@
+[Unit]
+# M3.4 — replaces legacy kvmind-tunnel.service. Tunnel token no longer
+# lives in /etc/kdkvm/tunnel.token; it's kept in state.db (kv_get
+# "tunnel_token") and piped via `kdkvm tunnel-token` so the secret never
+# hits the read-only root filesystem. kdkvm.service's heartbeat loop
+# rewrites the token on rotation and issues `systemctl restart
+# kdkvm-cloudflared.service`.
+Description=KVMind Cloudflare Tunnel (kdkvm)
+After=network-online.target kdkvm.service kvmd-nginx.service
+Wants=network-online.target
+# If the main process isn't up we have nothing to read the token from.
+Requires=kdkvm.service
+
+[Service]
+Type=notify
+TimeoutStartSec=20
+# `python -m lib.cli tunnel-token` is a READ-ONLY lookup against state.json.
+# 0.5.25: state moved from SQLite WAL to atomic JSON; the CLI does a plain
+# json.load() and prints kv["tunnel_token"]. No init side effects, no
+# StateStore singleton; works on ro `/` because we only read.
+# Fail fast (exit 1) when no token is present — prevents cloudflared
+# from starting with an empty token and burning syslog.
+ExecStart=/bin/bash -c 'TOKEN="$(/opt/kvmind/kdkvm/venv/bin/python -m lib.cli tunnel-token)"; if [ -z "$TOKEN" ]; then echo "no tunnel_token in state.json — skipping cloudflared" >&2; exit 1; fi; exec /usr/local/bin/cloudflared --no-autoupdate tunnel run --token "$TOKEN"'
+Restart=on-failure
+RestartSec=5
+# When the ExecStart bash helper exits 1 because there's no token yet
+# (pre-activation state), do NOT restart — otherwise systemd respawns
+# every 5s forever and spams syslog. kdkvm.service's heartbeat loop
+# issues an explicit `systemctl restart kdkvm-cloudflared` when a token
+# does land, breaking out of the restart-suppression.
+RestartPreventExitStatus=1
+
+Environment=KVMIND_STATE_DB=/var/lib/kdkvm/state.json
+Environment=PYTHONPATH=/opt/kvmind/kdkvm
+
+[Install]
+WantedBy=multi-user.target

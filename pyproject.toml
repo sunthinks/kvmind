@@ -1,0 +1,62 @@
+[project]
+name = "kdkvm"
+# Version is read from app/web/version.json via app/lib/_version.py.
+# See [tool.setuptools.dynamic] below — the JSON file is the single source.
+dynamic = ["version"]
+description = "KVMind Device Bridge — adds an AI assistant (MyClaw) to KVM-over-IP hardware (PiKVM V3/V4, BliKVM v4; NanoKVM on v0.4.x roadmap)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Gwanlor Inc.", email = "alerts@kvmind.com" },
+]
+keywords = ["kvm", "pikvm", "ai", "remote-management", "myclaw", "innerclaw"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Hardware",
+    "Topic :: System :: Systems Administration",
+]
+
+dependencies = [
+    "aiohttp>=3.9",
+    "PyYAML>=6.0",
+    "cryptography>=42.0",
+]
+
+[project.optional-dependencies]
+sqlcipher = [
+    "pysqlcipher3>=1.2",
+]
+dev = [
+    "pytest>=7.4",
+    "pytest-asyncio>=0.23",
+]
+
+[project.urls]
+Homepage = "https://kvmind.com"
+Repository = "https://github.com/kvmind/kdkvm"
+Documentation = "https://kvmind.com/docs"
+Issues = "https://github.com/kvmind/kdkvm/issues"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["app"]
+include = ["lib*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "lib._version.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["app/tests"]
+asyncio_mode = "auto"

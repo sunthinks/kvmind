@@ -3,8 +3,8 @@
 > **所有开发者和 AI 代理在修改 KVMind 代码前必须阅读并遵守本文档。**
 > **违反这些规则的代码不得合入主分支。**
 
-版本：6.1 ｜ 更新日期：2026-04-09
-基准：kdkvm v0.2.6-beta (Songfeng) · InnerClaw v3 (AI Kernel) · kvmd 4.159 · Linux 6.12.56-8-rpi (aarch64)
+版本：6.3 ｜ 更新日期：2026-04-21
+基准：kdkvm — 运行版本以 [app/web/version.json](app/web/version.json) 为唯一真源 · InnerClaw v3 (AI Kernel) · kvmd 4.165 · Linux 6.12.56-8-rpi (aarch64)
 
 ---
 
@@ -293,54 +293,76 @@ KVMind 支持三语：中文（zh）、日本語（ja）、English（en）。
 
 ### 4.3 AI Provider 配置（KNOWN_PROVIDERS）
 
+**AI 模型目录原则**（0.2.27-beta 起）：
+
+> **设备端不维护模型产品目录**。新模型 / 新 provider 不发 kdkvm 版本。
+> `KNOWN_PROVIDERS` 只描述 provider 的 API 形状（base_url、鉴权、列模型端点），
+> 实际模型名**运行时**向 provider 的 `GET /models` 类端点拉取作为 UI 建议。
+> 用户也可以随时在 UI 里选 "其他…" 手动填任意模型名。
+> 模型名的唯一校验者是 provider API 本身（它说 "model not found" 才是真报错）。
+
 `config.py` 中维护已知 Provider 的中心注册表：
 
 ```python
 KNOWN_PROVIDERS = {
     "ollama": {
-        "base_url": "http://127.0.0.1:11434/v1",
-        "default_model": "qwen3-vl:8b",
-        "models": ["qwen3-vl:8b", "qwen3-vl:2b"],
+        "base_url": "",  # 用户自填，Ollama 在 LAN 上
         "key_envs": ["OLLAMA_API_KEY"],
         "config_key": "ollama_key",
         "display_name": "Ollama",
         "requires_key": False,
+        "models_endpoint": "/api/tags",            # 相对 base_url
+        "models_endpoint_strip_suffix": "/v1",     # Ollama /api/tags 在根路径
+        "models_id_path": "models[].name",
+        "console_url": "https://ollama.com/library",
     },
-    "gemini": {
-        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
-        "default_model": "gemini-2.5-flash",
-        "models": ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
-        "key_envs": ["GEMINI_API_KEY"],
-        "config_key": "gemini_key",
-        "display_name": "Gemini",
+    "openai": {
+        "base_url": "https://api.openai.com/v1",
+        "key_envs": ["OPENAI_API_KEY"],
+        "config_key": "openai_key",
+        "display_name": "OpenAI",
+        "requires_key": True,
+        "models_endpoint": "/models",
+        "models_id_path": "data[].id",
+        "models_id_filter": r"^(gpt-|o1-|o3-|o4-|chatgpt-)",
+        "console_url": "https://platform.openai.com/api-keys",
     },
-    # anthropic, openai ...
+    # anthropic, gemini ...
 }
 ```
 
 **规则：**
-- 新增/修改 Provider 时，必须同时更新 `models`、`default_model`、`display_name`、`requires_key`
-- 模型列表通过 `GET /api/ai/models?provider=xxx` 从设备本地返回，不依赖外网
+- **禁止**在 `KNOWN_PROVIDERS` 里写 `models` 或 `default_model` 字段
+- 新 provider 只描述 API 形状（list-models 端点 + JSON 路径），不列任何型号
+- 模型列表通过 `POST /api/ai/models` 运行时向 provider 实际查询（3s 超时）
+- 查不到（无网 / 无 key / 端点失败）→ 前端切纯自由文本输入，显示 `console_url` 外链
+- `_build_providers` 跳过没有 `default_model` 的 provider 并 `log.warning`，不构造"空模型"的 provider
+- `OpenAIProvider` / `AnthropicProvider` 构造函数 `default_model` 必填，空值直接 `raise ValueError`
 - API Key 优先级：环境变量 > config.yaml shorthand > config.yaml providers list > legacy
 - Ollama / no-key Provider 必须通过 `*_enabled` 或自定义 URL 显式启用；自动模式还必须通过原生 tool_calls 能力测试
 
-### 4.4 订阅配置（SubscriptionConfig）
+### 4.4 订阅配置（SubscriptionConfig · V1 Seat 模型）
 
-`config.py` 中的 `SubscriptionConfig` dataclass 管理订阅状态，由心跳同步写入：
+`config.py` 中的 `SubscriptionConfig` dataclass 管理权益状态，由心跳（`/api/subscription/sync`）同步写入：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `plan` | str | 订阅计划：`community` / `standard` / `pro` |
-| `tunnel` | bool | 是否启用 Cloudflare 隧道 |
-| `messaging` | bool | 是否启用 Telegram Bot |
-| `ota` | bool | 是否启用 OTA 更新 |
-| `myclaw_limit` | int | MyClaw 小时限额，`-1` 表示无限制 |
-| `myclaw_daily_limit` | int | MyClaw 日限额，`-1` 表示无限制 |
-| `myclaw_max_action_level` | int | 允许的最高 action level：L1/L2/L3 |
-| `scheduled_tasks` | bool | 是否启用 MyClaw 定时任务 |
-| `synced_at` | str | 上次心跳同步时间 |
+| `claim_state` | str | `unclaimed` / `claimed`，设备是否已 claim 到账号 |
+| `entitlement_state` | str | `local_free` / `claimed_free` / `paid`，权益态 |
+| `assigned_subscription_id` | int? | 当前占用的订阅 id（paid 态必填，其他态 None） |
+| `tunnel` / `messaging` / `ota` | bool | Feature flags（由云端心跳派生下发，本地被动消费） |
+| `myclaw_limit` / `myclaw_daily_limit` | int | MyClaw 小时 / 日限额，`-1` 无限制 |
+| `myclaw_max_action_level` | int | 最高 action level 1/2/3 |
+| `scheduled_tasks` | bool | MyClaw 定时任务开关（Pro 独有） |
+| `synced_at` | str | 上次心跳同步 ISO 时间 |
 
-**向后兼容**：旧配置中的 `ai.plan_type` 会在 `load()` 时自动迁移到 `subscription.plan`（free_trial/subscribed → community，custom → community）。`save()` 会清理旧字段。
+**派生规则**（云端 EntitlementService.resolveForDevice 决定）：
+
+- `device.claim_state = unclaimed` ⇒ `local_free`，基础 KVM 本地自治
+- `claimed` 但无活跃 seat ⇒ `claimed_free`，基础功能 + 显示"未分配 seat"
+- 占用活跃订阅 seat ⇒ `paid`，按 subscription.plan_type（standard / pro）展开 feature flags
+
+**0.4.0 去 Trial 化**：老 `plan` / `linked` 字段彻底删除；不保留向后兼容层（发售前无付费客户，无已部署设备）。
 
 ### 4.5 持久化路径规则
 
@@ -371,9 +393,9 @@ KNOWN_PROVIDERS = {
 /kdkvm/api/hid/*          → 键鼠代理（mouse/move、mouse/click、keyboard/type、keyboard/key）
 /kdkvm/api/atx/power      → 电源控制
 /kdkvm/api/subscription   → 订阅状态（GET）
-/kdkvm/api/subscription/sync → 心跳同步（POST，仅限 localhost）
+/kdkvm/api/subscription/sync → Nginx 对外统一 403；本地 subscription_sync.py 走 http://127.0.0.1:8765/api/subscription/sync 直连 bridge
 /kdkvm/api/ai/config      → AI 配置读写（GET/POST）
-/kdkvm/api/ai/models      → 已知 Provider 模型列表（GET）
+/kdkvm/api/ai/models      → 运行时向 provider 拉模型列表（POST，带 api_key/base_url）
 /kdkvm/api/ai/test        → AI 连接测试（POST）
 /kdkvm/api/ai/memory      → AI 长期记忆（GET）
 /kdkvm/api/wifi/*         → WiFi 管理（scan、status、connect、disconnect）
@@ -428,13 +450,13 @@ KNOWN_PROVIDERS = {
 
 ### 5.5 版本管理
 
-`version.json` 记录当前版本信息：
+`version.json` 记录当前版本信息（格式示例，实际值以仓库中 [app/web/version.json](app/web/version.json) 为准）：
 
 ```json
 {
-  "version": "0.2.6-beta",
-  "build": "20260412",
-  "codename": "Songfeng"
+  "version": "0.2.x-beta",
+  "build": "YYYYMMDD",
+  "codename": "<代号>"
 }
 ```
 
@@ -450,33 +472,47 @@ KNOWN_PROVIDERS = {
 - **所有配置路径统一为 `/etc/kdkvm/`**，禁止使用已废弃的 `/etc/kvmind/`
 - 持久化数据路径：`/var/lib/kvmd/msd/.kdkvm/`（MSD 分区，隐藏目录，运行时可写）
 - KVM 设备根文件系统默认只读，`install.sh` 内部处理 rw/ro 切换
-- systemd 服务：kvmind.service, kvmind-heartbeat.timer, kvmind-register.timer, kvmind-tunnel.service, kvmind-updater.timer
-- 心跳通过 `POST /kdkvm/api/subscription/sync` 同步订阅 features（tunnel/messaging/ota、MyClaw 限额、action level、scheduled_tasks），不直接改文件、不重启服务
+- **首次安装末尾强制轮换 OS root 密码**（step 9）：PiKVM/BliKVM 出厂镜像 root:root 任何局域网都能登录，install.sh 在最后一步生成 24 位随机密码、`chpasswd`、写标记 `/etc/kdkvm/.root-rotated` 防重复；新密码只在 summary 里打印一次，丢失需重刷卡。跳过：`install.sh --keep-root-pw`（仅当运维已外部管理 root 时使用）
+- systemd 服务：`kdkvm.service`（Python bridge，端口 8765）、`kdkvm-cloudflared.service`（隧道），仅此两个。心跳 / 注册 / OTA / 订阅同步全部迁为 bridge 进程内的 asyncio 任务（M3.4，`lib/heartbeat.py` / `lib/subscription_sync.py` / `lib/ota.py`），历史上的 `kvmind-heartbeat.timer` / `kvmind-register.timer` / `kvmind-updater.timer` 已随 M5 §16 一起删除
+- 心跳上行 `POST /api/devices/heartbeat` → kdcms；心跳响应里的 features 由本地 `subscription_sync.py` 通过 `POST http://127.0.0.1:8765/api/subscription/sync`（trusted-proxy 限制）同步 tunnel/messaging/ota、MyClaw 限额、action level、scheduled_tasks，不直接改文件、不重启服务
 
-### 5.7 订阅-设备业务规则
+### 5.7 订阅-设备业务规则（V1 Seat 模型 · 0.4.0）
 
-**绑定设备（linkDevice）**：只设 `device.customer_id`，不动订阅、不开隧道。
+**设备状态双维度**：
+- `claim_state ∈ {unclaimed, claimed}`：设备是否已绑账号
+- `entitlement_state ∈ {local_free, claimed_free, paid}`（外加 Phase 2 预留 `grace_period` / `suspended`）：权益态
 
-**解绑设备（unlinkDevice）**：只清 `device.customer_id`，不动订阅、不动隧道。
+**Claim 流程**（取代老 `bindBySubscriptionKey`）：
+1. 设备 `POST /api/devices/claim/initiate`（包装 RFC 8628 Device Authorization Grant）→ 返回 `claim_code` + `registration_token`
+2. 用户在 `kvmind.com/activate` 输入 `claim_code` 完成绑定
+3. 设备 `claim_state = claimed`，立即触发 `SeatAssignmentService.tryAutoAssign`
+4. 若账号有空 seat → `entitlement_state = paid` + `assigned_subscription_id`；否则 `claimed_free`
 
-**隧道开通**：只在以下时机发生：
-1. 购买订阅时（Stripe webhook + device_uid）
-2. CMS 管理后台手动 provision
+**自动 seat 分配优先级**：空闲 Standard → 已部分占用 Pro → 全新 Pro → `claimed_free`。
+**手动 seat 指派**：`manual_assignment_preference` 记录偏好，跨订阅周期自动恢复。
 
-**隧道回收**：只在以下时机发生：
-1. 订阅到期（SubscriptionExpiryScheduler 每天 03:00）
-2. CMS 管理后台手动 deprovision
+**Seat 释放时机**：
+1. 订阅到期（`SubscriptionExpiryScheduler` 每天 03:00 → `releaseAllForSubscription`）
+2. Stripe 退款（`handleChargeRefunded`）/ 订阅取消确认（`handleSubscriptionDeleted`）
+3. 用户 Web 端主动释放（`POST /api/customer/seats/{seatId}/release`）
+4. 设备主动解绑（`POST /api/customer/seats/device/{uid}/unlink`）
 
-**订阅状态流转**：
-```
-active → cancelling（用户取消，到期前可用）
-active/cancelling → expired（到期后定时任务处理）
-```
+**隧道开通 / 回收**：
+- `entitlement_state = paid` 的首次心跳 → `TunnelProvisioningService.provisionIfNeeded`
+- 释放 seat 后若该设备最终 `!= paid` → `cloudflareService.deleteTunnel` + `deviceMapper.clearTunnel`
+- 其他订阅 seat 上的设备 tunnel 不受影响（按本订阅所占 seat 粒度，而非 customer 全局）
 
 **MyBatis NULL 写入规则**：`deviceMapper.update()` 无法设字段为 NULL。
-清空字段必须使用专用方法：`clearCustomerId(uid)`、`clearPlanAndTunnel(uid)`。
+专用方法：`clearCustomerId(uid)` / `clearTunnel(uid)` / `clearAssignedSubscription(uid)` / `unclaim(uid)`。
 
-**Cloudflare 隧道幂等性**：`CloudflareService.provisionDevice()` 处理隧道和 DNS 已存在的情况（409 冲突→复用）。
+**Cloudflare 隧道幂等性**：`CloudflareService.provisionDevice()` 处理隧道和 DNS 已存在（409 冲突→复用）。
+
+**订阅状态流转**（与 seat 语义正交）：
+```
+pending → active → cancelling / paused → expired
+         ↘ active → expired（直接过期）
+```
+Stripe webhook / SubscriptionExpiryScheduler 驱动；seat 释放永远随订阅"离开 active/cancelling/paused"而发生。
 
 ---
 

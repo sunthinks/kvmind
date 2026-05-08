@@ -6,7 +6,9 @@ import logging
 from aiohttp import web
 
 from ..kvm.base import NoVideoSignalError
-from .helpers import json_response
+from ..kvmind_client import AIError
+from ..model_router import ERROR_FAILED
+from .helpers import ai_error_response, json_response
 
 log = logging.getLogger("kvmind.handlers.device")
 
@@ -39,6 +41,11 @@ def register(app: dict) -> None:
         })
 
     async def h_analyse(req: web.Request) -> web.Response:
+        """POST /api/analyse — Analyze the current screen.
+
+        Success: 200 {text, screenshot}
+        Failure: 502/503 {error: {code, message}}  (code is stable, message is lang-localized)
+        """
         lang = "en"
         try:
             body = await req.json()
@@ -47,37 +54,37 @@ def register(app: dict) -> None:
             log.debug("No JSON body for analyse, using default lang: %s", e)
         try:
             screenshot = await kvm.snapshot_b64()
-            text = await req.app["kvmind"].analyse(
-                "Analyze what is currently displayed on the screen.",
-                screenshot_b64=screenshot,
-                lang=lang,
-            )
-            return json_response({
-                "event": "ai_text",
-                "text": text,
-                "screenshot": screenshot,
-            })
         except NoVideoSignalError as exc:
             log.warning("Analyse: no video signal (%s)", exc)
             msg = {"zh": "无视频信号，请检查 HDMI 连接。",
                    "ja": "ビデオ信号がありません。HDMI 接続をご確認ください。",
                    "en": "No video signal — please check the HDMI connection."}
-            return json_response({"error": msg.get(lang, msg["en"])}, status=503)
+            return json_response(
+                {"error": {"code": "no_video", "message": msg.get(lang, msg["en"])}},
+                status=503,
+            )
+
+        try:
+            text = await req.app["kvmind"].analyse(
+                "Analyze what is currently displayed on the screen.",
+                screenshot_b64=screenshot,
+                lang=lang,
+            )
+        except AIError as exc:
+            log.warning("Analyse: AI error (%s)", exc.code)
+            return ai_error_response(exc.code, lang=lang, status=502)
         except Exception as exc:
             log.exception("Analyse failed: %s", exc)
-            providers = app["providers"]
-            if not providers:
-                msg = {"zh": "AI 未配置。请在 KVM设置 中设置 AI API Key。",
-                       "ja": "AI が未設定です。KVM設定で AI API Key を設定してください。",
-                       "en": "AI is not configured. Please set your AI API Key in KVM Settings."}
-            else:
-                msg = {"zh": "AI 分析失败，请稍后重试。",
-                       "ja": "AI 分析に失敗しました。しばらくしてから再試行してください。",
-                       "en": "AI analysis failed. Please try again later."}
-            return json_response({"error": msg.get(lang, msg["en"])}, status=502)
+            return ai_error_response(ERROR_FAILED, lang=lang, status=502)
+
+        return json_response({"text": text, "screenshot": screenshot})
 
     async def h_screen_copy(req: web.Request) -> web.Response:
-        """POST /api/screen/copy — Extract text from remote screen via AI OCR."""
+        """POST /api/screen/copy — Extract text from remote screen via AI OCR.
+
+        Success: 200 {text, region}
+        Failure: 502/503 {error: {code, message}}
+        """
         lang = "en"
         region = None
         try:
@@ -88,21 +95,41 @@ def register(app: dict) -> None:
             pass
         try:
             screenshot = await kvm.snapshot_b64()
-            if region and all(k in region for k in ("x1", "y1", "x2", "y2")):
-                from ..innerclaw.tools import crop_screenshot_b64
+        except NoVideoSignalError as exc:
+            log.warning("Screen copy: no video signal (%s)", exc)
+            msg = {"zh": "无视频信号，请检查 HDMI 连接。",
+                   "ja": "ビデオ信号がありません。HDMI 接続をご確認ください。",
+                   "en": "No video signal — please check the HDMI connection."}
+            return json_response(
+                {"error": {"code": "no_video", "message": msg.get(lang, msg["en"])}},
+                status=503,
+            )
+
+        if region and all(k in region for k in ("x1", "y1", "x2", "y2")):
+            from ..innerclaw.tools import crop_screenshot_b64
+            try:
                 screenshot = crop_screenshot_b64(
                     screenshot,
                     float(region["x1"]), float(region["y1"]),
                     float(region["x2"]), float(region["y2"]),
                 )
+            except Exception as exc:
+                log.warning("Screen copy: crop failed (%s)", exc)
+                return json_response(
+                    {"error": {"code": "bad_region", "message": str(exc)}},
+                    status=400,
+                )
+
+        try:
             text = await req.app["kvmind"].ocr(screenshot_b64=screenshot, lang=lang)
-            return json_response({"text": text, "region": region})
+        except AIError as exc:
+            log.warning("Screen copy: AI error (%s)", exc.code)
+            return ai_error_response(exc.code, lang=lang, status=502)
         except Exception as exc:
             log.exception("Screen copy failed: %s", exc)
-            msg = {"zh": "屏幕文字提取失败，请稍后重试。",
-                   "ja": "画面テキスト抽出に失敗しました。",
-                   "en": "Screen text extraction failed. Please try again later."}
-            return json_response({"error": msg.get(lang, msg["en"])}, status=502)
+            return ai_error_response(ERROR_FAILED, lang=lang, status=502)
+
+        return json_response({"text": text, "region": region})
 
     # ── HID proxies ─────────────────────────────────────────────────────────
     # Mouse move/click: no REST proxy needed — frontend uses kvmd WebSocket

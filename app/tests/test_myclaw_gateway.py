@@ -1,4 +1,14 @@
-"""Tests for myclaw_gateway.py — action level check, error classes, offline fallback."""
+"""Tests for myclaw_gateway.py — data classes, action-level gating, signing.
+
+The HTTP-status → exception mapping is covered in ``test_errors_mapping.py``
+(which also exercises the WS payload side of the pipeline). This module
+stays focused on:
+
+  * Data class defaults / round-trips.
+  * ``ACTION_LEVELS`` + ``check_action_level`` static logic.
+  * That the gateway constructor + outbound path produce the right kind
+    of objects, without double-testing the error dispatch.
+"""
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -6,46 +16,13 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from lib.myclaw_gateway import (
-    MyClawRateLimitError,
-    MyClawForbiddenError,
-    MyClawOfflineError,
     MyClawGateway,
     StartResult,
     SignedActions,
     ACTION_LEVELS,
+    _serialize_body,
+    _url_path,
 )
-
-
-# ---------------------------------------------------------------------------
-# Error classes
-# ---------------------------------------------------------------------------
-
-class TestMyClawErrors:
-    def test_rate_limit_error_attrs(self):
-        err = MyClawRateLimitError(retry_after=30, usage_count=5, usage_limit=5)
-        assert err.retry_after == 30
-        assert err.usage_count == 5
-        assert err.usage_limit == 5
-        assert "30" in str(err)
-
-    def test_rate_limit_error_defaults(self):
-        err = MyClawRateLimitError()
-        assert err.retry_after == 0
-        assert err.usage_count == 0
-        assert err.usage_limit == 0
-
-    def test_forbidden_error_code(self):
-        err = MyClawForbiddenError(code="schedule_not_allowed")
-        assert err.code == "schedule_not_allowed"
-        assert "schedule_not_allowed" in str(err)
-
-    def test_forbidden_error_default(self):
-        err = MyClawForbiddenError()
-        assert err.code == ""
-
-    def test_offline_error(self):
-        err = MyClawOfflineError("connection refused")
-        assert "connection refused" in str(err)
 
 
 # ---------------------------------------------------------------------------
@@ -69,11 +46,13 @@ class TestDataClasses:
             signature="ed25519:abc",
             timestamp=1000,
             nonce="n1",
+            customer_id=123,
         )
         assert len(sa.actions) == 1
         assert sa.signature == "ed25519:abc"
         assert sa.timestamp == 1000
         assert sa.nonce == "n1"
+        assert sa.customer_id == 123
 
 
 # ---------------------------------------------------------------------------
@@ -152,6 +131,25 @@ class TestCheckActionLevel:
 
 
 # ---------------------------------------------------------------------------
-# Offline behavior: cloud unreachable = same as no subscription (local AI only)
-# _offline_fallback was removed — start_session returns None on network error.
+# Body serialization + url path extraction (signed-string inputs)
 # ---------------------------------------------------------------------------
+
+class TestBodySerialization:
+    def test_deterministic_key_order(self):
+        """The hash kdcms computes depends on byte-identical serialization,
+        so sort_keys=True is load-bearing, not cosmetic."""
+        b1 = _serialize_body({"b": 2, "a": 1})
+        b2 = _serialize_body({"a": 1, "b": 2})
+        assert b1 == b2
+        # And the compact separators match what kdcms sees on the wire.
+        assert b"," in b1 and b" " not in b1
+
+    def test_url_path_strips_scheme_and_query(self):
+        """kdcms reads only the path; if we include host or query the signed
+        string won't reconstruct server-side."""
+        assert _url_path("https://kvmind.example/api/myclaw/start") == "/api/myclaw/start"
+        assert _url_path("https://kvmind.example/api/myclaw/start?x=1") == "/api/myclaw/start"
+
+    def test_url_path_root_fallback(self):
+        # No path → '/' (cannot leave empty string; kdcms expects non-blank path).
+        assert _url_path("https://example") == "/"

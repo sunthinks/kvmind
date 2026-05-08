@@ -60,8 +60,8 @@ function KVMindGateway(opts) {
   this.onToolResult = null;      // function(toolName, resultText, toolCallId)
   this.onThinkingStart = null;   // function()
   this.onThinkingEnd = null;     // function()
-  this.onConfirmRequired = null; // function(action, args)
   this.onScreenshot = null;      // function(base64)
+  this.onNotice = null;          // function({code, severity, message, run_id})
   this.onLog = null;             // function(level, msg)
 }
 
@@ -211,18 +211,34 @@ KVMindGateway.prototype._handleMessage = function(raw) {
     return;
   }
 
-  // Error
-  if (type === "error") {
-    this.chatRunId = null;
-    this.chatStream = "";
-    console.error("Chat API error:", msg.message || msg.content);
-    if (this.onChatError) this.onChatError(msg.message || msg.content || "unknown error");
+  // Advisory notice — non-terminal warning (e.g. auto→suggest gate).
+  // Unlike "error", the run continues; notice is just an inline heads-up.
+  if (type === "notice") {
+    if (this.onNotice) {
+      this.onNotice({
+        code: msg.code || "",
+        severity: msg.severity || "info",
+        message: msg.message || "",
+        run_id: msg.run_id || null,
+      });
+    }
     return;
   }
 
-  // Confirmation required (dangerous action)
-  if (type === "confirm_required") {
-    if (this.onConfirmRequired) this.onConfirmRequired(msg.action || "", msg.args || {}, msg.run_id || null);
+  // Error — forward both code + message so the UI can localize.
+  // 这是业务层响应（如 no_providers / rate_limited / disabled），已由 UI 层
+  // onChatError 展示为友好提示；devtools 用 warn 避免红色异常干扰。
+  if (type === "error") {
+    this.chatRunId = null;
+    this.chatStream = "";
+    console.warn("[KVMind GW] chat error:", msg.code || "", msg.message || msg.content);
+    if (this.onChatError) {
+      this.onChatError({
+        code: msg.code || null,
+        message: msg.message || msg.content || "",
+        retry_after: msg.retry_after,
+      });
+    }
     return;
   }
 
@@ -268,15 +284,6 @@ KVMindGateway.prototype.sendChat = function(message, opts) {
 
   // No optimistic onThinkingStart — server sends "thinking" event when ready.
   return Promise.resolve(runId);
-};
-
-KVMindGateway.prototype.sendConfirm = function(approved, runId) {
-  if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-    var msg = { type: "confirm", approved: !!approved };
-    var rid = runId || this.currentRunId;
-    if (rid) msg.run_id = rid;
-    this.ws.send(JSON.stringify(msg));
-  }
 };
 
 KVMindGateway.prototype.abortChat = function() {

@@ -1,15 +1,19 @@
 """
-KVMind AI Router v3 — Model-Agnostic Sequential Fallback
+KVMind AI Router v4 — Structured Failure Contract
 
 Routes AI requests through providers in priority order.
 All providers use the same timeout, same flow, same validation.
 
 Two-layer fallback:
   1. Transport: timeout / network error / HTTP error → try next
-  2. Semantic: empty response when tools expected → try next
+  2. Semantic: empty response or embedded tool JSON → try next
 
-Final safety net: if ALL providers fail, returns a degraded
-response instead of raising — WebSocket never breaks.
+Failure contract:
+  On success: RouteResult with real text/tool_calls and provider_name != "none"
+  On failure: RouteResult with empty text, provider_name="none",
+              meta.error_code set to a canonical code.
+  Never raises on runtime failures. Never injects user-facing text into response.
+  Error code → user message mapping happens at handler layer (i18n-aware).
 """
 from __future__ import annotations
 
@@ -25,15 +29,26 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
+# ── Canonical error codes (stable API — do not rename without sweeping callers) ──
+
+ERROR_NO_PROVIDERS = "no_providers"       # No AI backend configured
+ERROR_TIMEOUT = "ai_timeout"              # All providers timed out
+ERROR_CONNECT = "ai_connect"              # Network / DNS / SSL to provider
+ERROR_EMPTY = "ai_empty"                  # Provider returned empty response
+ERROR_NO_TOOL_SUPPORT = "ai_no_tools"     # Model can't use native function-calling
+ERROR_FAILED = "ai_failed"                # Generic provider failure
+
+
 # ── Result Types ────────────────────────────────────────────────────────────
 
 @dataclass
 class RouteMeta:
-    """Observable system state — for logging/debug, not for decision-making."""
+    """Observable routing state. error_code is only set on failure."""
     provider_name: str
     model: str
     attempts: int
     fallback_used: bool
+    error_code: str | None = None
 
 
 @dataclass
@@ -42,11 +57,15 @@ class RouteResult:
     response: "ProviderResponse"
     meta: RouteMeta
 
+    @property
+    def ok(self) -> bool:
+        return self.meta.error_code is None
+
 
 # ── Exception ───────────────────────────────────────────────────────────────
 
 class RouterError(Exception):
-    """Raised internally when a single provider fails."""
+    """Internal marker for provider-level failures within the router loop."""
 
 
 # ── Router ──────────────────────────────────────────────────────────────────
@@ -56,6 +75,9 @@ class ModelRouter:
 
     Providers dict order = priority. First provider is tried first.
     Timeout is unified — same for all providers, per-call override allowed.
+
+    send() never raises on runtime errors — failures are returned as
+    RouteResult with meta.error_code set. Callers branch on result.ok.
     """
 
     def __init__(
@@ -73,17 +95,18 @@ class ModelRouter:
         max_tokens: int = 4096,
         tools: list | None = None,
         timeout: int | None = None,
+        response_format: dict | None = None,
     ) -> RouteResult:
         """Send request through providers in order. Two-layer fallback.
 
-        Returns RouteResult on success, or a degraded RouteResult if all fail.
-        Raises RouterError if no providers are configured at all.
+        Always returns RouteResult. On failure, response.text="" and
+        meta.error_code is a canonical code (see module-level constants).
         """
         if not self.providers:
-            raise RouterError("No AI providers configured")
+            return self._failure_result(0, ERROR_NO_PROVIDERS)
 
         effective_timeout = timeout or self.default_timeout
-        last_error: Exception | None = None
+        last_error_code: str | None = None
         attempt = 0
 
         for name, provider in self.providers.items():
@@ -97,16 +120,17 @@ class ModelRouter:
                     max_tokens=max_tokens,
                     timeout=effective_timeout,
                     tools=tools,
+                    response_format=response_format,
                 )
                 latency = time.monotonic() - t0
 
-                # ── Semantic validation ──
-                if self._is_semantic_invalid(resp, tools):
+                invalid_code = self._semantic_invalid_code(resp, tools)
+                if invalid_code:
                     log.warning(
-                        "[Router] %s/%s: semantic invalid (%.1fs), fallback",
-                        name, provider.default_model, latency,
+                        "[Router] %s/%s: %s (%.1fs), fallback",
+                        name, provider.default_model, invalid_code, latency,
                     )
-                    last_error = RouterError(f"{name}: semantic invalid response")
+                    last_error_code = invalid_code
                     continue
 
                 log.info(
@@ -121,63 +145,51 @@ class ModelRouter:
 
             except Exception as exc:
                 latency = time.monotonic() - t0
+                last_error_code = self._classify_transport_error(exc)
                 log.warning(
-                    "[Router] %s/%s failed (%.1fs): %s",
-                    name, provider.default_model, latency, exc,
+                    "[Router] %s/%s failed (%.1fs, code=%s): %s",
+                    name, provider.default_model, latency, last_error_code, exc,
                 )
-                last_error = exc
 
-        # ── Final safety net: degraded response ──
-        log.error(
-            "[Router] All %d providers failed: %s", attempt, last_error,
-        )
+        log.error("[Router] All %d providers failed (code=%s)", attempt, last_error_code)
+        return self._failure_result(attempt, last_error_code or ERROR_FAILED)
+
+    # ── helpers ──────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _failure_result(attempts: int, code: str) -> RouteResult:
         from .ai_provider import ProviderResponse
-        # Distinguish failure reason for customer-facing messaging
-        is_tool_failure = (
-            isinstance(last_error, RouterError)
-            and "semantic invalid" in str(last_error)
-        )
-        if is_tool_failure:
-            fallback_text = ""
-        elif isinstance(last_error, asyncio.TimeoutError) or (
-            last_error and "timeout" in str(last_error).lower()
-        ):
-            fallback_text = "AI 请求超时，模型响应过慢。请尝试更换模型或增加超时时间。"
-        elif last_error and "connect" in str(last_error).lower():
-            fallback_text = "无法连接 AI 服务，请检查网络连接和 API 地址。"
-        else:
-            fallback_text = f"AI 请求失败: {last_error}" if last_error else "AI 请求失败，请稍后再试。"
         return RouteResult(
-            response=ProviderResponse(
-                text=fallback_text,
-                tool_calls=[],
-                stop_reason="no_tool_support" if is_tool_failure else "error",
-            ),
-            meta=RouteMeta("none", "none", attempt, True),
+            response=ProviderResponse(text="", tool_calls=[], stop_reason="error"),
+            meta=RouteMeta("none", "none", attempts, True, error_code=code),
         )
 
     @staticmethod
-    def _is_semantic_invalid(resp: "ProviderResponse", tools: list | None) -> bool:
-        """Semantic validation: detect empty/garbage responses.
+    def _classify_transport_error(exc: Exception) -> str:
+        if isinstance(exc, asyncio.TimeoutError):
+            return ERROR_TIMEOUT
+        msg = str(exc).lower()
+        if "timeout" in msg:
+            return ERROR_TIMEOUT
+        if "connect" in msg or "dns" in msg or "ssl" in msg or "network" in msg:
+            return ERROR_CONNECT
+        return ERROR_FAILED
 
-        When tools are provided, valid responses are:
-          1. Has tool_calls (executing actions)
-          2. Has text without tool_calls (answering/completing)
-        Invalid when:
-          - Empty response (no text AND no tool_calls)
-          - Text contains embedded tool JSON but no native tool_calls
-            (model doesn't support function calling)
+    @staticmethod
+    def _semantic_invalid_code(resp: "ProviderResponse", tools: list | None) -> str | None:
+        """Return error code if response is semantically invalid, else None.
+
+        Always-invalid: empty response (no text AND no tool_calls).
+        Tool-context-invalid: text contains embedded tool JSON but no native
+          tool_calls — model doesn't support function calling.
         """
-        if not tools:
-            return False
         if not resp.text and not resp.tool_calls:
-            return True
-        # Model wrote tool calls as JSON text instead of using native API
-        if resp.text and not resp.tool_calls:
+            return ERROR_EMPTY
+        if tools and resp.text and not resp.tool_calls:
             tool_names = _extract_tool_names(tools)
             if tool_names and resp.has_embedded_tool_json(tool_names):
-                return True
-        return False
+                return ERROR_NO_TOOL_SUPPORT
+        return None
 
 
 def _extract_tool_names(tools: list) -> set[str]:

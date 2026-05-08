@@ -1,10 +1,11 @@
 [Unit]
-Description=KVMind OTA Update Timer
+Description=KVMind OTA Update Timer (kdkvm)
 
 [Timer]
 OnBootSec=5min
 OnUnitActiveSec=6h
 RandomizedDelaySec=30min
+Unit=kdkvm-updater.service
 
 [Install]
 WantedBy=timers.target

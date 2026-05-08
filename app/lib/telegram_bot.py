@@ -20,7 +20,7 @@ import aiohttp
 
 from .innerclaw import Runner
 from .innerclaw.adapters.telegram import TelegramAdapter
-from .myclaw_gateway import MyClawRateLimitError, MyClawForbiddenError, MyClawOfflineError
+from .errors import AuthError, GatewayError, NetworkError, PolicyError, QuotaError
 
 log = logging.getLogger(__name__)
 
@@ -31,6 +31,71 @@ HELP_TEXT = """🤖 *KVMind Telegram Bot*
 /do <指令> → AI 自动执行操作（如：/do 打开终端）
 /ss → 截取当前屏幕
 /help → 显示帮助"""
+
+
+def _gateway_error_msg(exc: GatewayError) -> str:
+    """V6: single source of truth for Telegram's Gateway error messages.
+
+    The bot is Chinese-only today (unlike the WS dispatcher, which has zh/ja/en),
+    so this collapses the four subtypes into plain-text strings. Kept module-level
+    instead of duplicating the match inside every command handler — adding a new
+    error shape (say, a future clock-skew hint) means editing one function.
+    """
+    match exc:
+        case AuthError():
+            return "🔒 设备未绑定，请到 kvmind.com/account 重新激活"
+        case NetworkError():
+            if exc.reason == "clock_skew":
+                return "⏱ 设备时钟异常，请检查 NTP"
+            return "⚠️ MyClaw 服务暂时不可用"
+        case QuotaError():
+            return f"⏳ MyClaw 使用已达上限（{exc.usage_count}/{exc.usage_limit}），{exc.retry_after}秒后重试"
+        case PolicyError():
+            return f"🚫 操作被拒绝: {exc.code}"
+        case _:
+            return f"⚠️ Gateway 错误: {exc}"
+
+
+def start_bot(app, cfg) -> bool:
+    """(Re)start the Telegram bot task attached to this aiohttp ``app``.
+
+    Single source of truth for Telegram lifecycle transitions. Both the
+    subscription-sync path (``handlers/subscription.py``) and the ai-config
+    save path (``handlers/ai_config.py``) route through here so the bot is
+    always built with the same plumbing — in particular the
+    ``gateway`` object required for MyClaw cloud-signed execution. Drift
+    between those two paths previously left the ai-config-started bot with
+    ``gateway=None`` and silently degraded cloud-sign-only Auto mode.
+
+    Cancels any existing bot task, then spawns a fresh one using the current
+    ``cfg.telegram.bot_token`` and ``cfg.subscription.messaging`` state.
+    No-op and returns ``False`` when messaging is disabled or no token is
+    configured, so callers can treat the return as "did a bot actually
+    (re)start".
+    """
+    if not cfg.subscription.messaging or not cfg.telegram.bot_token:
+        return False
+    stop_bot(app)
+    bot = TelegramBot(
+        token=cfg.telegram.bot_token,
+        kvm=app["kvm"],
+        kvmind=app["kvmind"],
+        audit=app["audit"],
+        allowed_chats=cfg.telegram.allowed_chats or None,
+        gateway=app.get("gateway"),
+    )
+    app["telegram_task"] = asyncio.create_task(bot.start())
+    return True
+
+
+def stop_bot(app) -> bool:
+    """Cancel any running Telegram bot task. Returns True if one was running."""
+    task = app.get("telegram_task")
+    if not task:
+        return False
+    task.cancel()
+    app.pop("telegram_task", None)
+    return True
 
 
 class TelegramBot:
@@ -179,12 +244,8 @@ class TelegramBot:
             )
             async for event in runner.run(question):
                 await adapter.send_event(event.as_dict())
-        except MyClawRateLimitError as e:
-            await adapter._send_text(f"⏳ MyClaw 使用已达上限（{e.usage_count}/{e.usage_limit}），{e.retry_after}秒后重试")
-        except MyClawForbiddenError as e:
-            await adapter._send_text(f"🚫 操作被拒绝: {e.code}")
-        except MyClawOfflineError:
-            await adapter._send_text("⚠️ MyClaw 服务暂时不可用")
+        except GatewayError as e:
+            await adapter._send_text(_gateway_error_msg(e))
         except Exception as e:
             log.exception("[Telegram] Ask error")
             await adapter._send_text(f"❌ AI 分析失败: {e}")
@@ -207,12 +268,8 @@ class TelegramBot:
             )
             async for event in runner.run(instruction):
                 await adapter.send_event(event.as_dict())
-        except MyClawRateLimitError as e:
-            await adapter._send_text(f"⏳ MyClaw 使用已达上限，{e.retry_after}秒后重试")
-        except MyClawForbiddenError as e:
-            await adapter._send_text(f"🚫 操作被拒绝: {e.code}")
-        except MyClawOfflineError:
-            await adapter._send_text("⚠️ MyClaw 服务暂时不可用")
+        except GatewayError as e:
+            await adapter._send_text(_gateway_error_msg(e))
         except Exception as e:
             log.exception("[Telegram] Plan error")
             await adapter._send_text(f"❌ 规划失败: {e}")
@@ -237,12 +294,8 @@ class TelegramBot:
             )
             async for event in runner.run(instruction):
                 await adapter.send_event(event.as_dict())
-        except MyClawRateLimitError as e:
-            await adapter._send_text(f"⏳ MyClaw 使用已达上限，{e.retry_after}秒后重试")
-        except MyClawForbiddenError as e:
-            await adapter._send_text(f"🚫 操作被拒绝: {e.code}")
-        except MyClawOfflineError:
-            await adapter._send_text("⚠️ MyClaw 服务暂时不可用")
+        except GatewayError as e:
+            await adapter._send_text(_gateway_error_msg(e))
         except Exception as e:
             log.exception("[Telegram] Runner error")
             await adapter._send_text(f"❌ 执行失败: {e}")

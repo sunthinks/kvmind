@@ -13,11 +13,107 @@ from aiohttp import web
 from ..innerclaw import Runner
 from ..innerclaw.adapters.bridge import WebBridgeAdapter
 from ..ai_provider import is_tool_noise
-from ..myclaw_gateway import MyClawRateLimitError, MyClawForbiddenError, MyClawOfflineError
+from ..errors import AuthError, GatewayError, NetworkError, PolicyError, QuotaError
+from ..model_router import ERROR_FAILED, ERROR_NO_PROVIDERS
 from ..middleware import validate_session, SESSION_COOKIE
-from .helpers import json_response
+from .helpers import ai_error_message, json_response
 
 log = logging.getLogger("kvmind.handlers.websocket")
+
+
+# ── V6 unified GatewayError → WS payload dispatch ──────────────────────────
+
+_POLICY_MSG_TPLS = {
+    "schedule_not_allowed": {
+        "zh": "定时任务需要 Pro 订阅",
+        "ja": "スケジュールタスクにはProが必要です",
+        "en": "Scheduled tasks require Pro",
+    },
+    "subscription_expired": {
+        "zh": "订阅已过期，请续费",
+        "ja": "サブスクリプション期限切れ",
+        "en": "Subscription expired",
+    },
+    "budget_exceeded": {
+        "zh": "本轮操作预算已用尽",
+        "ja": "操作予算超過",
+        "en": "Operation budget exceeded",
+    },
+}
+
+_NETWORK_MSG_TPLS = {
+    "unreachable": {"zh": "MyClaw 服务暂时不可用", "ja": "MyClaw サービス一時利用不可", "en": "MyClaw service unavailable"},
+    "server_error": {"zh": "MyClaw 云端错误", "ja": "MyClaw クラウドエラー", "en": "MyClaw cloud error"},
+    "clock_skew": {"zh": "设备时钟异常，请检查 NTP", "ja": "デバイスの時計がずれています。NTP を確認してください", "en": "Device clock drift — check NTP"},
+}
+
+
+def _gateway_error_payload(exc: "GatewayError", run_id: str, lang: str) -> dict:
+    """Translate a :class:`GatewayError` into the WS payload dict.
+
+    The mapping is deliberately spelled out as a single ``match`` so a
+    reviewer can see every code at once and so adding a new error shape
+    means touching exactly one function. The returned dict is ready for
+    ``ws.send_json`` — no additional fields required.
+    """
+    match exc:
+        case AuthError():
+            # invalid_signature / unknown_device_uid / replay all surface the
+            # same CTA: prompt re-activation. The concrete reason is logged
+            # server-side (kdcms) and client-side (log line above) but the
+            # WS code is uniform — the user's action is identical.
+            msg = {
+                "zh": "设备未绑定，请重新激活",
+                "ja": "デバイス未連携です。再連携してください",
+                "en": "Device unbound — please re-activate",
+            }
+            return {
+                "type": "error", "run_id": run_id,
+                "code": "device_unbound",
+                "reason": exc.reason,
+                "message": msg.get(lang, msg["en"]),
+            }
+        case NetworkError():
+            msg_tpl = _NETWORK_MSG_TPLS.get(exc.reason, _NETWORK_MSG_TPLS["unreachable"])
+            return {
+                "type": "error", "run_id": run_id,
+                "code": "myclaw_offline",
+                "reason": exc.reason,
+                "message": msg_tpl.get(lang, msg_tpl["en"]),
+            }
+        case QuotaError():
+            msg_tpl = {
+                "zh": f"MyClaw 使用已达上限（{exc.usage_count}/{exc.usage_limit}），{exc.retry_after}秒后重试",
+                "ja": f"MyClaw 使用制限に達しました（{exc.usage_count}/{exc.usage_limit}）、{exc.retry_after}秒後にリトライ",
+                "en": f"MyClaw rate limit reached ({exc.usage_count}/{exc.usage_limit}), retry in {exc.retry_after}s",
+            }
+            return {
+                "type": "error", "run_id": run_id,
+                "code": "myclaw_rate_limit",
+                "message": msg_tpl.get(lang, msg_tpl["en"]),
+                "retry_after": exc.retry_after,
+            }
+        case PolicyError():
+            default = {
+                "zh": f"操作被拒绝: {exc.code}",
+                "ja": f"拒否されました: {exc.code}",
+                "en": f"Denied: {exc.code}",
+            }
+            msg_tpl = _POLICY_MSG_TPLS.get(exc.code, default)
+            return {
+                "type": "error", "run_id": run_id,
+                "code": f"myclaw_forbidden_{exc.code}",
+                "message": msg_tpl.get(lang, msg_tpl["en"]),
+            }
+        case _:
+            # Base GatewayError — unlikely (only concrete subclasses raise)
+            # but we fall back to the generic offline shape so the WS never
+            # ends a turn with an uncaught-error silent-drop.
+            return {
+                "type": "error", "run_id": run_id,
+                "code": "myclaw_offline",
+                "message": str(exc),
+            }
 
 
 def register(app: dict) -> None:
@@ -100,45 +196,23 @@ def register(app: dict) -> None:
                     elif ev_dict.get("event") == "task_done" and last_ai_text:
                         await chat_store.save_message(session_id, "assistant", last_ai_text)
                     await adapter.send_event(ev_dict)
-            except MyClawRateLimitError as e:
-                log.warning("[MyClaw Chat] Rate limited: %s", e)
+            except GatewayError as exc:
+                # V6: single dispatch over the unified error tree. Keeping the
+                # match in one place (vs the old 3 separate except clauses)
+                # means new WS codes can be added by extending one dict, not
+                # by adding another except branch that might drift.
+                log.warning("[MyClaw Chat] GatewayError: %r", exc)
                 if not ws.closed:
-                    err_msg = {
-                        "zh": f"MyClaw 使用已达上限（{e.usage_count}/{e.usage_limit}），{e.retry_after}秒后重试",
-                        "ja": f"MyClaw 使用制限に達しました（{e.usage_count}/{e.usage_limit}）、{e.retry_after}秒後にリトライ",
-                        "en": f"MyClaw rate limit reached ({e.usage_count}/{e.usage_limit}), retry in {e.retry_after}s",
-                    }
-                    await ws.send_json({"type": "error", "run_id": run_id, "message": err_msg.get(lang, err_msg["en"]),
-                                        "retry_after": e.retry_after})
-            except MyClawForbiddenError as e:
-                log.warning("[MyClaw Chat] Forbidden: %s", e.code)
-                if not ws.closed:
-                    _forbidden = {
-                        "schedule_not_allowed": {"zh": "定时任务需要 Pro 订阅", "ja": "スケジュールタスクにはProが必要です", "en": "Scheduled tasks require Pro"},
-                        "subscription_expired": {"zh": "订阅已过期，请续费", "ja": "サブスクリプション期限切れ", "en": "Subscription expired"},
-                        "budget_exceeded": {"zh": "本轮操作预算已用尽", "ja": "操作予算超過", "en": "Operation budget exceeded"},
-                    }
-                    default = {"zh": f"操作被拒绝: {e.code}", "ja": f"拒否されました: {e.code}", "en": f"Denied: {e.code}"}
-                    err_msg = _forbidden.get(e.code, default)
-                    await ws.send_json({"type": "error", "run_id": run_id, "message": err_msg.get(lang, err_msg["en"])})
-            except MyClawOfflineError:
-                log.warning("[MyClaw Chat] Cloud offline")
-                if not ws.closed:
-                    err_msg = {"zh": "MyClaw 服务暂时不可用", "ja": "MyClaw サービス一時利用不可", "en": "MyClaw service unavailable"}
-                    await ws.send_json({"type": "error", "run_id": run_id, "message": err_msg.get(lang, err_msg["en"])})
+                    await ws.send_json(_gateway_error_payload(exc, run_id, lang))
             except Exception as exc:
                 log.exception("[MyClaw Chat] Runner error: %s", exc)
                 if not ws.closed:
-                    providers = req.app["providers"]
-                    if not providers:
-                        err_msg = {"zh": "AI 未配置。请在 KVM设置 中设置 AI API Key。",
-                                   "ja": "AI が未設定です。KVM設定で AI API Key を設定してください。",
-                                   "en": "AI is not configured. Please set your AI API Key in KVM Settings."}
-                    else:
-                        err_msg = {"zh": "AI 请求失败，请稍后重试。",
-                                   "ja": "AI リクエストに失敗しました。再試行してください。",
-                                   "en": "AI request failed. Please try again later."}
-                    await ws.send_json({"type": "error", "run_id": run_id, "message": err_msg.get(lang, err_msg["en"])})
+                    code = ERROR_NO_PROVIDERS if not req.app["providers"] else ERROR_FAILED
+                    await ws.send_json({
+                        "type": "error", "run_id": run_id,
+                        "code": code,
+                        "message": ai_error_message(code, lang),
+                    })
             finally:
                 # P2-NEW: Only clear the slot if *we* are still the active runner.
                 # After abort-then-replace, a new runner may already be assigned; clearing
@@ -179,17 +253,6 @@ def register(app: dict) -> None:
                             await ws.send_json({"type": "abort_ack", "run_id": abort_run_id})
                         continue
 
-                    # Handle confirmation (can arrive WHILE runner is waiting)
-                    if data.get("type") == "confirm":
-                        if current_runner:
-                            confirm_run_id = data.get("run_id")
-                            if confirm_run_id and confirm_run_id != current_run_id:
-                                log.warning("[MyClaw Chat] Stale confirm ignored: got run_id=%s, current=%s",
-                                            confirm_run_id, current_run_id)
-                            else:
-                                current_runner.resolve_confirm(bool(data.get("approved", False)))
-                        continue
-
                     # Abort-then-replace: if runner is active, abort it and start new one.
                     # P2-NEW: Await cancellation to completion so the old task's finally block
                     # runs *before* we install the new runner — otherwise the old finally
@@ -227,15 +290,44 @@ def register(app: dict) -> None:
                     # Use client-provided run_id; fall back to server-generated if absent
                     current_run_id = data.get("run_id") or uuid.uuid4().hex
 
-                    # Pre-check: downgrade auto→suggest if model lacks tool support
-                    if mode == "auto" and not req.app["cfg"].ai.supports_tools:
-                        mode = "suggest"
-                        _gate_msgs = {
-                            "zh": "当前模型不支持工具调用，已自动切换到建议模式。",
-                            "ja": "現在のモデルはツール呼び出しに対応していないため、提案モードに切り替えました。",
-                            "en": "Current model does not support tool calling — switched to suggest mode.",
-                        }
-                        await ws.send_json({"type": "ai_text", "run_id": current_run_id, "text": _gate_msgs.get(lang, _gate_msgs["en"])})
+                    # Pre-check: downgrade auto→suggest. Two distinct gates with
+                    # entitlement taking priority over local model capability —
+                    # an unsubscribed device wouldn't be able to auto even with
+                    # a perfect tool-capable model (no MyClaw signing seat), so
+                    # the toast must point at the real blocker (subscription),
+                    # not mislead the user into shopping for a different model.
+                    if mode == "auto":
+                        _ent = req.app["cfg"].subscription.entitlement_state
+                        if _ent != "paid":
+                            mode = "suggest"
+                            _gate_msgs = {
+                                "zh": "自动模式需要 Standard 或 Pro 订阅。当前设备未订阅，已切换到建议模式。请前往 kvmind.com 升级。",
+                                "ja": "自動モードには Standard または Pro プランが必要です。本デバイスは未契約のため提案モードに切り替えました。kvmind.com からアップグレードしてください。",
+                                "en": "Auto mode requires a Standard or Pro subscription. This device is not subscribed — switched to suggest mode. Upgrade at kvmind.com.",
+                            }
+                            log.info("[MyClaw Chat] auto→suggest gate: entitlement=%s lang=%s", _ent, lang)
+                            await ws.send_json({
+                                "type": "notice",
+                                "run_id": current_run_id,
+                                "code": "auto_downgraded_no_subscription",
+                                "severity": "warn",
+                                "message": _gate_msgs.get(lang, _gate_msgs["en"]),
+                            })
+                        elif not req.app["cfg"].ai.supports_tools:
+                            mode = "suggest"
+                            _gate_msgs = {
+                                "zh": "当前 AI 模型不支持工具调用，已自动切换到建议模式。请在 MyClaw 设置中选择支持 Function Calling 的模型。",
+                                "ja": "現在の AI モデルはツール呼び出しに対応していないため、提案モードに切り替えました。MyClaw 設定で Function Calling 対応モデルを選択してください。",
+                                "en": "Current AI model does not support tool calling — switched to suggest mode. Pick a tool-capable model in MyClaw Settings.",
+                            }
+                            log.info("[MyClaw Chat] auto→suggest gate: supports_tools=false lang=%s", lang)
+                            await ws.send_json({
+                                "type": "notice",
+                                "run_id": current_run_id,
+                                "code": "auto_downgraded_no_tool_support",
+                                "severity": "warn",
+                                "message": _gate_msgs.get(lang, _gate_msgs["en"]),
+                            })
 
                     log.info("[MyClaw Chat] mode=%s instruction=%s", mode, instruction[:60])
 
@@ -256,12 +348,11 @@ def register(app: dict) -> None:
 
                     # Pre-check: no AI providers configured
                     if not req.app["providers"]:
-                        _no_ai = {
-                            "zh": "AI 未配置。请在设置页面配置 AI API Key 或绑定订阅。",
-                            "ja": "AI が未設定です。設定ページで AI API Key を設定するか、サブスクリプションを紐づけてください。",
-                            "en": "AI is not configured. Please set your AI API Key in Settings, or bind a subscription.",
-                        }
-                        await ws.send_json({"type": "error", "run_id": current_run_id, "message": _no_ai.get(lang, _no_ai["en"])})
+                        await ws.send_json({
+                            "type": "error", "run_id": current_run_id,
+                            "code": ERROR_NO_PROVIDERS,
+                            "message": ai_error_message(ERROR_NO_PROVIDERS, lang),
+                        })
                         continue
 
                     # Internal tools (non-KVM, handled by Runner directly)
