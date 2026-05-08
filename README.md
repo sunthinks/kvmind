@@ -6,7 +6,7 @@
 
 # KVMind Community Edition
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-PiKVM%20%7C%20BliKVM-lightgrey)](https://pikvm.org/)
 
@@ -15,7 +15,7 @@ drive a remote server through keyboard, mouse and screen analysis — all from a
 modern web console.
 
 > This repository is the **Community Edition** of KVMind — fully local,
-> DIY-friendly, MIT-licensed. The managed **Cloud Edition** (auto-execute,
+> DIY-friendly, Apache 2.0-licensed. The managed **Cloud Edition** (auto-execute,
 > remote tunnel, multi-device fleet, team collaboration) lives at
 > [kvmind.com](https://kvmind.com).
 >
@@ -47,7 +47,7 @@ execution authority and fleet management live.
 | Manual tool execution (with confirmation) | ✅ | ✅ |
 | Local chat history & memory | ✅ | ✅ |
 | Self-host, air-gap capable | ✅ | — |
-| MIT source — fork & modify freely | ✅ | — |
+| Apache 2.0 source — fork & modify freely | ✅ | — |
 | **Auto-execute (no manual confirmation)** | — | ✅ |
 | **Signed & verified tool execution (MyClaw Cloud)** | — | ✅ |
 | **Remote access via managed tunnel** | — | ✅ |
@@ -57,7 +57,7 @@ execution authority and fleet management live.
 | **Managed OTA updates** | — | ✅ |
 
 **Community Edition** is for tinkerers and self-hosters — modify freely, run
-fully offline, every byte of data stays on your hardware. MIT-licensed.
+fully offline, every byte of data stays on your hardware. Apache 2.0-licensed.
 
 **Cloud Edition** is for production — managed signing, fleet operations,
 automation and team workflows. See [kvmind.com](https://kvmind.com).
@@ -232,8 +232,8 @@ Code style, module boundaries, and contribution conventions are documented in
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for the full text. Third-party dependency
-notices: see [NOTICES.md](NOTICES.md).
+Apache License 2.0 — see [LICENSE](LICENSE) for the full text. Third-party
+dependency notices: see [NOTICES.md](NOTICES.md).
 
 ---
 

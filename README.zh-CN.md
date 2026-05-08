@@ -9,7 +9,7 @@
 KVMind 为你的 PiKVM 设备添加一个自然语言 AI 助手，通过键盘、鼠标与屏幕分析
 远程操控服务器——全部在一个现代化 Web 控制台中完成。
 
-> 本仓库是 KVMind 的**社区版** —— 完全本地、适合 DIY、基于 MIT 许可证。
+> 本仓库是 KVMind 的**社区版** —— 完全本地、适合 DIY、基于 Apache 2.0 许可证。
 > 如需托管式**云端版**（自动执行、远程 Tunnel、多设备舰队、团队协作），
 > 请访问 [kvmind.com](https://kvmind.com)。
 >
@@ -38,7 +38,7 @@ KVMind 为你的 PiKVM 设备添加一个自然语言 AI 助手，通过键盘�
 | 手动工具执行（需确认） | ✅ | ✅ |
 | 本地对话历史与记忆 | ✅ | ✅ |
 | 可自托管、离线友好 | ✅ | — |
-| MIT 源码可 fork 与修改 | ✅ | — |
+| Apache 2.0 源码可 fork 与修改 | ✅ | — |
 | **自动执行（无需手动确认）** | — | ✅ |
 | **签名与验签工具执行（MyClaw Cloud）** | — | ✅ |
 | **经托管 Tunnel 远程访问** | — | ✅ |
@@ -48,7 +48,7 @@ KVMind 为你的 PiKVM 设备添加一个自然语言 AI 助手，通过键盘�
 | **托管 OTA 更新** | — | ✅ |
 
 **社区版**适合 DIY 玩家和自托管用户 —— 随意修改、完全离线运行，每一字节数据都
-留在自己硬件上。基于 MIT 许可证。
+留在自己硬件上。基于 Apache 2.0 许可证。
 
 **云端版**适合生产环境 —— 托管签名、舰队运维、自动化与团队协作，详见
 [kvmind.com](https://kvmind.com)。
@@ -218,7 +218,7 @@ cd app && python -m pytest tests/ -v
 
 ## 许可证
 
-MIT License——详见 [LICENSE](LICENSE)。第三方依赖归属与通告：见 [NOTICES.md](NOTICES.md)。
+Apache License 2.0——详见 [LICENSE](LICENSE)。第三方依赖归属与通告：见 [NOTICES.md](NOTICES.md)。
 
 ---
 
