@@ -11,10 +11,11 @@ KVMind は PiKVM デバイスに自然言語 AI アシスタントを追加し�
 すべてモダンな Web コンソールから完結します。
 
 > このリポジトリは **KVMind コミュニティ版** です — 完全ローカル、DIY フレンドリー、
-> Apache 2.0。マネージド**クラウド版**（自動実行、リモート Tunnel、マルチデバイス管理、
+> MIT ライセンス。マネージド**クラウド版**（自動実行、リモート Tunnel、マルチデバイス管理、
 > チーム協作）は [kvmind.com](https://kvmind.com) をご覧ください。
 >
 > プロジェクト状態：**beta**。完全にデバイス上で動作し、クラウドアカウントは不要です。
+> 現在のバージョン：**v0.5.61** (Hanami)。
 
 ## 主な特徴
 
@@ -41,7 +42,7 @@ KVMind は PiKVM デバイスに自然言語 AI アシスタントを追加し�
 | 手動ツール実行（確認付き） | ✅ | ✅ |
 | ローカルチャット履歴とメモリ | ✅ | ✅ |
 | セルフホスト、エアギャップ対応 | ✅ | — |
-| Apache 2.0 ソースの fork・改変 | ✅ | — |
+| MIT ライセンスでソースを fork・改変 | ✅ | — |
 | **自動実行（手動確認なし）** | — | ✅ |
 | **署名・検証付きツール実行（MyClaw Cloud）** | — | ✅ |
 | **マネージド Tunnel によるリモートアクセス** | — | ✅ |
@@ -51,7 +52,7 @@ KVMind は PiKVM デバイスに自然言語 AI アシスタントを追加し�
 | **マネージド OTA アップデート** | — | ✅ |
 
 **コミュニティ版** はいじりたい方・セルフホスト派向け — 自由に改変、完全オフライン
-動作、全データを自分のハードウェアに保持。
+動作、全データを自分のハードウェアに保持。MIT ライセンス。
 
 **クラウド版** は本番運用向け — マネージド署名、フリート運用、自動化、チーム
 ワークフローを [kvmind.com](https://kvmind.com) で提供。
@@ -96,20 +97,25 @@ KVMind は PiKVM デバイスに自然言語 AI アシスタントを追加し�
 curl -sSL https://kvmind.com/install.sh | bash
 
 # 特定バージョンをインストール：
-curl -sSL https://kvmind.com/install.sh | bash -s kdkvm-v0.2.21-beta.zip
+curl -sSL https://kvmind.com/install.sh | bash -s kdkvm-v0.5.61.zip
 
 # 完全リセット（設定・メモリ・認証・クラウド連携を消去）後に最新版をインストール：
 curl -sSL https://kvmind.com/install.sh | bash -s reset
 
 # 完全リセット後に特定バージョンをインストール：
-curl -sSL https://kvmind.com/install.sh | bash -s reset kdkvm-v0.2.21-beta.zip
+curl -sSL https://kvmind.com/install.sh | bash -s reset kdkvm-v0.5.61.zip
 ```
 
-**方法 B — ダウンロードした zip からインストール：**
+**方法 B — ソース / Release zip からインストール（コミュニティ版推奨）：**
 
 ```bash
-# GitHub Releases から zip をダウンロードし、デバイス上で実行：
-unzip kdkvm-vX.Y.Z.zip && cd kdkvm-vX.Y.Z
+# ワークステーションからデバイスへプッシュ（ローカルに sshpass が必要）：
+git clone https://github.com/sunthinks/kvmind.git
+cd kvmind/kdkvm
+./install.sh <デバイス-IP> [デバイスパスワード]   # デフォルトパスワード root
+
+# または GitHub Releases から zip をダウンロードし、scp でデバイスに転送して実行：
+unzip kdkvm-v0.5.61.zip && cd kdkvm-v0.5.61
 sudo ./install.sh
 ```
 
@@ -118,9 +124,9 @@ sudo ./install.sh
 | パラメーター | 説明 |
 |-------------|------|
 | *(なし)* | 最新版をインストール / アップグレード |
-| `kdkvm-vX.Y.Z-beta.zip` | 特定バージョンをインストール |
-| `--reset` | インストール前に完全リセット：`/etc/kdkvm/` の設定、`/var/lib/kvmd/msd/.kdkvm/` のデータ（メモリ・認証・チャット履歴）を削除し、KVMind クラウドへのデバイス登録を解除します。再デプロイや障害対応時に使用。**破壊的操作：既存のクラウド連携が無効になります。再度 kvmind.com での連携が必要です。** |
-| `--reset kdkvm-vX.Y.Z-beta.zip` | リセット後に特定バージョンをインストール |
+| `<デバイス-IP> [パスワード]` | リモートモード：ワークステーションからソースをデバイスにプッシュして実行（`sshpass` 必須） |
+| `--reset` または `reset` | インストール前に完全リセット：`/etc/kdkvm/` の設定、`/var/lib/kvmd/msd/.kdkvm/` のデータ（メモリ・認証・チャット履歴）を削除し、KVMind クラウドへのデバイス登録を解除します。再デプロイや障害対応時に使用。**破壊的操作：既存のクラウド連携が無効になります。再度 kvmind.com での連携が必要です。** |
+| `--keep-root-pw` | OS root パスワード自動更新をスキップ（既に独自に非デフォルトパスワードを設定済みの場合のみ使用） |
 
 サービスが起動したら `https://<デバイス-IP>/kvm/` を開いてください。
 `/setup.html` のセットアップウィザードが初期パスワードと AI プロバイダー設定を
@@ -151,23 +157,25 @@ sudo ./install.sh
 |------|------|
 | `/opt/kvmind/kdkvm/lib/` | Python バックエンド（bridge） |
 | `/opt/kvmind/kdkvm/web/` | フロントエンドアセット |
-| `/opt/kvmind/kdkvm/bin/` | ヘルパースクリプト |
-| `/etc/kdkvm/` | `config.yaml`、`ai.env`、`device.uid`、プロンプト |
-| `/var/lib/kvmd/msd/.kdkvm/` | MSD パーティション上の永続ストア（`memory.db`、`auth.json`） |
+| `/opt/kvmind/kdkvm/bin/kvmind-updater.sh` | OTA 更新ヘルパースクリプト（bridge から呼び出し） |
+| `/etc/kdkvm/` | `config.yaml`、`ai.env`、`device.uid`、`*.pub` 信頼ルート、プロンプト |
+| `/var/lib/kvmd/msd/.kdkvm/` | MSD パーティション上の永続ストア（`state.db`、`memory.db`、`auth.json`、`chat.db`） |
 
 ## Systemd サービス
 
 | ユニット | 用途 |
 |------|------|
-| `kvmind.service` | KVMind bridge（Python、ポート 8765） |
-| `kvmind-register.timer` | オプションのクラウド登録（`backend_url` が空なら何もしない） |
-| `kvmind-heartbeat.timer` | オプションのクラウドハートビート（`backend_url` が空なら何もしない） |
-| `kvmind-updater.timer` | オプションの OTA 更新（`update_url` 未設定なら何もしない） |
-| `kvmind-tunnel.service` | オプションの Cloudflare Tunnel（各自の CF アカウントが必要） |
+| `kdkvm.service` | KVMind bridge（Python、ポート 8765）—— ハートビート・登録・OTA はプロセス内 asyncio タスクとして実行 |
+| `kdkvm-cloudflared.service` | オプションの Cloudflare Tunnel（クラウド版が tunnel token を配信した場合のみ起動。純ローカル利用では不要） |
+| `kdkvm-updater.service` / `kdkvm-updater.timer` | OTA 更新（クラウドハートビートが新バージョンを通知した場合のみ起動。ローカルモードではデフォルトで何もしません） |
 
-`/etc/kdkvm/config.yaml` の `backend_url` / `update_url` が空の場合、
-オプションのクラウドサービスはすべてデフォルトで無効化されます。
-これらがなくても KVMind は完全に動作します。
+> 旧来の `kvmind-register.timer` / `kvmind-heartbeat.timer` / `kvmind-tunnel.service`
+> 等のユニットは M3.4 / M5 §16 で廃止されました — これらのループはすべて
+> bridge プロセス内（`lib/heartbeat.py`、`lib/ota.py`）に統合され、
+> shell スクリプトや cron 風の間接層は残っていません。
+
+`/etc/kdkvm/config.yaml` の `bridge.backend_url` が空の場合、ハートビートと
+Tunnel はクラウドへの接続を行いません。クラウドに依存せず KVMind は完全に動作します。
 
 ## 設定
 
@@ -220,7 +228,7 @@ cd app && python -m pytest tests/ -v
 
 ## ライセンス
 
-Apache License 2.0 — 詳細は [LICENSE](LICENSE) を参照してください。
+MIT License — 詳細は [LICENSE](LICENSE) を参照してください。サードパーティ依存関係の表示： [NOTICES.md](NOTICES.md) を参照。
 
 ---
 

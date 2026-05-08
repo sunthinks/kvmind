@@ -9,11 +9,12 @@
 KVMind 为你的 PiKVM 设备添加一个自然语言 AI 助手，通过键盘、鼠标与屏幕分析
 远程操控服务器——全部在一个现代化 Web 控制台中完成。
 
-> 本仓库是 KVMind 的**社区版** —— 完全本地、适合 DIY、基于 Apache 2.0。
+> 本仓库是 KVMind 的**社区版** —— 完全本地、适合 DIY、基于 MIT 许可证。
 > 如需托管式**云端版**（自动执行、远程 Tunnel、多设备舰队、团队协作），
 > 请访问 [kvmind.com](https://kvmind.com)。
 >
 > 项目状态：**beta**。完全在设备本地运行，无需任何云端账号。
+> 当前版本：**v0.5.61** (Hanami)。
 
 ## 亮点
 
@@ -37,7 +38,7 @@ KVMind 为你的 PiKVM 设备添加一个自然语言 AI 助手，通过键盘�
 | 手动工具执行（需确认） | ✅ | ✅ |
 | 本地对话历史与记忆 | ✅ | ✅ |
 | 可自托管、离线友好 | ✅ | — |
-| Apache 2.0 源码可 fork 与修改 | ✅ | — |
+| MIT 源码可 fork 与修改 | ✅ | — |
 | **自动执行（无需手动确认）** | — | ✅ |
 | **签名与验签工具执行（MyClaw Cloud）** | — | ✅ |
 | **经托管 Tunnel 远程访问** | — | ✅ |
@@ -47,7 +48,7 @@ KVMind 为你的 PiKVM 设备添加一个自然语言 AI 助手，通过键盘�
 | **托管 OTA 更新** | — | ✅ |
 
 **社区版**适合 DIY 玩家和自托管用户 —— 随意修改、完全离线运行，每一字节数据都
-留在自己硬件上。
+留在自己硬件上。基于 MIT 许可证。
 
 **云端版**适合生产环境 —— 托管签名、舰队运维、自动化与团队协作，详见
 [kvmind.com](https://kvmind.com)。
@@ -92,20 +93,25 @@ KVMind 为你的 PiKVM 设备添加一个自然语言 AI 助手，通过键盘�
 curl -sSL https://kvmind.com/install.sh | bash
 
 # 安装指定版本：
-curl -sSL https://kvmind.com/install.sh | bash -s kdkvm-v0.2.21-beta.zip
+curl -sSL https://kvmind.com/install.sh | bash -s kdkvm-v0.5.61.zip
 
 # 完全重置（清除配置、记忆、认证、云端绑定）后安装最新版：
 curl -sSL https://kvmind.com/install.sh | bash -s reset
 
 # 完全重置后安装指定版本：
-curl -sSL https://kvmind.com/install.sh | bash -s reset kdkvm-v0.2.21-beta.zip
+curl -sSL https://kvmind.com/install.sh | bash -s reset kdkvm-v0.5.61.zip
 ```
 
-**方式 B — 从下载的 zip 包安装：**
+**方式 B — 从源码 / Release zip 安装（社区版推荐方式）：**
 
 ```bash
-# 从 GitHub Releases 下载 zip 包，然后在设备上执行：
-unzip kdkvm-vX.Y.Z.zip && cd kdkvm-vX.Y.Z
+# 从工作站推送到设备（需要本机装 sshpass）：
+git clone https://github.com/sunthinks/kvmind.git
+cd kvmind/kdkvm
+./install.sh <设备-IP> [设备密码]   # 默认密码 root
+
+# 或：从 GitHub Releases 下载 zip，scp 到设备后在设备上执行：
+unzip kdkvm-v0.5.61.zip && cd kdkvm-v0.5.61
 sudo ./install.sh
 ```
 
@@ -114,9 +120,9 @@ sudo ./install.sh
 | 参数 | 说明 |
 |------|------|
 | *(无)* | 安装 / 升级到最新版本 |
-| `kdkvm-vX.Y.Z-beta.zip` | 安装指定版本 |
-| `--reset` | 安装前完全重置：清除 `/etc/kdkvm/` 配置、`/var/lib/kvmd/msd/.kdkvm/` 数据（记忆、认证、聊天记录），并取消设备在 KVMind 云端的注册。适用于重新部署或排查卡死状态。**破坏性操作：已有云端绑定将失效，需重新在 kvmind.com 绑定。** |
-| `--reset kdkvm-vX.Y.Z-beta.zip` | 重置后安装指定版本 |
+| `<设备-IP> [密码]` | 远程模式：从工作站推送源码到设备并执行（需要 `sshpass`） |
+| `--reset` 或 `reset` | 安装前完全重置：清除 `/etc/kdkvm/` 配置、`/var/lib/kvmd/msd/.kdkvm/` 数据（记忆、认证、聊天记录），并取消设备在 KVMind 云端的注册。适用于重新部署或排查卡死状态。**破坏性操作：已有云端绑定将失效，需重新在 kvmind.com 绑定。** |
+| `--keep-root-pw` | 跳过 OS root 密码轮换（仅当已自行预设非默认 root 密码时使用） |
 
 服务启动后打开 `https://<设备-IP>/kvm/`——`/setup.html` 的设置向导会引导你
 完成初始密码和 AI 提供商配置。
@@ -143,22 +149,24 @@ sudo ./install.sh
 |------|------|
 | `/opt/kvmind/kdkvm/lib/` | Python 后端（bridge） |
 | `/opt/kvmind/kdkvm/web/` | 前端资源 |
-| `/opt/kvmind/kdkvm/bin/` | 辅助脚本 |
-| `/etc/kdkvm/` | `config.yaml`、`ai.env`、`device.uid`、提示词 |
-| `/var/lib/kvmd/msd/.kdkvm/` | MSD 分区上的持久化存储（`memory.db`、`auth.json`） |
+| `/opt/kvmind/kdkvm/bin/kvmind-updater.sh` | OTA 升级辅助脚本（由 bridge 调用） |
+| `/etc/kdkvm/` | `config.yaml`、`ai.env`、`device.uid`、`*.pub` 信任根、提示词 |
+| `/var/lib/kvmd/msd/.kdkvm/` | MSD 分区上的持久化存储（`state.db`、`memory.db`、`auth.json`、`chat.db`） |
 
 ## Systemd 服务
 
 | 单元 | 用途 |
 |------|------|
-| `kvmind.service` | KVMind bridge（Python，端口 8765） |
-| `kvmind-register.timer` | 可选云端注册（`backend_url` 为空时不执行任何操作） |
-| `kvmind-heartbeat.timer` | 可选云端心跳（`backend_url` 为空时不执行任何操作） |
-| `kvmind-updater.timer` | 可选 OTA 更新（未配置 `update_url` 时不执行任何操作） |
-| `kvmind-tunnel.service` | 可选 Cloudflare Tunnel（需要你自己的 CF 账号） |
+| `kdkvm.service` | KVMind bridge（Python，端口 8765）—— 心跳、注册、OTA 现作为进程内 asyncio 任务运行 |
+| `kdkvm-cloudflared.service` | 可选 Cloudflare Tunnel（仅在云端版下发 tunnel token 后才启动；纯本地用户无需关心） |
+| `kdkvm-updater.service` / `kdkvm-updater.timer` | OTA 升级（仅当云端心跳下发新版本时触发；本地模式默认空跑） |
 
-当 `/etc/kdkvm/config.yaml` 中的 `backend_url` / `update_url` 为空时，所有
-可选云端服务默认均处于禁用状态。不依赖这些服务 KVMind 也能完整运行。
+> 旧的 `kvmind-register.timer` / `kvmind-heartbeat.timer` / `kvmind-tunnel.service` 等
+> 单元已在 M3.4 / M5 §16 中移除——所有循环任务已收敛进 bridge 进程
+> （`lib/heartbeat.py`、`lib/ota.py`），不再依赖 shell 脚本或 cron 间接层。
+
+当 `/etc/kdkvm/config.yaml` 中的 `bridge.backend_url` 为空时，心跳与 Tunnel
+均不主动连接外网。不依赖云端 KVMind 也能完整运行。
 
 ## 配置
 
@@ -210,7 +218,7 @@ cd app && python -m pytest tests/ -v
 
 ## 许可证
 
-Apache License 2.0——详见 [LICENSE](LICENSE)。
+MIT License——详见 [LICENSE](LICENSE)。第三方依赖归属与通告：见 [NOTICES.md](NOTICES.md)。
 
 ---
 
