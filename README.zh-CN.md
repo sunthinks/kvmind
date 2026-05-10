@@ -14,7 +14,7 @@ KVMind 为你的 PiKVM 设备添加一个自然语言 AI 助手，通过键盘�
 > 请访问 [kvmind.com](https://kvmind.com)。
 >
 > 项目状态：**beta**。完全在设备本地运行，无需任何云端账号。
-> 当前版本：**v0.5.61** (Hanami)。
+> 当前版本：**v0.5.71** (Hanami)。
 
 ## 亮点
 
@@ -93,13 +93,13 @@ KVMind 为你的 PiKVM 设备添加一个自然语言 AI 助手，通过键盘�
 curl -sSL https://kvmind.com/install.sh | bash
 
 # 安装指定版本：
-curl -sSL https://kvmind.com/install.sh | bash -s kdkvm-v0.5.61.zip
+curl -sSL https://kvmind.com/install.sh | bash -s kdkvm-v0.5.71.zip
 
 # 完全重置（清除配置、记忆、认证、云端绑定）后安装最新版：
 curl -sSL https://kvmind.com/install.sh | bash -s reset
 
 # 完全重置后安装指定版本：
-curl -sSL https://kvmind.com/install.sh | bash -s reset kdkvm-v0.5.61.zip
+curl -sSL https://kvmind.com/install.sh | bash -s reset kdkvm-v0.5.71.zip
 ```
 
 **方式 B — 从源码 / Release zip 安装（社区版推荐方式）：**
@@ -111,7 +111,7 @@ cd kvmind/kdkvm
 ./install.sh <设备-IP> [设备密码]   # 默认密码 root
 
 # 或：从 GitHub Releases 下载 zip，scp 到设备后在设备上执行：
-unzip kdkvm-v0.5.61.zip && cd kdkvm-v0.5.61
+unzip kdkvm-v0.5.71.zip && cd kdkvm-v0.5.71
 sudo ./install.sh
 ```
 

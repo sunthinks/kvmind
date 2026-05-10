@@ -15,7 +15,7 @@ KVMind は PiKVM デバイスに自然言語 AI アシスタントを追加し�
 > チーム協作）は [kvmind.com](https://kvmind.com) をご覧ください。
 >
 > プロジェクト状態：**beta**。完全にデバイス上で動作し、クラウドアカウントは不要です。
-> 現在のバージョン：**v0.5.61** (Hanami)。
+> 現在のバージョン：**v0.5.71** (Hanami)。
 
 ## 主な特徴
 
@@ -97,13 +97,13 @@ KVMind は PiKVM デバイスに自然言語 AI アシスタントを追加し�
 curl -sSL https://kvmind.com/install.sh | bash
 
 # 特定バージョンをインストール：
-curl -sSL https://kvmind.com/install.sh | bash -s kdkvm-v0.5.61.zip
+curl -sSL https://kvmind.com/install.sh | bash -s kdkvm-v0.5.71.zip
 
 # 完全リセット（設定・メモリ・認証・クラウド連携を消去）後に最新版をインストール：
 curl -sSL https://kvmind.com/install.sh | bash -s reset
 
 # 完全リセット後に特定バージョンをインストール：
-curl -sSL https://kvmind.com/install.sh | bash -s reset kdkvm-v0.5.61.zip
+curl -sSL https://kvmind.com/install.sh | bash -s reset kdkvm-v0.5.71.zip
 ```
 
 **方法 B — ソース / Release zip からインストール（コミュニティ版推奨）：**
@@ -115,7 +115,7 @@ cd kvmind/kdkvm
 ./install.sh <デバイス-IP> [デバイスパスワード]   # デフォルトパスワード root
 
 # または GitHub Releases から zip をダウンロードし、scp でデバイスに転送して実行：
-unzip kdkvm-v0.5.61.zip && cd kdkvm-v0.5.61
+unzip kdkvm-v0.5.71.zip && cd kdkvm-v0.5.71
 sudo ./install.sh
 ```
 
