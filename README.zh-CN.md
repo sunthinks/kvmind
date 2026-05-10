@@ -20,8 +20,9 @@ KVMind 为你的 PiKVM 设备添加一个自然语言 AI 助手，通过键盘�
 
 - **PiKVM 即插即用** — 与 `kvmd` 并行安装，支持 PiKVM V3/V4 以及兼容 PiKVM-OS
   的板卡（已测试 BliKVM v4，NanoKVM 计划中）。
-- **自带 AI 后端** — 支持 Gemini、Claude、ChatGPT、Ollama，以及任何兼容
-  OpenAI 接口的端点。
+- **自带 AI 后端** — 支持 Gemini、Claude、ChatGPT、DeepSeek、Ollama，以及任何兼容
+  OpenAI 接口的端点（vLLM、llama.cpp server、LM Studio、LiteLLM proxy、
+  Together、Groq、Fireworks、Moonshot、智谱等）。
 - **离线友好** — 所有配置、凭据与对话历史均保存在本地，无遥测、无强制云端。
 - **安全的工具执行** — 电源、系统命令等危险操作通过确认机制与动作等级策略加以限制。
 - **现代化控制台** — H.264 / MJPEG 视频、虚拟键盘、剪贴板、全屏、深浅色主题、
@@ -141,7 +142,8 @@ sudo ./install.sh
   - [Google AI Studio](https://aistudio.google.com/apikey)（Gemini）
   - [Anthropic](https://console.anthropic.com/settings/keys)（Claude）
   - [OpenAI](https://platform.openai.com/api-keys)（GPT-4o / 4.1 / o 系列）
-  - [Ollama](https://ollama.com) 或任何其他兼容 OpenAI 的端点
+  - [DeepSeek](https://platform.deepseek.com/api_keys)（deepseek-v4-flash / v4-pro）
+  - [Ollama](https://ollama.com) 或任何其他兼容 OpenAI 的端点（自定义 base_url + API Key）
 
 ## 设备上的目录布局
 

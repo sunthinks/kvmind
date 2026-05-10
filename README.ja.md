@@ -21,8 +21,9 @@ KVMind は PiKVM デバイスに自然言語 AI アシスタントを追加し�
 
 - **PiKVM にドロップイン** — `kvmd` と並行してインストール。PiKVM V3/V4
   および PiKVM-OS 互換ボード（BliKVM v4 検証済み、NanoKVM 対応予定）に対応。
-- **好きな AI を選べる** — Gemini、Claude、ChatGPT、Ollama、その他 OpenAI
-  互換エンドポイントで動作します。
+- **好きな AI を選べる** — Gemini、Claude、ChatGPT、DeepSeek、Ollama、
+  その他 OpenAI 互換エンドポイント（vLLM、llama.cpp server、LM Studio、
+  LiteLLM proxy、Together、Groq、Fireworks、Moonshot、Zhipu など）で動作します。
 - **エアギャップ環境に優しい** — すべての設定、認証情報、チャット履歴は
   ローカルに保存されます。テレメトリなし、クラウドバックエンド不要。
 - **安全なツール実行** — 電源操作やシステムコマンドなどの危険な操作は
@@ -149,7 +150,8 @@ sudo ./install.sh
   - [Google AI Studio](https://aistudio.google.com/apikey)（Gemini）
   - [Anthropic](https://console.anthropic.com/settings/keys)（Claude）
   - [OpenAI](https://platform.openai.com/api-keys)（GPT-4o / 4.1 / o シリーズ）
-  - [Ollama](https://ollama.com) またはその他の OpenAI 互換エンドポイント
+  - [DeepSeek](https://platform.deepseek.com/api_keys)（deepseek-v4-flash / v4-pro）
+  - [Ollama](https://ollama.com) または任意の OpenAI 互換エンドポイント（カスタム base_url + API Key）
 
 ## デバイス上のディレクトリ構成
 
