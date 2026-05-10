@@ -1,3 +1,9 @@
+<p align="right">
+  <b>English</b> ·
+  <a href="README.zh-CN.md">简体中文</a> ·
+  <a href="README.ja.md">日本語</a>
+</p>
+
 # KVMind — AI-Powered Remote Server Management
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
@@ -6,6 +12,8 @@
 
 KVMind adds an AI assistant (MyClaw) to PiKVM, enabling natural language control of remote servers via keyboard, mouse, and screen analysis.
 
+> Project status: **beta**. Current version: **v0.5.71** (Hanami).
+
 **License**: Apache License 2.0 — see [LICENSE](./LICENSE) for full text. Third-party dependency notices: see [NOTICES.md](./NOTICES.md).
 
 ## Architecture
@@ -13,49 +21,49 @@ KVMind adds an AI assistant (MyClaw) to PiKVM, enabling natural language control
 ```
 ┌─────────────────────────────────────────────┐
 │ Browser (KVMind Console + MyClaw Panel)     │
-│ ├── kvmind-core.js    (主逻辑・i18n・API)  │
-│ ├── kvmind-stream.js  (H.264/MJPEG 视频流)  │
-│ ├── kvmind-hid.js     (键鼠输入)            │
-│ ├── kvmind-session.js (PiKVM WS 会话)       │
-│ ├── myclaw-gateway.js (MyClaw WS 客户端)    │
-│ ├── myclaw-sidebar.js (侧栏 Chat/Tasks)     │
-│ └── kvmind-theme.js   (主题切换)            │
+│ ├── kvmind-core.js    (core logic / i18n / API) │
+│ ├── kvmind-stream.js  (H.264 / MJPEG video)     │
+│ ├── kvmind-hid.js     (keyboard / mouse input)  │
+│ ├── kvmind-session.js (PiKVM WS session)        │
+│ ├── myclaw-gateway.js (MyClaw WS client)        │
+│ ├── myclaw-sidebar.js (sidebar Chat / Tasks)    │
+│ └── kvmind-theme.js   (theme toggle)            │
 └──────────────┬──────────────────────────────┘
                │ wss://<host>/kdkvm/ws/*
 ┌──────────────▼──────────────────────────────┐
 │ kvmd-nginx (TLS termination, port 443)      │
-│ ├── /kvm/*           → KVMind 控制台 UI     │
-│ ├── /login/          → 登录页               │
-│ ├── /setup.html      → 初始化向导           │
+│ ├── /kvm/*           → KVMind console UI    │
+│ ├── /login/          → login page           │
+│ ├── /setup.html      → setup wizard         │
 │ ├── /kdkvm/api/*     → KVMind Bridge API    │
 │ ├── /kdkvm/ws/*      → KVMind Bridge WS     │
 │ ├── /api/*           → PiKVM kvmd API       │
-│ ├── /api/media/ws    → PiKVM H.264 流       │
-│ ├── /streamer/*      → PiKVM MJPEG 流       │
-│ └── /share/*         → PiKVM 静态资源       │
+│ ├── /api/media/ws    → PiKVM H.264 stream   │
+│ ├── /streamer/*      → PiKVM MJPEG stream   │
+│ └── /share/*         → PiKVM static assets  │
 └──────────────┬──────────────────────────────┘
                │
   ┌────────────▼──────────────────────────────┐
   │ KVMind Bridge (Python, port 8765)         │
-  │ ├── server.py        (HTTP/WS 服务)       │
-  │ ├── config.py        (配置 + KNOWN_PROVIDERS) │
-  │ ├── auth_manager.py  (设备认证)            │
-  │ ├── kvmind_client.py (AI 调用 + 阶段超时 + 记忆注入) │
-  │ ├── model_router.py  (顺序 fallback + 语义校验 + 兜底) │
-  │ ├── ai_provider.py   (OpenAI/Anthropic 适配) │
-  │ ├── ai_intents.py   (Fallback Prompt)     │
-  │ ├── memory_store.py  (长期记忆 SQLite)    │
-  │ ├── chat_store.py    (聊天持久化 SQLite)  │
-  │ ├── kvm/             (KVM 硬件抽象层)     │
-  │ └── innerclaw/       (InnerClaw v3 AI 执行引擎)     │
+  │ ├── server.py        (HTTP / WS server)              │
+  │ ├── config.py        (config + KNOWN_PROVIDERS)      │
+  │ ├── auth_manager.py  (device authentication)         │
+  │ ├── kvmind_client.py (AI calls + per-stage timeout + memory) │
+  │ ├── model_router.py  (sequential fallback + semantic validation) │
+  │ ├── ai_provider.py   (OpenAI / Anthropic adapters)   │
+  │ ├── ai_intents.py    (fallback prompts)              │
+  │ ├── memory_store.py  (long-term memory, SQLite)      │
+  │ ├── chat_store.py    (chat persistence, SQLite)      │
+  │ ├── kvm/             (KVM hardware abstraction)      │
+  │ └── innerclaw/       (InnerClaw v3 tool execution)   │
   └────────────┬──────────────────────────────┘
   ┌────────────▼────────┐
   │ PiKVM (kvmd)        │
-  │ ├── HID (keyboard/  │
-  │ │   mouse control)   │
-  │ ├── Media (WebRTC/   │
-  │ │   H.264/MJPEG)     │
-  │ └── ATX (power)      │
+  │ ├── HID (keyboard / │
+  │ │   mouse control)  │
+  │ ├── Media (WebRTC / │
+  │ │   H.264 / MJPEG)  │
+  │ └── ATX (power)     │
   └─────────────────────┘
 ```
 
@@ -114,24 +122,26 @@ curl -sSL https://kvmind.com/install.sh | bash -s reset kdkvm-v0.5.71.zip
 ## Subscription & Tunnel Lifecycle
 
 ```
-购买订阅（带 device_uid）
-  → Stripe webhook → 创建 Order + Subscription
-  → 绑定设备（device.customer_id + plan_id）
-  → 自动开通 Cloudflare Tunnel
-  → 心跳同步 → 设备启动 cloudflared
+Purchase subscription (with device_uid)
+  → Stripe webhook → create Order + Subscription
+  → bind device (device.customer_id + plan_id)
+  → auto-provision Cloudflare Tunnel
+  → heartbeat sync → device starts cloudflared
 
-取消订阅
-  → status: active → cancelling（服务继续到 endDate）
-  → 到期后定时任务：回收隧道 + status → expired
+Cancel subscription
+  → status: active → cancelling (service continues until endDate)
+  → after expiry, scheduled job: tear down tunnel + status → expired
 
-设备心跳（每60秒）
-  → POST /api/devices/heartbeat → 返回 planType + tunnelToken + features
-  → heartbeat 直连 bridge 8765（POST http://127.0.0.1:8765/api/subscription/sync）
-  → Nginx 封堵外部 /kdkvm/api/subscription/sync（返回 403）
-  → tunnelToken / features 变化时自动启停 cloudflared、OTA、Telegram、MyClaw 限额和定时任务
+Device heartbeat (every 60 s)
+  → POST /api/devices/heartbeat → returns planType + tunnelToken + features
+  → heartbeat reaches bridge 8765 directly
+    (POST http://127.0.0.1:8765/api/subscription/sync)
+  → Nginx blocks external /kdkvm/api/subscription/sync (returns 403)
+  → on tunnelToken / features change, auto-start/stop cloudflared, OTA,
+    Telegram, MyClaw rate limits and scheduled tasks
 ```
 
-**关键路径**：所有配置文件路径统一为 `/etc/kdkvm/`（不是 `/etc/kvmind/`）
+**Path convention**: all configuration files live under `/etc/kdkvm/` (not `/etc/kvmind/`).
 
 ## Post-Install
 
