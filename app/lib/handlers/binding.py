@@ -27,6 +27,7 @@ from ..binding import (
     save_last_result,
 )
 from ..config import Config
+from ..heartbeat import request_heartbeat_tick
 
 log = logging.getLogger(__name__)
 
@@ -78,6 +79,7 @@ def register(app) -> None:
                     "cooldownUntil": data.get("cooldown_until"),
                 },
             )
+            request_heartbeat_tick(app)
             return _json({"status": "ok", "data": data})
         except BindingError as e:
             log.info("binding.request failed: %s (http=%s)", e.code, e.http_status)
@@ -102,6 +104,8 @@ def register(app) -> None:
                 "binding.accepted" if accept else "binding.declined",
                 extra={"id": data.get("id")},
             )
+            if accept:
+                request_heartbeat_tick(app)
             return _json({"status": "ok", "data": data})
         except BindingError as e:
             log.info("binding.decide failed: %s (http=%s)", e.code, e.http_status)

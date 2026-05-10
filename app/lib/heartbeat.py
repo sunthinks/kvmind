@@ -48,6 +48,41 @@ from .uid import get_uid
 
 log = logging.getLogger("kvmind.heartbeat")
 
+WAKE_EVENT_KEY = "heartbeat_wake_event"
+
+
+def request_heartbeat_tick(app) -> bool:
+    """Wake the heartbeat loop so binding state does not wait for a stale sleep.
+
+    The binding flow arms a 1s fast-poll window, but the main heartbeat loop may
+    already be inside its normal 60s sleep. Handlers call this after successful
+    binding actions to make that fast-poll window take effect immediately.
+    """
+    try:
+        event = app.get(WAKE_EVENT_KEY) if app is not None else None
+        if event is None:
+            return False
+        event.set()
+        return True
+    except Exception as e:
+        log.warning("[Heartbeat] wake request failed: %s", e)
+        return False
+
+
+async def _sleep_or_wake(app, seconds: int | float) -> bool:
+    """Sleep until timeout or until request_heartbeat_tick() wakes the loop."""
+    delay = max(0, float(seconds))
+    event = app.get(WAKE_EVENT_KEY) if app is not None else None
+    if event is None:
+        await asyncio.sleep(delay)
+        return False
+    try:
+        await asyncio.wait_for(event.wait(), timeout=delay)
+        event.clear()
+        return True
+    except asyncio.TimeoutError:
+        return False
+
 
 # ── device metadata gathering ──────────────────────────────────────────────
 
@@ -440,7 +475,7 @@ async def _run(app, interval_seconds: int) -> None:
              interval_seconds, FAST_INTERVAL)
     # Jittered initial delay so multiple devices don't stampede on boot.
     try:
-        await asyncio.sleep(min(30, interval_seconds))
+        await _sleep_or_wake(app, min(30, interval_seconds))
         while True:
             try:
                 await _one_tick(app, cfg)
@@ -456,7 +491,7 @@ async def _run(app, interval_seconds: int) -> None:
                 next_sleep = FAST_INTERVAL if _binding.fast_poll_active() else interval_seconds
             except Exception:
                 next_sleep = interval_seconds
-            await asyncio.sleep(next_sleep)
+            await _sleep_or_wake(app, next_sleep)
     except asyncio.CancelledError:
         log.info("[Heartbeat] loop cancelled")
         raise
@@ -469,9 +504,16 @@ def start_heartbeat(app, *, interval_seconds: int = 60) -> None:
     — no fork/exec, no per-iteration subprocess overhead."""
 
     async def _on_startup(app) -> None:
+        app[WAKE_EVENT_KEY] = asyncio.Event()
         app["heartbeat_task"] = asyncio.create_task(_run(app, interval_seconds))
 
     async def _on_shutdown(app) -> None:
+        event = app.get(WAKE_EVENT_KEY)
+        if event is not None:
+            try:
+                event.set()
+            except Exception:
+                pass
         task = app.get("heartbeat_task")
         if task:
             task.cancel()

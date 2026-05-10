@@ -74,6 +74,17 @@ def extract_keys(block: str) -> list[str]:
     expecting_key = True  # after `{`, `,` or at start; False while inside a value
     while i < n:
         c = block[i]
+        if c == "/" and i + 1 < n and block[i + 1] == "/":
+            i += 2
+            while i < n and block[i] not in "\r\n":
+                i += 1
+            continue
+        if c == "/" and i + 1 < n and block[i + 1] == "*":
+            i += 2
+            while i + 1 < n and not (block[i] == "*" and block[i + 1] == "/"):
+                i += 1
+            i += 2
+            continue
         if c in ("'", '"'):
             quote = c
             i += 1

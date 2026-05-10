@@ -22,6 +22,88 @@ var wsConn=null,agentMode="suggest",panelOpen=true,logCount=0,currentSubscriptio
 //    命名空间名字叫 "kvm"；i18n 字典本身仍由 /kdkvm/kvmind-i18n.js 提供（KVMind
 //    自己的资源全部在 /kdkvm/ 下，不部署到 /kvm/ 路径）。──
 if(window.KVMindI18n&&window.KVMindI18n.init){try{window.KVMindI18n.init("kvm");}catch(e){}}
+
+// Module-owned keys merged into the 'kvm' namespace via registerDict — keeps
+// chat-overlay strings co-located with the code that uses them (chat sender
+// label, error banners, AI error fallbacks, transient status messages) while
+// flowing through the same KVMindI18n engine as the rest of the app.
+if(window.KVMindI18n && typeof window.KVMindI18n.registerDict === "function"){
+  window.KVMindI18n.registerDict("kvm", {
+    zh: {
+      chat_sender_user: "你",
+      chat_err_device_unbound_title: "设备未绑定或签名被拒，请重新激活。",
+      chat_err_device_unbound_cta: "前往激活",
+      chat_err_rate_limit_title: "本次额度已用完。",
+      chat_err_rate_limit_cta: "升级订阅",
+      chat_err_schedule_title: "定时任务需要 Pro 订阅。",
+      chat_err_schedule_cta: "升级 Pro",
+      chat_err_budget_title: "本轮操作预算已用尽，请稍后再试。",
+      chat_offline_unreachable_title: "MyClaw 服务连不上，请检查网络。",
+      chat_offline_unreachable_cta: "重试",
+      chat_offline_server_error_title: "MyClaw 服务器暂不可用，请稍后再试。",
+      chat_offline_clock_skew_title: "设备时钟异常（签名超出 5 分钟窗口），请在系统设置检查 NTP。",
+      ai_err_no_providers: "AI 未配置，请在设置中填入 API Key。",
+      ai_err_ai_timeout: "AI 超时，请稍后重试。",
+      ai_err_ai_connect: "无法连接 AI 服务。",
+      ai_err_ai_empty: "AI 返回空结果，请重试。",
+      ai_err_ai_no_tools: "当前模型不支持工具调用。",
+      ai_err_ai_failed: "AI 请求失败。",
+      ai_err_no_video: "无视频信号，请检查 HDMI。",
+      msg_ai_disconnected: "⚠ AI 未连接，请刷新页面",
+      msg_analysing: "分析中…",
+      msg_screenshot_failed: "⚠ 截图获取失败",
+    },
+    ja: {
+      chat_sender_user: "あなた",
+      chat_err_device_unbound_title: "デバイス未連携または署名が拒否されました。再連携してください。",
+      chat_err_device_unbound_cta: "アクティベーションへ",
+      chat_err_rate_limit_title: "今回の使用枠を使い切りました。",
+      chat_err_rate_limit_cta: "プランをアップグレード",
+      chat_err_schedule_title: "スケジュールタスクには Pro プランが必要です。",
+      chat_err_schedule_cta: "Pro にアップグレード",
+      chat_err_budget_title: "本ターンの操作予算を使い切りました。しばらくしてから再度お試しください。",
+      chat_offline_unreachable_title: "MyClaw に接続できません。ネットワークをご確認ください。",
+      chat_offline_unreachable_cta: "再試行",
+      chat_offline_server_error_title: "MyClaw サーバーが一時的に利用できません。後ほど再試行してください。",
+      chat_offline_clock_skew_title: "デバイスの時刻が 5 分以上ずれています。NTP をご確認ください。",
+      ai_err_no_providers: "AI が未設定です。",
+      ai_err_ai_timeout: "AI タイムアウトしました。",
+      ai_err_ai_connect: "AI に接続できません。",
+      ai_err_ai_empty: "AI が空の応答を返しました。",
+      ai_err_ai_no_tools: "現在のモデルはツール呼び出し未対応です。",
+      ai_err_ai_failed: "AI リクエスト失敗。",
+      ai_err_no_video: "ビデオ信号がありません。",
+      msg_ai_disconnected: "⚠ AI 未接続です。ページを更新してください",
+      msg_analysing: "分析中…",
+      msg_screenshot_failed: "⚠ スクリーンショットの取得に失敗しました",
+    },
+    en: {
+      chat_sender_user: "You",
+      chat_err_device_unbound_title: "Device unbound or signature rejected — please re-activate.",
+      chat_err_device_unbound_cta: "Activate",
+      chat_err_rate_limit_title: "Usage quota reached.",
+      chat_err_rate_limit_cta: "Upgrade plan",
+      chat_err_schedule_title: "Scheduled tasks require Pro.",
+      chat_err_schedule_cta: "Upgrade to Pro",
+      chat_err_budget_title: "Operation budget exceeded — retry later.",
+      chat_offline_unreachable_title: "MyClaw unreachable — check the network.",
+      chat_offline_unreachable_cta: "Retry",
+      chat_offline_server_error_title: "MyClaw server unavailable — retry later.",
+      chat_offline_clock_skew_title: "Device clock drift exceeds 5 min — please check NTP.",
+      ai_err_no_providers: "AI is not configured.",
+      ai_err_ai_timeout: "AI request timed out.",
+      ai_err_ai_connect: "Cannot reach AI service.",
+      ai_err_ai_empty: "AI returned an empty response.",
+      ai_err_ai_no_tools: "Current model does not support tool calls.",
+      ai_err_ai_failed: "AI request failed.",
+      ai_err_no_video: "No video signal.",
+      msg_ai_disconnected: "⚠ AI not connected — please refresh the page",
+      msg_analysing: "Analysing…",
+      msg_screenshot_failed: "⚠ Screenshot capture failed",
+    },
+  });
+}
+
 function kvmindGetLang(){return (window.KVMindI18n && window.KVMindI18n.getLang()) || "zh";}
 function kvmindT(k){return (window.KVMindI18n && window.KVMindI18n.t(k, null, "kvm")) || k;}
 function kvmindApplyLang(){
@@ -344,7 +426,7 @@ else if(ev==="action_error"){kvmindAppendMsg("action","\u2717 "+(msg.action||"")
 function kvmindAppendMsg(role,text,status,extraClass){
 var c=document.getElementById("kvmind-chat-messages");if(!c)return;
 var row=document.createElement("div");row.className="kvmind-msg-row "+role;
-if(role==="user"||role==="ai"){var s=document.createElement("div");s.className="kvmind-msg-sender";s.textContent=role==="user"?"\u4f60":"MyClaw";row.appendChild(s);}
+if(role==="user"||role==="ai"){var s=document.createElement("div");s.className="kvmind-msg-sender";if(role==="user"){s.setAttribute("data-i18n","chat_sender_user");s.textContent=kvmindT("chat_sender_user");}else{s.textContent="MyClaw";}row.appendChild(s);}
 var bubble=document.createElement("div");bubble.className="kvmind-chat-msg "+role;
 if(extraClass)bubble.classList.add(extraClass);if(status)bubble.classList.add(status);
 bubble.textContent=text;row.appendChild(bubble);c.appendChild(row);c.scrollTop=c.scrollHeight;
@@ -372,33 +454,34 @@ kvmindAddLog("warn","notice: "+((notice&&notice.code)||"generic"));
 //   - "href:<url>"   — anchor click to URL (new tab allowed)
 //   - "retry"        — resend window._kvLastChatText via the gateway
 //   - null           — no button, text-only bubble (used for advisory codes)
+// Code → i18n key + action. The strings themselves live in the 'kvm'
+// namespace registered via registerDict at the top of this file. Keeping
+// the routing table here lets the dispatch logic stay code-driven (one
+// entry per known error code) while string lookups flow through the
+// shared KVMindI18n engine — language switches automatically picked up.
 var _KV_CHAT_ERROR_TEXTS = {
   // HTTP 401 family → re-activate CTA. invalid_signature / unknown_device_uid /
   // replay / unsupported_sig_version all share the same remediation.
   device_unbound: {
-    zh: {title:"设备未绑定或签名被拒，请重新激活。", cta:{label:"前往激活", action:"href:/activate.html"}},
-    ja: {title:"デバイス未連携または署名が拒否されました。再連携してください。", cta:{label:"アクティベーションへ", action:"href:/activate.html"}},
-    en: {title:"Device unbound or signature rejected — please re-activate.", cta:{label:"Activate", action:"href:/activate.html"}}
+    title_key: "chat_err_device_unbound_title",
+    cta: {label_key: "chat_err_device_unbound_cta", action: "href:/activate.html"},
   },
   // HTTP 429 → Upgrade CTA. retry_after seconds is appended to the title.
   myclaw_rate_limit: {
-    zh: {title:"本次额度已用完。", cta:{label:"升级订阅", action:"href:https://kvmind.com/pricing"}},
-    ja: {title:"今回の使用枠を使い切りました。", cta:{label:"プランをアップグレード", action:"href:https://kvmind.com/pricing"}},
-    en: {title:"Usage quota reached.", cta:{label:"Upgrade plan", action:"href:https://kvmind.com/pricing"}}
+    title_key: "chat_err_rate_limit_title",
+    cta: {label_key: "chat_err_rate_limit_cta", action: "href:https://kvmind.com/pricing"},
   },
   // HTTP 403 schedule_not_allowed → Pro upgrade. PolicyError.code is carried
   // in the WS code suffix so this dispatch needs one entry per known slug.
   myclaw_forbidden_schedule_not_allowed: {
-    zh: {title:"定时任务需要 Pro 订阅。", cta:{label:"升级 Pro", action:"href:https://kvmind.com/pricing"}},
-    ja: {title:"スケジュールタスクには Pro プランが必要です。", cta:{label:"Pro にアップグレード", action:"href:https://kvmind.com/pricing"}},
-    en: {title:"Scheduled tasks require Pro.", cta:{label:"Upgrade to Pro", action:"href:https://kvmind.com/pricing"}}
+    title_key: "chat_err_schedule_title",
+    cta: {label_key: "chat_err_schedule_cta", action: "href:https://kvmind.com/pricing"},
   },
   // Budget is a transient ceiling (per-turn), not a plan limit — no upsell.
   myclaw_forbidden_budget_exceeded: {
-    zh: {title:"本轮操作预算已用尽，请稍后再试。", cta:null},
-    ja: {title:"本ターンの操作予算を使い切りました。しばらくしてから再度お試しください。", cta:null},
-    en: {title:"Operation budget exceeded — retry later.", cta:null}
-  }
+    title_key: "chat_err_budget_title",
+    cta: null,
+  },
   // myclaw_offline is handled specially below because the CTA depends on
   // err.reason (unreachable/server_error/clock_skew), not just the code.
 };
@@ -407,39 +490,35 @@ var _KV_CHAT_ERROR_TEXTS = {
 // dispatch has one place to live.
 var _KV_CHAT_OFFLINE_TEXTS = {
   unreachable: {
-    zh: {title:"MyClaw 服务连不上，请检查网络。", cta:{label:"重试", action:"retry"}},
-    ja: {title:"MyClaw に接続できません。ネットワークをご確認ください。", cta:{label:"再試行", action:"retry"}},
-    en: {title:"MyClaw unreachable — check the network.", cta:{label:"Retry", action:"retry"}}
+    title_key: "chat_offline_unreachable_title",
+    cta: {label_key: "chat_offline_unreachable_cta", action: "retry"},
   },
   server_error: {
-    zh: {title:"MyClaw 服务器暂不可用，请稍后再试。", cta:null},
-    ja: {title:"MyClaw サーバーが一時的に利用できません。後ほど再試行してください。", cta:null},
-    en: {title:"MyClaw server unavailable — retry later.", cta:null}
+    title_key: "chat_offline_server_error_title",
+    cta: null,
   },
   clock_skew: {
-    zh: {title:"设备时钟异常（签名超出 5 分钟窗口），请在系统设置检查 NTP。", cta:null},
-    ja: {title:"デバイスの時刻が 5 分以上ずれています。NTP をご確認ください。", cta:null},
-    en: {title:"Device clock drift exceeds 5 min — please check NTP.", cta:null}
-  }
+    title_key: "chat_offline_clock_skew_title",
+    cta: null,
+  },
 };
-
-function _kvPickLang(table){
-  var l = kvmindGetLang();
-  return table[l] || table.en;
-}
 
 // Build and return the {title, cta} bundle for a given err payload, or null
 // if we don't know the code. Callers decide how to render / fall back.
 function _kvResolveChatError(err){
   if(!err||typeof err!=="object")return null;
+  var entry;
   if(err.code==="myclaw_offline"){
     var reason = err.reason || "unreachable";
-    var tbl = _KV_CHAT_OFFLINE_TEXTS[reason] || _KV_CHAT_OFFLINE_TEXTS.unreachable;
-    return _kvPickLang(tbl);
+    entry = _KV_CHAT_OFFLINE_TEXTS[reason] || _KV_CHAT_OFFLINE_TEXTS.unreachable;
+  } else {
+    entry = _KV_CHAT_ERROR_TEXTS[err.code];
   }
-  var direct = _KV_CHAT_ERROR_TEXTS[err.code];
-  if(direct)return _kvPickLang(direct);
-  return null;
+  if(!entry) return null;
+  return {
+    title: kvmindT(entry.title_key),
+    cta: entry.cta ? {label: kvmindT(entry.cta.label_key), action: entry.cta.action} : null,
+  };
 }
 
 function kvmindAppendChatError(err){
@@ -573,7 +652,7 @@ if(window._kvGw&&window._kvGw.connected){
 window._kvGw.sendChat(text,{mode:agentMode,lang:kvmindGetLang()});
 }else{
 var ab3=document.getElementById("kvmind-ai-bar");if(ab3)ab3.classList.remove("show");
-kvmindAppendMsg("system","\u26a0 AI \u672a\u8fde\u63a5\uff0c\u8bf7\u5237\u65b0\u9875\u9762");
+kvmindAppendMsg("system",kvmindT("msg_ai_disconnected"));
 }
 }
 
@@ -583,11 +662,11 @@ function kvmindSetBtnLoading(id,on){var b=document.getElementById(id);if(!b)retu
 // ── AI error fallback (if backend didn't provide a message) ──
 // Used as defense-in-depth — backend already localizes via lang param.
 function _kvAiErrorText(code,fallback){
-var l=kvmindGetLang();
-var T={zh:{no_providers:"AI \u672a\u914d\u7f6e\uff0c\u8bf7\u5728\u8bbe\u7f6e\u4e2d\u586b\u5165 API Key\u3002",ai_timeout:"AI \u8d85\u65f6\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002",ai_connect:"\u65e0\u6cd5\u8fde\u63a5 AI \u670d\u52a1\u3002",ai_empty:"AI \u8fd4\u56de\u7a7a\u7ed3\u679c\uff0c\u8bf7\u91cd\u8bd5\u3002",ai_no_tools:"\u5f53\u524d\u6a21\u578b\u4e0d\u652f\u6301\u5de5\u5177\u8c03\u7528\u3002",ai_failed:"AI \u8bf7\u6c42\u5931\u8d25\u3002",no_video:"\u65e0\u89c6\u9891\u4fe1\u53f7\uff0c\u8bf7\u68c0\u67e5 HDMI\u3002"},
-ja:{no_providers:"AI \u304c\u672a\u8a2d\u5b9a\u3067\u3059\u3002",ai_timeout:"AI \u30bf\u30a4\u30e0\u30a2\u30a6\u30c8\u3057\u307e\u3057\u305f\u3002",ai_connect:"AI \u306b\u63a5\u7d9a\u3067\u304d\u307e\u305b\u3093\u3002",ai_empty:"AI \u304c\u7a7a\u306e\u5fdc\u7b54\u3092\u8fd4\u3057\u307e\u3057\u305f\u3002",ai_no_tools:"\u73fe\u5728\u306e\u30e2\u30c7\u30eb\u306f\u30c4\u30fc\u30eb\u547c\u3073\u51fa\u3057\u672a\u5bfe\u5fdc\u3067\u3059\u3002",ai_failed:"AI \u30ea\u30af\u30a8\u30b9\u30c8\u5931\u6557\u3002",no_video:"\u30d3\u30c7\u30aa\u4fe1\u53f7\u304c\u3042\u308a\u307e\u305b\u3093\u3002"},
-en:{no_providers:"AI is not configured.",ai_timeout:"AI request timed out.",ai_connect:"Cannot reach AI service.",ai_empty:"AI returned an empty response.",ai_no_tools:"Current model does not support tool calls.",ai_failed:"AI request failed.",no_video:"No video signal."}};
-var b=T[l]||T.en;return (b&&b[code])||T.en[code]||fallback||code;
+// Strings live in the 'kvm' namespace (registered at top), prefixed
+// "ai_err_" — language switches propagate automatically.
+var key = "ai_err_" + code;
+var v = kvmindT(key);
+return (v && v !== key) ? v : (fallback || code);
 }
 
 // Unified response parser for REST AI endpoints.
@@ -607,7 +686,7 @@ return {ok:true,data:d};
 // ── Analyse ──
 function kvmindDoAnalyse(){
 var sh=document.getElementById("kvmind-snap-hint");if(sh)sh.style.display="none";
-kvmindAppendMsg("system","\u5206\u6790\u4e2d\u2026");kvmindAddLog("info","Analysing...");
+kvmindAppendMsg("system",kvmindT("msg_analysing"));kvmindAddLog("info","Analysing...");
 kvmindSetBtnLoading("kvmind-btn-analyse",true);
 kvmindFetch("/api/analyse",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lang:kvmindGetLang()})}).then(function(r){var ok=r.ok;return r.text().then(function(t){return {ok:ok,txt:t};});}).then(function(res){
 var parsed=_kvParseAiResponse(res.txt,res.ok);
@@ -658,7 +737,7 @@ var bubble=document.createElement("div");bubble.className="kvmind-chat-msg snap"
 var img=document.createElement("img");img.src=url;img.style.cssText="width:100%;display:block";img.onload=function(){URL.revokeObjectURL(url);};
 var cap=document.createElement("div");cap.className="kvmind-snap-cap";var capL=document.createElement("span");capL.textContent="Screenshot";var capR=document.createElement("span");capR.textContent=new Date().toLocaleTimeString();cap.appendChild(capL);cap.appendChild(capR);
 bubble.appendChild(img);bubble.appendChild(cap);row.appendChild(bubble);c.appendChild(row);c.scrollTop=c.scrollHeight;
-}).catch(function(e){console.error("Screenshot error:",e);kvmindAppendMsg("system","\u26a0 \u622a\u56fe\u83b7\u53d6\u5931\u8d25");}).finally(function(){kvmindSetBtnLoading("kvmind-btn-snap",false);});
+}).catch(function(e){console.error("Screenshot error:",e);kvmindAppendMsg("system",kvmindT("msg_screenshot_failed"));}).finally(function(){kvmindSetBtnLoading("kvmind-btn-snap",false);});
 }
 
 function kvmindDoAbort(){if(window._kvGw&&window._kvGw.connected)window._kvGw.abortChat();else kvmindFetch("/api/agent/abort",{method:"POST"});_endChat();}

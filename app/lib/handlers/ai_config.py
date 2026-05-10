@@ -64,7 +64,7 @@ def _resolve_and_validate_base_url(
     """
     pinned = (info or {}).get("base_url", "")
 
-    if provider in ("openai", "gemini", "anthropic") and pinned:
+    if provider in ("openai", "gemini", "anthropic", "deepseek") and pinned:
         return pinned, None
 
     if not user_base:
@@ -114,6 +114,15 @@ def _base_url_error_code(error: str) -> str:
     return "invalid_base_url"
 
 
+def _normalize_provider_model(provider: str, model: str) -> str:
+    """Normalize provider-native model IDs to the chat API's expected form."""
+    model = (model or "").strip()
+    prefix = KNOWN_PROVIDERS.get(provider, {}).get("models_id_prefix_strip")
+    if prefix and model.startswith(prefix):
+        return model[len(prefix):]
+    return model
+
+
 def _build_providers(ai_cfg) -> dict:
     """Create provider instances from config.
 
@@ -128,7 +137,8 @@ def _build_providers(ai_cfg) -> dict:
         requires_key = KNOWN_PROVIDERS.get(pcfg.name, {}).get("requires_key", True)
         if requires_key and not pcfg.api_key:
             continue
-        if not pcfg.default_model:
+        model = _normalize_provider_model(pcfg.name, pcfg.default_model)
+        if not model:
             log.warning(
                 "[Registry] Skip provider %s — no model selected. "
                 "User must pick a model in MyClaw settings.",
@@ -136,9 +146,9 @@ def _build_providers(ai_cfg) -> dict:
             )
             continue
         if pcfg.name == "anthropic":
-            provs[pcfg.name] = AnthropicProvider(pcfg.base_url, pcfg.api_key, pcfg.default_model)
+            provs[pcfg.name] = AnthropicProvider(pcfg.base_url, pcfg.api_key, model)
         else:
-            provs[pcfg.name] = OpenAIProvider(pcfg.base_url, pcfg.api_key, pcfg.default_model)
+            provs[pcfg.name] = OpenAIProvider(pcfg.base_url, pcfg.api_key, model)
     return provs
 
 
@@ -212,7 +222,7 @@ async def _fetch_provider_models(
             return [], "missing api_key"
         headers["x-api-key"] = api_key
         headers["anthropic-version"] = "2023-06-01"
-    elif provider in ("openai", "gemini"):
+    elif provider in ("openai", "gemini", "deepseek", "custom"):
         if not api_key:
             return [], "missing api_key"
         headers["Authorization"] = f"Bearer {api_key}"
@@ -250,6 +260,61 @@ async def _fetch_provider_models(
     return ids, None
 
 
+def _provider_error_fingerprint(body_text: str) -> str:
+    """Extract a lowercase fingerprint from common provider error shapes.
+
+    Google/Gemini's OpenAI-compatible endpoint returns errors as a one-item
+    JSON array, while OpenAI/Anthropic normally return a JSON object. Keep this
+    parser deliberately lossy: it only feeds internal classification and never
+    reaches the UI.
+    """
+    parts: list[str] = []
+
+    def add(value) -> None:
+        if isinstance(value, str) and value:
+            parts.append(value)
+        elif isinstance(value, (int, float)):
+            parts.append(str(value))
+
+    def visit(obj, depth: int = 0) -> None:
+        if depth > 6 or len(parts) > 32:
+            return
+        if isinstance(obj, str):
+            add(obj)
+            return
+        if isinstance(obj, list):
+            for item in obj:
+                visit(item, depth + 1)
+            return
+        if not isinstance(obj, dict):
+            return
+
+        if "error" in obj:
+            visit(obj.get("error"), depth + 1)
+
+        for key in ("message", "type", "code", "status", "reason"):
+            add(obj.get(key))
+
+        details = obj.get("details")
+        if isinstance(details, list):
+            for item in details:
+                visit(item, depth + 1)
+
+        metadata = obj.get("metadata")
+        if isinstance(metadata, dict):
+            for key in ("reason", "domain", "service"):
+                add(metadata.get(key))
+
+    try:
+        visit(json.loads(body_text))
+    except (ValueError, TypeError):
+        return (body_text or "").lower()[:400]
+
+    if not parts:
+        return (body_text or "").lower()[:400]
+    return " ".join(parts).lower()
+
+
 def _classify_provider_error(status: int, body_text: str) -> tuple[str, str]:
     """从上游 LLM API 错误响应里抽出用户友好的中文提示 + 语义 code。
 
@@ -261,17 +326,7 @@ def _classify_provider_error(status: int, body_text: str) -> tuple[str, str]:
     或埋点。**不要**把 body_text 传给 UI——内部细节（API path、上游 trace id、SQL
     片段等）属于运维信息，不应暴露给终端用户。
     """
-    msg_lower = ""
-    try:
-        j = json.loads(body_text)
-        if isinstance(j, dict):
-            err = j.get("error")
-            if isinstance(err, dict):
-                msg_lower = (err.get("message") or "").lower()
-            elif isinstance(err, str):
-                msg_lower = err.lower()
-    except (ValueError, TypeError):
-        msg_lower = body_text.lower()[:200]
+    msg_lower = _provider_error_fingerprint(body_text)
 
     # 模型相关错误（最常见 — 用户拼错模型名 / 选了下架的模型）
     if "model" in msg_lower and (
@@ -322,11 +377,27 @@ async def _test_tool_calling(
     headers: dict,
     model: str,
 ) -> bool:
-    """Send a small tool-calling request to check if the model supports it."""
-    payload = {
+    """Probe whether the model can emit tool_calls.
+
+    Force tool_choice="required" rather than rely on the default "auto":
+    smaller open-source models (qwen2.5/qwen3 7-14B class on Ollama) are
+    function-call trained but, with auto + a casual prompt, often answer in
+    prose ("Sure, typing hello…") and never emit tool_calls. That tripped a
+    false-negative supports_tools=False, downgrading auto→suggest in chat
+    even though the model was capable.
+
+    A handful of older OpenAI-compat runtimes reject tool_choice="required"
+    with 400/422 (older Ollama before 0.4 ignored or 400'd it). We retry
+    once without tool_choice using the same explicit prompt so those still
+    get a probe attempt.
+    """
+    base_payload = {
         "model": model,
         "max_tokens": 64,
-        "messages": [{"role": "user", "content": "Type 'hello' on the keyboard"}],
+        "messages": [{
+            "role": "user",
+            "content": "Use the type_text tool to type 'hello'. Reply only via the tool call.",
+        }],
         "tools": [{
             "type": "function",
             "function": {
@@ -340,14 +411,32 @@ async def _test_tool_calling(
             },
         }],
     }
-    async with session.post(url, json=payload, headers=headers,
-                            timeout=aiohttp.ClientTimeout(total=30),
-                            ssl=url.startswith("https://")) as r:
-        if r.status != 200:
-            return False
-        data = await r.json()
+
+    async def _probe(tool_choice):
+        payload = dict(base_payload)
+        if tool_choice is not None:
+            payload["tool_choice"] = tool_choice
+        async with session.post(
+            url, json=payload, headers=headers,
+            timeout=aiohttp.ClientTimeout(total=30),
+            ssl=url.startswith("https://"),
+        ) as r:
+            status = r.status
+            data = await r.json() if status == 200 else None
+            return status, data
+
+    status, data = await _probe("required")
+    if status == 200:
         msg = data.get("choices", [{}])[0].get("message", {})
         return bool(msg.get("tool_calls"))
+    if status not in (400, 422):
+        return False
+
+    status, data = await _probe(None)
+    if status != 200:
+        return False
+    msg = data.get("choices", [{}])[0].get("message", {})
+    return bool(msg.get("tool_calls"))
 
 
 def register(app: dict) -> None:
@@ -486,7 +575,7 @@ def register(app: dict) -> None:
             base_url_preview = f"{_u.scheme}://{_u.netloc}/***" if _u.netloc else ""
             providers_info.append({
                 "name": p.name,
-                "default_model": p.default_model,
+                "default_model": _normalize_provider_model(p.name, p.default_model),
                 "base_url_preview": base_url_preview,
                 # Full URL only for user-supplied endpoints — cloud providers
                 # use canonical URLs, and their paths may carry token material.
@@ -529,7 +618,9 @@ def register(app: dict) -> None:
             # Accept either "{pname}_model" (legacy field name) or plain "model".
             # Do NOT fall back to any built-in default — empty model means
             # "user hasn't picked one" and _build_providers will skip it.
-            model = (body.get(f"{pname}_model") or body.get("model") or "").strip()
+            model = _normalize_provider_model(
+                pname, body.get(f"{pname}_model") or body.get("model") or "",
+            )
             enabled = body.get(f"{pname}_enabled", False)
             custom_url = body.get(f"{pname}_url", "").strip()
             if key or (not requires_key and (enabled or custom_url)):
@@ -538,20 +629,6 @@ def register(app: dict) -> None:
                     base_url=custom_url or info["base_url"],
                     api_key=key,
                     default_model=model,
-                    source="ui",
-                ))
-
-        custom = body.get("custom_provider")
-        if custom and isinstance(custom, dict):
-            cu_url = custom.get("base_url", "").strip()
-            cu_key = custom.get("api_key", "").strip()
-            cu_model = custom.get("model", "").strip()
-            if cu_url and cu_model:
-                new_providers_list.append(ProviderConfig(
-                    name="custom",
-                    base_url=cu_url,
-                    api_key=cu_key or "none",
-                    default_model=cu_model,
                     source="ui",
                 ))
 
@@ -600,9 +677,17 @@ def register(app: dict) -> None:
         body = await req.json()
         provider = body.get("provider", "anthropic")
         api_key = body.get("api_key", "")
-        model = (body.get("model") or "").strip()
+        model = _normalize_provider_model(provider, body.get("model") or "")
         info = KNOWN_PROVIDERS.get(provider)
         requires_key = info.get("requires_key", True) if info else provider != "custom"
+        # Authenticated callers may inherit the saved api_key for this provider
+        # so the settings UI can re-test (e.g. on save) without forcing the
+        # user to retype a secret that's already configured. Same pattern as
+        # h_ai_models — see P0-1 (2026-04-19) note there.
+        if (not api_key or api_key == "none") and req.get("authenticated", False):
+            saved = next((p for p in cfg.ai.providers if p.name == provider), None)
+            if saved and saved.api_key and saved.api_key != "none":
+                api_key = saved.api_key
         if requires_key and not api_key:
             return json_response({"success": False, "code": "missing_api_key", "error": "请填写 API Key"})
         # No hardcoded model fallback — device code no longer maintains a
@@ -615,6 +700,7 @@ def register(app: dict) -> None:
             })
         try:
             if provider == "anthropic":
+                base_url = (info or {}).get("base_url", "https://api.anthropic.com/v1")
                 headers = {
                     "x-api-key": api_key,
                     "anthropic-version": "2023-06-01",
@@ -625,7 +711,7 @@ def register(app: dict) -> None:
                     "max_tokens": 16,
                     "messages": [{"role": "user", "content": "Say hi"}],
                 }
-                url = "https://api.anthropic.com/v1/messages"
+                url = base_url.rstrip("/") + "/messages"
             elif provider == "gemini":
                 headers = {
                     "Authorization": f"Bearer {api_key}",
@@ -636,7 +722,8 @@ def register(app: dict) -> None:
                     "max_tokens": 16,
                     "messages": [{"role": "user", "content": "Say hi"}],
                 }
-                url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+                base_url = (info or {}).get("base_url", "")
+                url = base_url.rstrip("/") + "/chat/completions"
             else:
                 payload = {
                     "model": model,
@@ -651,7 +738,7 @@ def register(app: dict) -> None:
                         "code": _base_url_error_code(err),
                         "error": err,
                     }, status=400)
-                base_url = resolved or "https://api.openai.com/v1"
+                base_url = resolved or (info or {}).get("base_url") or "https://api.openai.com/v1"
                 url = base_url.rstrip("/") + "/chat/completions"
 
                 headers = {"Content-Type": "application/json"}

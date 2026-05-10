@@ -98,6 +98,48 @@ KNOWN_PROVIDERS: Dict[str, Dict] = {
         "models_id_filter": r"^(gpt-|o1-|o3-|o4-|chatgpt-)",
         "console_url": "https://platform.openai.com/api-keys",
     },
+    "deepseek": {
+        # DeepSeek's canonical endpoint is https://api.deepseek.com/chat/completions
+        # — no /v1 prefix in the published docs (the /v1 form also resolves but
+        # is undocumented). We keep base_url at the bare host so the shared
+        # OpenAIProvider appends /chat/completions and /models verbatim.
+        #
+        # Reasoning models (deepseek-reasoner, and v4-pro/flash thinking mode)
+        # emit a `reasoning_content` field on the assistant message that must
+        # not be echoed back in the next turn — DeepSeek rejects such requests
+        # with HTTP 400. _parse_openai_response already drops this field via
+        # the response-content whitelist, and to_history_message() only carries
+        # `text` + `tool_calls` forward, so multi-turn replays stay clean
+        # without DeepSeek-specific code.
+        "base_url": "https://api.deepseek.com",
+        "key_envs": ["DEEPSEEK_API_KEY"],
+        "config_key": "deepseek_key",
+        "display_name": "DeepSeek",
+        "models_endpoint": "/models",
+        "models_id_path": "data[].id",
+        "console_url": "https://platform.deepseek.com/api_keys",
+    },
+    "custom": {
+        # Generic OpenAI-compatible endpoint — covers any third-party / self-
+        # hosted service that speaks the OpenAI /chat/completions wire format
+        # (vLLM, llama.cpp server, LM Studio, LiteLLM proxy, Together.ai,
+        # Groq, Fireworks, Moonshot, Zhipu, …). User must supply both
+        # base_url and api_key; SSRF guard requires https:// (see
+        # handlers/ai_config._resolve_and_validate_base_url).
+        #
+        # We assume Bearer token + OpenAI-style /models discovery. If the
+        # target service deviates (e.g. lists models under /v1/models only,
+        # or uses a different auth header), users can still pick a model
+        # via free-text input — the handler falls back to free_input_only
+        # whenever model discovery fails.
+        "base_url": "",
+        "key_envs": ["CUSTOM_AI_API_KEY"],
+        "config_key": "custom_key",
+        "display_name": "OpenAI 兼容 (自定义)",
+        "models_endpoint": "/models",
+        "models_id_path": "data[].id",
+        "console_url": "",
+    },
 }
 
 

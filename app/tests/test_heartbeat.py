@@ -13,6 +13,7 @@ The key contracts:
 """
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 from types import SimpleNamespace
@@ -220,6 +221,26 @@ class TestTransportFailure:
         app = {"cfg": _build_cfg()}
         # No exception should bubble out.
         await heartbeat._one_tick(app, app["cfg"])
+
+
+class TestHeartbeatWake:
+    async def test_wake_event_interrupts_long_sleep(self):
+        app = {heartbeat.WAKE_EVENT_KEY: asyncio.Event()}
+
+        async def _wake_soon():
+            await asyncio.sleep(0.01)
+            assert heartbeat.request_heartbeat_tick(app) is True
+
+        wake_task = asyncio.create_task(_wake_soon())
+
+        woke = await asyncio.wait_for(heartbeat._sleep_or_wake(app, 60), timeout=1)
+
+        await wake_task
+        assert woke is True
+        assert app[heartbeat.WAKE_EVENT_KEY].is_set() is False
+
+    async def test_wake_request_without_running_loop_is_noop(self):
+        assert heartbeat.request_heartbeat_tick({}) is False
 
 
 # ── helpers ────────────────────────────────────────────────────────────────

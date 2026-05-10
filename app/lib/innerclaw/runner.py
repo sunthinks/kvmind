@@ -54,9 +54,19 @@ _NO_TOOL_FALLBACK_MSGS = {
     "en": "Your AI model doesn't support tool calling — auto mode is unavailable.\nPlease switch to a model that supports Function Calling in MyClaw Settings.\nSwitched to suggest mode.",
 }
 
+_TEXT_ONLY_FINAL_MSGS = {
+    "zh": "模型只返回了文字，没有返回工具调用；文字里的命令不会被自动执行。请切换到支持 Function Calling 的模型，或把模式改为建议后手动执行。",
+    "ja": "モデルはテキストのみを返し、ツール呼び出しを返しませんでした。テキスト内のコマンドは自動実行されません。Function Calling 対応モデルに切り替えるか、提案モードで手動実行してください。",
+    "en": "The model returned text only and no tool_calls; commands written in text are not executed automatically. Switch to a Function Calling model or use Suggest mode and run them manually.",
+}
+
 
 def _no_tool_fallback_text(lang: str) -> str:
     return _NO_TOOL_FALLBACK_MSGS.get(lang, _NO_TOOL_FALLBACK_MSGS["en"])
+
+
+def _text_only_final_text(lang: str) -> str:
+    return _TEXT_ONLY_FINAL_MSGS.get(lang, _TEXT_ONLY_FINAL_MSGS["en"])
 
 
 # ── Event ────────────────────────────────────────────────────────────────────
@@ -115,6 +125,11 @@ class Runner:
     def abort(self) -> None:
         self._abort = True
         self._abort_event.set()
+
+    def _model_is_marked_tool_incapable(self) -> bool:
+        """True only when saved configuration explicitly says tools failed."""
+        cfg = getattr(self._ai, "_cfg", None)
+        return getattr(cfg, "supports_tools", True) is False
 
     # ── Public entry ─────────────────────────────────────────────────────────
 
@@ -354,6 +369,13 @@ class Runner:
                     history.append(nudge)
                     continue
 
+                if budget.actions_used == 0 and self._model_is_marked_tool_incapable():
+                    yield RunnerEvent(
+                        "notice",
+                        code="auto_text_only_no_tool_calls",
+                        severity="warn",
+                        message=_text_only_final_text(self._lang),
+                    )
                 yield RunnerEvent("ai_text", text=response.text, step=turn)
                 yield RunnerEvent("task_done", message=response.text)
                 return

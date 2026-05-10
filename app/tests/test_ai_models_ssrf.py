@@ -69,6 +69,14 @@ class TestResolveAndValidateBaseURL:
         assert err is None
         assert resolved == "https://api.anthropic.com/v1"
 
+    def test_deepseek_pinned_url_wins_over_rogue_user_base(self):
+        info = {"base_url": "https://api.deepseek.com"}
+        resolved, err = aic._resolve_and_validate_base_url(
+            "https://evil.example/v1", "deepseek", info
+        )
+        assert err is None
+        assert resolved == "https://api.deepseek.com"
+
     # 2. Metadata hosts are always rejected (even for non-pinned providers)
 
     def test_metadata_host_aws_rejected_for_custom_provider(self):
@@ -121,10 +129,10 @@ class TestResolveAndValidateBaseURL:
     def test_ollama_accepts_lan_http(self):
         info = {"base_url": ""}
         resolved, err = aic._resolve_and_validate_base_url(
-            "http://192.168.1.50:11434/v1", "ollama", info
+            "http://192.168.0.50:11434/v1", "ollama", info
         )
         assert err is None
-        assert resolved == "http://192.168.1.50:11434/v1"
+        assert resolved == "http://192.168.0.50:11434/v1"
 
     def test_custom_missing_base_url_rejected(self):
         info = {"base_url": ""}
@@ -206,7 +214,7 @@ async def unauth_client(spy_and_restore):
     saved = [
         ProviderConfig(name="openai", base_url="https://api.openai.com/v1",
                        api_key="sk-secret-stored", default_model="gpt-4"),
-        ProviderConfig(name="ollama", base_url="http://192.168.1.50:11434/v1",
+        ProviderConfig(name="ollama", base_url="http://192.168.0.50:11434/v1",
                        api_key="", default_model="llama3"),
     ]
     app = _build_app(authenticated=False, saved_providers=saved, fetch_spy=spy)
@@ -220,7 +228,7 @@ async def auth_client(spy_and_restore):
     saved = [
         ProviderConfig(name="openai", base_url="https://api.openai.com/v1",
                        api_key="sk-secret-stored", default_model="gpt-4"),
-        ProviderConfig(name="ollama", base_url="http://192.168.1.50:11434/v1",
+        ProviderConfig(name="ollama", base_url="http://192.168.0.50:11434/v1",
                        api_key="", default_model="llama3"),
     ]
     app = _build_app(authenticated=True, saved_providers=saved, fetch_spy=spy)
@@ -231,18 +239,27 @@ async def auth_client(spy_and_restore):
 class TestAIModelsSSRF:
     """Verify what the handler forwards outbound under each threat scenario."""
 
-    async def test_unauth_rogue_base_for_custom_provider_is_blocked(self, unauth_client):
-        """Custom provider + evil URL must not trigger any outbound fetch."""
+    async def test_unauth_custom_provider_with_legitimate_base_passes_through(self, unauth_client):
+        """Custom provider with user-supplied legitimate URL forwards the fetch.
+
+        ``custom`` is the explicit OpenAI-compatible escape hatch — the user
+        owns the URL choice. SSRF guard blocks metadata hosts and link-local
+        IPs (covered by separate tests at the function boundary), but
+        arbitrary public hosts are by design the user's call.
+        """
         client, spy = unauth_client
         resp = await client.post("/api/ai/models", json={
             "provider": "custom",
-            "base_url": "https://evil.example/v1",
+            "base_url": "https://my-llm.example.com/v1",
             "api_key": "user-supplied",
         })
-        # ``custom`` is not in KNOWN_PROVIDERS — handler rejects at the
-        # provider lookup step, which also prevents any fetch.
-        assert resp.status == 400
-        assert spy.calls == []
+        assert resp.status == 200
+        # The whole point of ``custom`` is that the fetch goes through.
+        assert len(spy.calls) == 1
+        call = spy.calls[0]
+        assert call["provider"] == "custom"
+        assert call["base_url"] == "https://my-llm.example.com/v1"
+        assert call["api_key"] == "user-supplied"
 
     async def test_unauth_no_key_does_not_fall_back_to_saved(self, unauth_client):
         """Unauth caller without key must NOT inherit the stored OpenAI key."""
@@ -294,11 +311,11 @@ class TestAIModelsSSRF:
         client, spy = auth_client
         resp = await client.post("/api/ai/models", json={
             "provider": "ollama",
-            "base_url": "http://192.168.1.50:11434/v1",
+            "base_url": "http://192.168.0.50:11434/v1",
         })
         assert resp.status == 200
         assert len(spy.calls) == 1
-        assert spy.calls[0]["base_url"] == "http://192.168.1.50:11434/v1"
+        assert spy.calls[0]["base_url"] == "http://192.168.0.50:11434/v1"
 
     async def test_auth_openai_without_user_key_inherits_saved(self, auth_client):
         """Post-setup UI flow: admin opens settings, handler re-lists models

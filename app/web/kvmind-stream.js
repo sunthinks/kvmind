@@ -15,12 +15,22 @@
 
 var is_https = (location.protocol === "https:");
 
-var _STREAM_I18N = {
-  zh: { webrtcConn: "WebRTC 连接中...", noWebRTC: "WebRTC 不可用", h264conn: "H.264 连接中...", noH264: "无 H.264", noDecoder: "不支持 VideoDecoder", mjpegConn: "MJPEG 连接中...", conn: "连接中...", noSig: "无信号" },
-  ja: { webrtcConn: "WebRTC 接続中...", noWebRTC: "WebRTC 利用不可", h264conn: "H.264 接続中...", noH264: "H.264 利用不可", noDecoder: "VideoDecoder 非対応", mjpegConn: "MJPEG 接続中...", conn: "接続中...", noSig: "信号なし" },
-  en: { webrtcConn: "WebRTC connecting...", noWebRTC: "WebRTC not available", h264conn: "H.264 connecting...", noH264: "No H.264 available", noDecoder: "VideoDecoder not supported", mjpegConn: "MJPEG connecting...", conn: "Connecting...", noSig: "No signal" }
-};
-function _st(k) { var l = localStorage.getItem("kvmind_lang") || "zh"; return (_STREAM_I18N[l] && _STREAM_I18N[l][k]) || _STREAM_I18N.en[k] || k; }
+// Register stream-module i18n into the shared KVMindI18n engine. Keeps the
+// dict literal here for module self-containment, but goes through the same
+// runtime as the rest of the app so language switches propagate live (see
+// _refreshLabels below).
+if (global.KVMindI18n && typeof global.KVMindI18n.registerDict === "function") {
+  global.KVMindI18n.registerDict("stream", {
+    zh: { webrtcConn: "WebRTC 连接中...", noWebRTC: "WebRTC 不可用", h264conn: "H.264 连接中...", noH264: "无 H.264", noDecoder: "不支持 VideoDecoder", mjpegConn: "MJPEG 连接中...", conn: "连接中...", noSig: "无信号" },
+    ja: { webrtcConn: "WebRTC 接続中...", noWebRTC: "WebRTC 利用不可", h264conn: "H.264 接続中...", noH264: "H.264 利用不可", noDecoder: "VideoDecoder 非対応", mjpegConn: "MJPEG 接続中...", conn: "接続中...", noSig: "信号なし" },
+    en: { webrtcConn: "WebRTC connecting...", noWebRTC: "WebRTC not available", h264conn: "H.264 connecting...", noH264: "No H.264 available", noDecoder: "VideoDecoder not supported", mjpegConn: "MJPEG connecting...", conn: "Connecting...", noSig: "No signal" }
+  });
+}
+function _st(k) {
+  return (global.KVMindI18n && global.KVMindI18n.t)
+    ? global.KVMindI18n.t(k, null, "stream")
+    : k;
+}
 
 function KVMindStream() {
   var self = this;
@@ -289,7 +299,7 @@ function KVMindStream() {
     mode = "webrtc";
     __janusStop = false;
     _showCanvas(true);
-    _setInfo(_st("webrtcConn"));
+    _setInfoI18n("webrtcConn");
 
     if (!__janusInitDone) {
       Janus.init({
@@ -489,7 +499,7 @@ function KVMindStream() {
   function _fallbackFromWebRTC() {
     if (preferredMode !== "auto") {
       // User explicitly chose WebRTC — show error, don't fallback
-      _setInfo(_st("noWebRTC"));
+      _setInfoI18n("noWebRTC");
       return;
     }
     // Auto mode: WebRTC is second priority, fallback to MJPEG
@@ -519,7 +529,7 @@ function KVMindStream() {
     if (__ws !== null || __stop || (__ensuring && !internal)) return;
     __ensuring = true;
     streamActive = false;
-    _setInfo(_st("h264conn"));
+    _setInfoI18n("h264conn");
     _log("Starting Media ...");
 
     var proto = location.protocol === "https:" ? "wss:" : "ws:";
@@ -611,12 +621,12 @@ function KVMindStream() {
     __closeDecoder();
     if (!formats || formats.h264 === undefined) {
       _log("No H.264 stream available");
-      _setInfo(_st("noH264"));
+      _setInfoI18n("noH264");
       return;
     }
     if (!window.VideoDecoder) {
       _log("VideoDecoder not supported");
-      _setInfo(_st("noDecoder"));
+      _setInfoI18n("noDecoder");
       return;
     }
     __codec = "avc1." + formats.h264.profile_level_id;
@@ -758,7 +768,7 @@ function KVMindStream() {
     if (!fallbackImg) return;
 
     fallbackImg.src = streamUrls.mjpeg + "?t=" + Date.now();
-    _setInfo(_st("mjpegConn"));
+    _setInfoI18n("mjpegConn");
 
     // Blit img → canvas at display refresh rate
     if (canvas && ctx && !mjpegRafId) {
@@ -826,8 +836,29 @@ function KVMindStream() {
     }
   }
 
+  // Tracks the i18n key currently displayed in infoEl, so language changes
+  // can repaint live. null when infoEl shows a dynamic value (resolution +
+  // fps), in which case we leave it alone — the next stream tick will
+  // overwrite it anyway.
+  var _currentInfoKey = null;
+
   function _setInfo(text) {
+    _currentInfoKey = null;
     if (infoEl) infoEl.textContent = text;
+  }
+
+  function _setInfoI18n(key) {
+    _currentInfoKey = key;
+    if (infoEl) infoEl.textContent = _st(key);
+  }
+
+  function _refreshLabels() {
+    if (noSignalEl) noSignalEl.textContent = "📡 " + _st("noSig");
+    if (_currentInfoKey && infoEl) infoEl.textContent = _st(_currentInfoKey);
+  }
+
+  if (global.KVMindI18n && typeof global.KVMindI18n.onLangChange === "function") {
+    global.KVMindI18n.onLangChange(_refreshLabels);
   }
 
   function _updateUI() {
@@ -840,11 +871,11 @@ function KVMindStream() {
         infoEl.style.display = "block";
       } else if (!streamActive) {
         if (mode === "") {
-          infoEl.textContent = _st("conn");
+          _setInfoI18n("conn");
         }
         infoEl.style.display = "block";
       } else {
-        infoEl.textContent = _st("noSig");
+        _setInfoI18n("noSig");
         infoEl.style.display = "block";
       }
     }

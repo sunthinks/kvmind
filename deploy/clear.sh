@@ -20,11 +20,7 @@ ok()   { echo -e "  ${GREEN}✓${NC} $*"; }
 warn() { echo -e "  ${YELLOW}⚠${NC} $*"; }
 info() { echo -e "  ${BOLD}→${NC} $*"; }
 
-PIKVM_IP="${1:-}"
-if [[ -z "$PIKVM_IP" ]]; then
-    echo "Usage: $0 <pikvm-ip> [pikvm-password]" >&2
-    exit 1
-fi
+PIKVM_IP="${1:-192.168.0.22}"
 PIKVM_PASS="${2:-root}"
 
 SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=10"

@@ -448,7 +448,7 @@ elif [[ -f /etc/kdkvm/myclaw_verify.pub ]]; then
     ok "MyClaw verify key preserved (from prior install): /etc/kdkvm/myclaw_verify.pub"
 else
     warn "MyClaw verify key missing — signature verification will fail-closed in server.py"
-    warn "  Dev tree: put the current pub key at \$REPO/dev/kdkvm/app/keys/myclaw_verify.pub"
+    warn "  Dev tree: put the current pub key at \$REPO/dev/keys/kdcms/myclaw_verify.pub"
     warn "  Prod: ensure release/build.sh embedded it, or copy from 1Password to /etc/kdkvm/myclaw_verify.pub"
 fi
 
@@ -465,8 +465,7 @@ elif [[ -f /etc/kdkvm/heartbeat_verify.pub ]]; then
     ok "Heartbeat verify key preserved (from prior install): /etc/kdkvm/heartbeat_verify.pub"
 else
     warn "Heartbeat verify key missing — kdkvm will reject signed heartbeat responses"
-    warn "  Dev tree: 在 kdcms deploy.sh 首次跑后，把 dev/kdcms/keys/heartbeat_verify.pub"
-    warn "    复制到 dev/kdkvm/app/keys/heartbeat_verify.pub 并 commit + 重打 OTA 包"
+    warn "  Dev tree: kdcms deploy.sh 首次跑后会把 heartbeat_verify.pub 写到 dev/keys/kdcms/heartbeat_verify.pub，commit + 重打 OTA 包让设备拿到"
     warn "  兼容期：kdcms 旧版本不签的响应会被设备端 warn-and-accept，迁移完成后必须修复"
 fi
 
@@ -492,7 +491,7 @@ fi
 # hotfix rollout.
 if (( _update_pub_count == 0 )); then
     if ! ls /etc/kdkvm/update.pub.d/*.pub >/dev/null 2>&1 && [[ ! -f /etc/kdkvm/update.pub ]]; then
-        err "No OTA trust root deployed. Package missing app/keys/update-trust-*.pub and device has no prior keys. kvmind-updater would fail closed on every upgrade. Rebuild the package on a machine that has release/keys/ populated."
+        err "No OTA trust root deployed. Package missing app/keys/update-trust-*.pub and device has no prior keys. kvmind-updater would fail closed on every upgrade. Rebuild the package on a machine that has dev/keys/kdkvm-ota/ populated."
     else
         ok "OTA trust root preserved (from prior install): /etc/kdkvm/update.pub.d/"
     fi

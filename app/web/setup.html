@@ -442,6 +442,8 @@
             <option value="gemini">Gemini</option>
             <option value="anthropic">Claude</option>
             <option value="openai">ChatGPT</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="custom">OpenAI 兼容（自定义）</option>
           </select>
         </div>
         <div class="form-group" style="margin-bottom:10px">
@@ -711,6 +713,8 @@ var _PROVIDER_HINTS = {
   gemini:    { placeholder: 'AIza...',            label: 'Google AI Studio', noKey: false, needsBase: false },
   anthropic: { placeholder: 'sk-ant-...',         label: 'Anthropic',        noKey: false, needsBase: false },
   openai:    { placeholder: 'sk-...',             label: 'OpenAI',           noKey: false, needsBase: false },
+  deepseek:  { placeholder: 'sk-...',             label: 'DeepSeek',         noKey: false, needsBase: false },
+  custom:    { placeholder: 'sk-...',             label: 'OpenAI Compatible', noKey: false, needsBase: true  },
 };
 
 function selectPlan(type) {
@@ -945,11 +949,12 @@ async function saveAiConfig() {
     showMsg('ai-config-status', 'info', t('ai_skipped_hint'));
   }
   if (hasCustomAi) {
-    var keyMap = { ollama: 'ollama_key', gemini: 'gemini_key', anthropic: 'claude_key', openai: 'openai_key' };
+    var keyMap = { ollama: 'ollama_key', gemini: 'gemini_key', anthropic: 'claude_key', openai: 'openai_key', deepseek: 'deepseek_key', custom: 'custom_key' };
     if (key) body[keyMap[prov]] = key;
-    if (prov === 'ollama') {
-      body.ollama_enabled = true;
-      body.ollama_url = document.getElementById('custom-base-url').value.trim();
+    if (h.noKey) body[prov + '_enabled'] = true;
+    if (h.needsBase) {
+      var baseVal = document.getElementById('custom-base-url').value.trim();
+      if (baseVal) body[prov + '_url'] = baseVal;
     }
     body[prov + '_model'] = model;
     body.plan_type = 'custom';  // 用户填了自家 AI → 用 custom 覆盖 free/subscribed 的 plan_type（保持后端现有契约）

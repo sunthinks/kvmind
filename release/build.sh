@@ -71,44 +71,54 @@ if ! [[ "$CANARY_PERCENT" =~ ^[0-9]+$ ]] || (( CANARY_PERCENT < 0 )) || (( CANAR
 fi
 
 # ── OTA manifest signing key (managed default) ───────────────────────────
-# Private key lives in release/keys/ (gitignored, build-machine-only). Its
-# public counterpart is committed under dev/kdkvm/app/keys/ so fresh installs
-# pick up the trust root from the zip. --sign-key overrides this default.
-RELEASE_KEYS_DIR="$SCRIPT_DIR/keys"
-# TD-15 (2026-04-26): default key_id is the production rotation pin.
-# Older releases used "update-trust-2026"; that key was rotated to "-2" and the
-# old .pub is no longer on production devices. Building without --key-id and
-# defaulting back to "-2026" would produce a manifest no production device can
-# verify. Rotating again? Bump the suffix here AND drop the old .pub from
-# /etc/kdkvm/update.pub.d/ on staging first to validate.
+# Private key lives under dev/keys/kdkvm-ota/ (gitignored, build-machine-only).
+# Its public counterpart is committed there too so fresh installs pick up the
+# trust root via build.sh staging. --sign-key overrides this default.
+REPO_ROOT="$(cd "$KDKVM_DIR/../.." && pwd)"
+KEYS_DIR="$REPO_ROOT/dev/keys/kdkvm-ota"
+# TD-15 (2026-04-26): default key_id is the production rotation pin. Rotating
+# again? Bump the suffix here AND drop the old .pub from /etc/kdkvm/update.pub.d/
+# on staging first to validate.
 : "${KEY_ID:=update-trust-2026-2}"
 
 if [[ -z "$SIGN_KEY" ]]; then
-    mkdir -p "$RELEASE_KEYS_DIR"
-    chmod 700 "$RELEASE_KEYS_DIR"
-    TRUSTED_KEY_PRIV="$RELEASE_KEYS_DIR/${KEY_ID}.key"
-    TRUSTED_KEY_PUB="$RELEASE_KEYS_DIR/${KEY_ID}.pub"
-    COMMITTED_PUB="$KDKVM_DIR/app/keys/${KEY_ID}.pub"
-    mkdir -p "$KDKVM_DIR/app/keys"
+    mkdir -p "$KEYS_DIR"
+    chmod 700 "$KEYS_DIR"
+    TRUSTED_KEY_PRIV="$KEYS_DIR/${KEY_ID}.key"
+    TRUSTED_KEY_PUB="$KEYS_DIR/${KEY_ID}.pub"
 
     if [[ ! -f "$TRUSTED_KEY_PRIV" ]]; then
-        if [[ -f "$COMMITTED_PUB" ]]; then
-            err "Private key missing for key_id=$KEY_ID ($TRUSTED_KEY_PRIV) but public key is already committed ($COMMITTED_PUB). This build machine cannot sign for that key_id. Restore the private key from secure backup, or rotate to a new key_id (e.g. --key-id update-trust-2026-2)."
+        # 2026-05-09: silent genpkey was the source of the myclaw "Invalid signature"
+        # outage on .21 — a fresh checkout would generate a new keypair, push the
+        # private key to production, and strand every device still carrying the
+        # previous .pub. The new policy is fail-fast: an absent private key is
+        # treated as an explicit operator decision needing explicit recovery.
+        if [[ -f "$TRUSTED_KEY_PUB" ]]; then
+            err "Private OTA signing key for key_id=$KEY_ID is missing but a public key is already committed (devices in the field carry it). This build machine cannot sign without de-trusting the fleet.
+
+  Options:
+    1. Restore $TRUSTED_KEY_PRIV from secure backup (recommended).
+    2. Rotate to a new key_id (--key-id update-trust-YYYY-N+1) and run a coordinated co-trust → cutover OTA campaign. See dev/keys/README.md.
+    3. If you are SURE no device is trusting the committed pub yet (fresh project / staging-only), set ALLOW_KEY_REGEN=1 and rerun to genpkey a brand-new keypair."
         fi
-        info "Generating Ed25519 release signing key: $KEY_ID"
+        if [[ "${ALLOW_KEY_REGEN:-0}" != "1" ]]; then
+            err "No private OTA signing key for key_id=$KEY_ID. Set ALLOW_KEY_REGEN=1 only if no devices in the field are trusting this key_id yet."
+        fi
+        info "Generating Ed25519 release signing key (ALLOW_KEY_REGEN=1): $KEY_ID"
         openssl genpkey -algorithm Ed25519 -out "$TRUSTED_KEY_PRIV" 2>/dev/null
         chmod 600 "$TRUSTED_KEY_PRIV"
         openssl pkey -in "$TRUSTED_KEY_PRIV" -pubout -out "$TRUSTED_KEY_PUB"
         chmod 644 "$TRUSTED_KEY_PUB"
-        cp -f "$TRUSTED_KEY_PUB" "$COMMITTED_PUB"
-        ok "New keypair written — commit $COMMITTED_PUB to git (private key stays gitignored)"
+        ok "New keypair written to $KEYS_DIR — commit $TRUSTED_KEY_PUB to git (private key stays gitignored)."
     else
         # Re-derive public from private to detect drift/corruption.
-        openssl pkey -in "$TRUSTED_KEY_PRIV" -pubout -out "$TRUSTED_KEY_PUB" 2>/dev/null
-        if [[ -f "$COMMITTED_PUB" ]] && ! diff -q "$TRUSTED_KEY_PUB" "$COMMITTED_PUB" >/dev/null; then
-            err "Committed public key drifted from release/keys/ private counterpart. Investigate: $COMMITTED_PUB vs $TRUSTED_KEY_PUB"
+        DERIVED_PUB=$(mktemp)
+        openssl pkey -in "$TRUSTED_KEY_PRIV" -pubout -out "$DERIVED_PUB" 2>/dev/null
+        if [[ -f "$TRUSTED_KEY_PUB" ]] && ! diff -q "$DERIVED_PUB" "$TRUSTED_KEY_PUB" >/dev/null; then
+            rm -f "$DERIVED_PUB"
+            err "Committed public key drifted from $TRUSTED_KEY_PRIV's derived public counterpart. Investigate: $TRUSTED_KEY_PUB vs derived. Do NOT silently overwrite — devices may already trust the committed pub."
         fi
-        cp -f "$TRUSTED_KEY_PUB" "$COMMITTED_PUB"
+        rm -f "$DERIVED_PUB"
     fi
 
     SIGN_KEY="$TRUSTED_KEY_PRIV"
@@ -178,36 +188,33 @@ cp -f "$KDKVM_DIR"/nginx/kvmd.ctx-server.conf "$DEST/nginx/"
 cp -f "$KDKVM_DIR"/prompts/*.md "$DEST/prompts/" 2>/dev/null || true
 cp -f "$KDKVM_DIR"/prompts/intents/*.md "$DEST/prompts/intents/" 2>/dev/null || true
 
-# ── Trust roots: app/keys/ (committed) ──────────────────────────────────
-# install.sh reads $SCRIPT_DIR/app/keys/*.pub, so that's where the zip must
-# carry them. The committed pubs are the authoritative source; kdcms/keys/
-# is only the dev-side signer's copy.
-if [[ -f "$KDKVM_DIR/app/keys/myclaw_verify.pub" ]]; then
-    cp -f "$KDKVM_DIR/app/keys/myclaw_verify.pub" "$DEST/app/keys/myclaw_verify.pub"
-    ok "MyClaw verify key staged → app/keys/myclaw_verify.pub"
-else
-    warn "dev/kdkvm/app/keys/myclaw_verify.pub missing — MyClaw gateway will fail-closed on fresh devices"
-fi
+# ── Trust roots: stage from dev/keys/ into OTA tar ──────────────────────
+# install.sh reads $SCRIPT_DIR/app/keys/*.pub from the unpacked tar, so the
+# tar internal layout (staging $DEST/app/keys/) is fixed. Source of truth is
+# the unified dev/keys/ tree.
+UNIFIED_KEYS="$REPO_ROOT/dev/keys"
 
-# R5-HB-01: 心跳响应验签公钥。kdkvm install.sh 拷到 /etc/kdkvm/heartbeat_verify.pub，
-# 设备端 device_keys.verify_heartbeat_response 用它阻断 kdcms 被攻陷后的伪响应。
-# 缺失时 OTA 包仍可发，但更新后的设备会保留旧 features（heartbeat.py 拒绝
-# 接受未带签名以外的"签名无效"响应），此时需要运维介入补齐密钥并重建包。
-if [[ -f "$KDKVM_DIR/app/keys/heartbeat_verify.pub" ]]; then
-    cp -f "$KDKVM_DIR/app/keys/heartbeat_verify.pub" "$DEST/app/keys/heartbeat_verify.pub"
-    ok "Heartbeat verify key staged → app/keys/heartbeat_verify.pub"
-else
-    warn "dev/kdkvm/app/keys/heartbeat_verify.pub missing — devices receiving this OTA will not be able to verify signed heartbeats"
-    warn "  从 dev/kdcms/keys/heartbeat_verify.pub 拷过来再 rebuild"
-fi
+stage_pub() {
+    local name="$1" src="$2"
+    if [[ -f "$src" ]]; then
+        cp -f "$src" "$DEST/app/keys/$name"
+        ok "$name staged from $src"
+    else
+        warn "$name missing at $src — devices receiving this OTA will fail-closed for the corresponding signature path"
+    fi
+}
 
-# OTA update-trust public keys — every *.pub in app/keys/update-trust-*.pub
-# is staged; install.sh fans them out to /etc/kdkvm/update.pub.d/ for
-# kvmind-updater.sh multi-key_id verification.
+stage_pub "myclaw_verify.pub"    "$UNIFIED_KEYS/kdcms/myclaw_verify.pub"
+stage_pub "heartbeat_verify.pub" "$UNIFIED_KEYS/kdcms/heartbeat_verify.pub"
+
+# OTA update-trust public keys — every *.pub in dev/keys/kdkvm-ota/ is staged;
+# install.sh fans them out to /etc/kdkvm/update.pub.d/ for kvmind-updater.sh
+# multi-key_id verification.
 shopt -s nullglob
-for pub in "$KDKVM_DIR"/app/keys/update-trust-*.pub; do
-    cp -f "$pub" "$DEST/app/keys/$(basename "$pub")"
-    ok "OTA trust root staged → app/keys/$(basename "$pub")"
+for pub in "$UNIFIED_KEYS"/kdkvm-ota/update-trust-*.pub; do
+    base="$(basename "$pub")"
+    cp -f "$pub" "$DEST/app/keys/$base"
+    ok "OTA trust root staged → app/keys/$base"
 done
 shopt -u nullglob
 

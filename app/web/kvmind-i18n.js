@@ -960,6 +960,35 @@
     if (typeof cb === 'function') _listeners.push(cb);
   }
 
+  /**
+   * Register a module-owned namespace. Lets self-contained modules
+   * (sidebar / stream / future widgets) ship their own dictionaries while
+   * still flowing through the shared engine — applyDOM, t(), setLang,
+   * onLangChange all work for them automatically once registered.
+   *
+   * Repeated calls merge keys (forward-compatible: a module can ship a v2
+   * with extra keys and still load alongside an older runtime).
+   *
+   * @param {string} namespace                e.g. 'sidebar', 'stream'
+   * @param {{zh?:object, ja?:object, en?:object}} dict
+   */
+  function registerDict(namespace, dict) {
+    if (!namespace || !dict || typeof dict !== 'object') return;
+    if (!DICTS[namespace]) DICTS[namespace] = { zh: {}, ja: {}, en: {} };
+    var langs = ['zh', 'ja', 'en'];
+    for (var i = 0; i < langs.length; i++) {
+      var lang = langs[i];
+      if (!dict[lang]) continue;
+      if (!DICTS[namespace][lang]) DICTS[namespace][lang] = {};
+      var src = dict[lang];
+      for (var k in src) {
+        if (Object.prototype.hasOwnProperty.call(src, k)) {
+          DICTS[namespace][lang][k] = src[k];
+        }
+      }
+    }
+  }
+
   function init(page) {
     _page = page;
     _lang = detectLang();
@@ -989,6 +1018,7 @@
     getLang: function () { return _lang; },
     applyDOM: applyDOM,
     onLangChange: onLangChange,
+    registerDict: registerDict,
     translateKvmdSetting: translateKvmdSetting,
     _dicts: DICTS,
     _kvmdSettings: KVMD_SETTINGS,

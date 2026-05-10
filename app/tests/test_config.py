@@ -100,12 +100,12 @@ class TestConfigLoadFromYAML:
 
     def test_load_legacy_pikvm_section(self, tmp_path):
         config_file = tmp_path / "config.yaml"
-        data = {"pikvm": {"host": "192.168.1.100", "port": 443}}
+        data = {"pikvm": {"host": "192.168.0.22", "port": 443}}
         config_file.write_text(yaml.dump(data))
 
         cfg = Config.load(str(config_file))
 
-        assert cfg.kvm.host == "192.168.1.100"
+        assert cfg.kvm.host == "192.168.0.22"
 
     def test_load_bridge_section(self, tmp_path):
         config_file = tmp_path / "config.yaml"
@@ -168,6 +168,57 @@ class TestProviderConfigFromEnv:
             assert gemini.source == "env"
         finally:
             os.environ.pop("GEMINI_API_KEY", None)
+            os.environ.update(saved)
+
+    def test_deepseek_key_from_env(self, tmp_path):
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("")
+
+        saved = {k: os.environ.pop(k) for k in [
+            "GEMINI_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY",
+            "OLLAMA_API_KEY", "DEEPSEEK_API_KEY", "AI_API_KEY",
+        ] if k in os.environ}
+        os.environ["DEEPSEEK_API_KEY"] = "test-deepseek-key"
+        try:
+            cfg = Config.load(str(config_file))
+
+            ds = cfg.ai.get_provider("deepseek")
+            assert ds is not None
+            assert ds.api_key == "test-deepseek-key"
+            assert ds.source == "env"
+            assert ds.base_url == "https://api.deepseek.com"
+        finally:
+            os.environ.pop("DEEPSEEK_API_KEY", None)
+            os.environ.update(saved)
+
+    def test_custom_provider_from_yaml_shorthand(self, tmp_path):
+        """Generic OpenAI-compatible endpoint loaded from yaml shorthand.
+
+        custom 在 KNOWN_PROVIDERS 里 base_url 留空，必须由用户在 yaml 里填
+        custom_url；单测验证 custom_key + custom_url + custom_model 三件套
+        都被解析进 ProviderConfig。
+        """
+        config_file = tmp_path / "config.yaml"
+        data = {"ai": {
+            "custom_key": "sk-userkey",
+            "custom_url": "https://my-llm.example.com/v1",
+            "custom_model": "qwen2.5-72b",
+        }}
+        config_file.write_text(yaml.dump(data))
+
+        saved = {k: os.environ.pop(k) for k in [
+            "CUSTOM_AI_API_KEY", "OPENAI_API_KEY", "AI_API_KEY",
+        ] if k in os.environ}
+        try:
+            cfg = Config.load(str(config_file))
+
+            cu = cfg.ai.get_provider("custom")
+            assert cu is not None
+            assert cu.api_key == "sk-userkey"
+            assert cu.base_url == "https://my-llm.example.com/v1"
+            assert cu.default_model == "qwen2.5-72b"
+            assert cu.source == "config"
+        finally:
             os.environ.update(saved)
 
 

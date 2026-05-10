@@ -17,7 +17,7 @@
 #   GEMINI_KEY   — Google AI Studio API key (https://aistudio.google.com/apikey)
 #
 # Optional env:
-#   OLLAMA_URL   — Local LLM endpoint (default: http://localhost:11434/v1)
+#   OLLAMA_URL   — Local LLM endpoint (default: http://192.168.0.12:11434/v1)
 #
 # See .env.test.example for a template.
 #
@@ -47,7 +47,7 @@ fi
 
 # ── Required test AI configuration (from env; never hardcode secrets) ──
 : "${GEMINI_KEY:?GEMINI_KEY env var required; get a key from https://aistudio.google.com/apikey and put it in dev/kdkvm/deploy/.env.test.local}"
-: "${OLLAMA_URL:=http://localhost:11434/v1}"
+: "${OLLAMA_URL:=http://192.168.0.12:11434/v1}"
 
 echo -e "[KVMind] Setting up test AI on ${DEVICE_IP}"
 

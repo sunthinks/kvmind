@@ -81,10 +81,11 @@ class ProtocolValidator:
         Returns a nudge message dict, or None if no nudge needed
         (caller should accept the text as final answer).
         """
-        # Text-only on turn 1 = likely answering a question → accept as done
-        # Text-only on turn > 3 = late in task → accept as done
-        # Text-only on turn 2-3 and not yet nudged → nudge once
-        if turn > 1 and turn <= 3 and not self._text_only_nudged:
+        # Auto mode is entered only after intent gating decides the user likely
+        # wants the remote computer controlled. If the model answers with text
+        # instead of tool_calls, nudge once even on turn 1; otherwise users see
+        # a command-looking answer that never executes.
+        if turn <= 3 and not self._text_only_nudged:
             self._text_only_nudged = True
             log.info("[Protocol] Nudging AI to continue (text-only on turn %d)", turn)
             return {
